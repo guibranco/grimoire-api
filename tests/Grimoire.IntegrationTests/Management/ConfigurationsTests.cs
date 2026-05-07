@@ -29,7 +29,14 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
 
         var response = await Client.PostAsJsonAsync(
             $"/api/management/applications/{slug}/configurations",
-            new { environmentSlug = "local", key, value = "true", description = "flag" });
+            new
+            {
+                environmentSlug = "local",
+                key,
+                value = "true",
+                description = "flag",
+            }
+        );
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -43,10 +50,24 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var key = TestHelpers.UniqueName("dup-key");
 
-        await Client.PostAsJsonAsync($"/api/management/applications/{slug}/configurations",
-            new { environmentSlug = "local", key, value = "v1" });
-        var response = await Client.PostAsJsonAsync($"/api/management/applications/{slug}/configurations",
-            new { environmentSlug = "local", key, value = "v2" });
+        await Client.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/configurations",
+            new
+            {
+                environmentSlug = "local",
+                key,
+                value = "v1",
+            }
+        );
+        var response = await Client.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/configurations",
+            new
+            {
+                environmentSlug = "local",
+                key,
+                value = "v2",
+            }
+        );
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
@@ -57,12 +78,20 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var key = TestHelpers.UniqueName("upd-key");
 
-        await Client.PostAsJsonAsync($"/api/management/applications/{slug}/configurations",
-            new { environmentSlug = "local", key, value = "old" });
+        await Client.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/configurations",
+            new
+            {
+                environmentSlug = "local",
+                key,
+                value = "old",
+            }
+        );
 
         var response = await Client.PutAsJsonAsync(
             $"/api/management/applications/{slug}/configurations/local/{key}",
-            new { value = "new" });
+            new { value = "new" }
+        );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -75,11 +104,19 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var key = TestHelpers.UniqueName("del-key");
 
-        await Client.PostAsJsonAsync($"/api/management/applications/{slug}/configurations",
-            new { environmentSlug = "local", key, value = "v" });
+        await Client.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/configurations",
+            new
+            {
+                environmentSlug = "local",
+                key,
+                value = "v",
+            }
+        );
 
         var response = await Client.DeleteAsync(
-            $"/api/management/applications/{slug}/configurations/local/{key}");
+            $"/api/management/applications/{slug}/configurations/local/{key}"
+        );
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
@@ -90,7 +127,8 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var response = await Client.PutAsJsonAsync(
             $"/api/management/applications/{slug}/configurations/local/no-key",
-            new { value = "x" });
+            new { value = "x" }
+        );
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -98,8 +136,15 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
     public async Task CreateConfiguration_ForNonexistentEnvironment_Returns404()
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
-        var response = await Client.PostAsJsonAsync($"/api/management/applications/{slug}/configurations",
-            new { environmentSlug = "no-env", key = "k", value = "v" });
+        var response = await Client.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/configurations",
+            new
+            {
+                environmentSlug = "no-env",
+                key = "k",
+                value = "v",
+            }
+        );
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

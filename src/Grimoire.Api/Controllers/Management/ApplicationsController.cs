@@ -157,8 +157,11 @@ public class ApplicationsController(
         return Ok(new RotateKeyResponse(plainKey));
     }
 
-    private static string GenerateApiKey() =>
-        $"grm_{Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)).Replace("+", "").Replace("/", "").Replace("=", "")[..40]}";
+    private static string GenerateApiKey()
+    {
+        var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+        return $"grm_{Convert.ToHexString(bytes).ToLowerInvariant()[..40]}";
+    }
 
     private static ProblemDetails ProblemDetailsFor(string detail) =>
         new()

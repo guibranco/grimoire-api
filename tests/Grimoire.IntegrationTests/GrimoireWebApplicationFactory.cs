@@ -9,7 +9,10 @@ namespace Grimoire.IntegrationTests;
 
 public sealed class GrimoireWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"grimoire-test-{Guid.NewGuid():N}.db");
+    private readonly string _dbPath = Path.Combine(
+        Path.GetTempPath(),
+        $"grimoire-test-{Guid.NewGuid():N}.db"
+    );
 
     public const string AdminKey = "test-admin-key-integration";
     public const string MasterKey = "test-master-key-32-chars-minimum!";
@@ -18,16 +21,20 @@ public sealed class GrimoireWebApplicationFactory : WebApplicationFactory<Progra
     {
         builder.UseEnvironment("Testing");
 
-        builder.ConfigureAppConfiguration((_, config) =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
+        builder.ConfigureAppConfiguration(
+            (_, config) =>
             {
-                ["ConnectionStrings:Default"] = $"Data Source={_dbPath}",
-                ["Management:AdminApiKey"] = AdminKey,
-                ["Encryption:MasterKey"] = MasterKey,
-                ["Cors:AllowedOrigins:0"] = "http://localhost:5173"
-            });
-        });
+                config.AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["ConnectionStrings:Default"] = $"Data Source={_dbPath}",
+                        ["Management:AdminApiKey"] = AdminKey,
+                        ["Encryption:MasterKey"] = MasterKey,
+                        ["Cors:AllowedOrigins:0"] = "http://localhost:5173",
+                    }
+                );
+            }
+        );
     }
 
     public HttpClient CreateManagementClient()
@@ -55,6 +62,12 @@ public sealed class GrimoireWebApplicationFactory : WebApplicationFactory<Progra
     private void TryDeleteDb()
     {
         foreach (var f in new[] { _dbPath, _dbPath + "-shm", _dbPath + "-wal" })
-            try { File.Delete(f); } catch { /* ignore */ }
+            try
+            {
+                File.Delete(f);
+            }
+            catch
+            { /* ignore */
+            }
     }
 }

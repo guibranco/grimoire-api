@@ -22,8 +22,10 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     public async Task CreateApplication_Returns201_WithPlainApiKey()
     {
         var name = TestHelpers.UniqueName("create-app");
-        var response = await Client.PostAsJsonAsync("/api/management/applications",
-            new { name, description = "Integration test app" });
+        var response = await Client.PostAsJsonAsync(
+            "/api/management/applications",
+            new { name, description = "Integration test app" }
+        );
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -35,8 +37,10 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     [Fact]
     public async Task CreateApplication_AutoGeneratesSlugFromName()
     {
-        var response = await Client.PostAsJsonAsync("/api/management/applications",
-            new { name = "My Test Application", description = "" });
+        var response = await Client.PostAsJsonAsync(
+            "/api/management/applications",
+            new { name = "My Test Application", description = "" }
+        );
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -68,8 +72,10 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var newName = TestHelpers.UniqueName("updated");
 
-        var response = await Client.PutAsJsonAsync($"/api/management/applications/{slug}",
-            new { name = newName, description = "updated desc" });
+        var response = await Client.PutAsJsonAsync(
+            $"/api/management/applications/{slug}",
+            new { name = newName, description = "updated desc" }
+        );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -93,7 +99,10 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, originalKey) = await TestHelpers.CreateApplicationAsync(Client);
 
-        var response = await Client.PostAsync($"/api/management/applications/{slug}/rotate-key", null);
+        var response = await Client.PostAsync(
+            $"/api/management/applications/{slug}/rotate-key",
+            null
+        );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;

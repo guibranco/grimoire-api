@@ -38,8 +38,10 @@ public sealed class GrimoireApiFixture : IAsyncLifetime
             .WithEnvironment("Management__AdminApiKey", AdminKey)
             .WithEnvironment("Encryption__MasterKey", MasterKey)
             .WithEnvironment("Cors__AllowedOrigins__0", "http://localhost:5173")
-            .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilHttpRequestIsSucceeded(r => r.ForPath("/health").ForPort(8080)))
+            .WithWaitStrategy(
+                Wait.ForUnixContainer()
+                    .UntilHttpRequestIsSucceeded(r => r.ForPath("/health").ForPort(8080))
+            )
             .Build();
 
         await _container.StartAsync();
@@ -65,7 +67,9 @@ public sealed class GrimoireApiFixture : IAsyncLifetime
     public async Task DisposeAsync()
     {
         HttpClient.Dispose();
-        if (_container is not null) await _container.DisposeAsync();
-        if (_builtImage is not null) await _builtImage.DisposeAsync();
+        if (_container is not null)
+            await _container.DisposeAsync();
+        if (_builtImage is not null)
+            await _builtImage.DisposeAsync();
     }
 }

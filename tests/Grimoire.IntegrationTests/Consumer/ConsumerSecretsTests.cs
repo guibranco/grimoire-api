@@ -14,10 +14,18 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(MgmtClient);
         var secretName = TestHelpers.UniqueName("db-pass");
-        await TestHelpers.CreateSecretWithValueAsync(MgmtClient, slug, secretName, "local", "s3cr3tP@ss!");
+        await TestHelpers.CreateSecretWithValueAsync(
+            MgmtClient,
+            slug,
+            secretName,
+            "local",
+            "s3cr3tP@ss!"
+        );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync($"/api/consumer/secrets/{secretName}?environment=local");
+        var response = await consumer.GetAsync(
+            $"/api/consumer/secrets/{secretName}?environment=local"
+        );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -33,11 +41,15 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(MgmtClient);
         var secretName = TestHelpers.UniqueName("no-val");
-        await MgmtClient.PostAsJsonAsync($"/api/management/applications/{slug}/secrets",
-            new { name = secretName });
+        await MgmtClient.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/secrets",
+            new { name = secretName }
+        );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync($"/api/consumer/secrets/{secretName}?environment=local");
+        var response = await consumer.GetAsync(
+            $"/api/consumer/secrets/{secretName}?environment=local"
+        );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -48,7 +60,9 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         var (_, apiKey) = await TestHelpers.CreateApplicationAsync(MgmtClient);
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync("/api/consumer/secrets/does-not-exist?environment=local");
+        var response = await consumer.GetAsync(
+            "/api/consumer/secrets/does-not-exist?environment=local"
+        );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -61,7 +75,9 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         await TestHelpers.CreateSecretWithValueAsync(MgmtClient, slug, secretName, "local", "val");
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync($"/api/consumer/secrets/{secretName}?environment=no-env");
+        var response = await consumer.GetAsync(
+            $"/api/consumer/secrets/{secretName}?environment=no-env"
+        );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -72,14 +88,27 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(MgmtClient);
         var secretName = TestHelpers.UniqueName("disabled");
 
-        await MgmtClient.PostAsJsonAsync($"/api/management/applications/{slug}/secrets",
-            new { name = secretName });
+        await MgmtClient.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/secrets",
+            new { name = secretName }
+        );
         await MgmtClient.PostAsJsonAsync(
             $"/api/management/applications/{slug}/secrets/{secretName}/values",
-            new[] { new { environmentSlug = "local", value = "x", isEnabled = false } });
+            new[]
+            {
+                new
+                {
+                    environmentSlug = "local",
+                    value = "x",
+                    isEnabled = false,
+                },
+            }
+        );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync($"/api/consumer/secrets/{secretName}?environment=local");
+        var response = await consumer.GetAsync(
+            $"/api/consumer/secrets/{secretName}?environment=local"
+        );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -91,14 +120,28 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         var secretName = TestHelpers.UniqueName("expired");
         var pastDate = DateTimeOffset.UtcNow.AddDays(-1);
 
-        await MgmtClient.PostAsJsonAsync($"/api/management/applications/{slug}/secrets",
-            new { name = secretName });
+        await MgmtClient.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/secrets",
+            new { name = secretName }
+        );
         await MgmtClient.PostAsJsonAsync(
             $"/api/management/applications/{slug}/secrets/{secretName}/values",
-            new[] { new { environmentSlug = "local", value = "x", isEnabled = true, expiresAt = pastDate } });
+            new[]
+            {
+                new
+                {
+                    environmentSlug = "local",
+                    value = "x",
+                    isEnabled = true,
+                    expiresAt = pastDate,
+                },
+            }
+        );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync($"/api/consumer/secrets/{secretName}?environment=local");
+        var response = await consumer.GetAsync(
+            $"/api/consumer/secrets/{secretName}?environment=local"
+        );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -111,10 +154,21 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         await TestHelpers.CreateSecretWithValueAsync(MgmtClient, slug, secretName, "local", "v1");
         await MgmtClient.PostAsJsonAsync(
             $"/api/management/applications/{slug}/secrets/{secretName}/values",
-            new[] { new { environmentSlug = "local", value = "v2", isEnabled = true } });
+            new[]
+            {
+                new
+                {
+                    environmentSlug = "local",
+                    value = "v2",
+                    isEnabled = true,
+                },
+            }
+        );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync($"/api/consumer/secrets/{secretName}?environment=local");
+        var response = await consumer.GetAsync(
+            $"/api/consumer/secrets/{secretName}?environment=local"
+        );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;

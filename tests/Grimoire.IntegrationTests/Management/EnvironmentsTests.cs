@@ -28,7 +28,8 @@ public class EnvironmentsTests(GrimoireWebApplicationFactory factory)
 
         var response = await Client.PostAsJsonAsync(
             $"/api/management/applications/{slug}/environments",
-            new { name = "Production" });
+            new { name = "Production" }
+        );
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -40,10 +41,14 @@ public class EnvironmentsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
 
-        await Client.PostAsJsonAsync($"/api/management/applications/{slug}/environments",
-            new { name = "Staging" });
-        var response = await Client.PostAsJsonAsync($"/api/management/applications/{slug}/environments",
-            new { name = "Staging" });
+        await Client.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/environments",
+            new { name = "Staging" }
+        );
+        var response = await Client.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/environments",
+            new { name = "Staging" }
+        );
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
@@ -52,11 +57,14 @@ public class EnvironmentsTests(GrimoireWebApplicationFactory factory)
     public async Task DeleteEnvironment_Returns204()
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
-        await Client.PostAsJsonAsync($"/api/management/applications/{slug}/environments",
-            new { name = "Temp-Env" });
+        await Client.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/environments",
+            new { name = "Temp-Env" }
+        );
 
         var response = await Client.DeleteAsync(
-            $"/api/management/applications/{slug}/environments/temp-env");
+            $"/api/management/applications/{slug}/environments/temp-env"
+        );
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
@@ -64,7 +72,9 @@ public class EnvironmentsTests(GrimoireWebApplicationFactory factory)
     [Fact]
     public async Task ListEnvironments_ForNonExistentApp_Returns404()
     {
-        var response = await Client.GetAsync("/api/management/applications/no-app-xyz/environments");
+        var response = await Client.GetAsync(
+            "/api/management/applications/no-app-xyz/environments"
+        );
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -73,7 +83,8 @@ public class EnvironmentsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var response = await Client.DeleteAsync(
-            $"/api/management/applications/{slug}/environments/no-such-env");
+            $"/api/management/applications/{slug}/environments/no-such-env"
+        );
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

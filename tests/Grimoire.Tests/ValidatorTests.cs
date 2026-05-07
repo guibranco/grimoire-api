@@ -17,92 +17,140 @@ public class ValidatorTests
     {
         var result = v.Validate(model);
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, e =>
-            e.PropertyName.Equals(propertyName, StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            result.Errors,
+            e => e.PropertyName.Equals(propertyName, StringComparison.OrdinalIgnoreCase)
+        );
     }
 
     [Fact]
-    public void CreateApplicationRequest_ValidInput_Passes()
-        => AssertValid(new CreateApplicationRequestValidator(),
-            new CreateApplicationRequest("My App", "desc"));
+    public void CreateApplicationRequest_ValidInput_Passes() =>
+        AssertValid(
+            new CreateApplicationRequestValidator(),
+            new CreateApplicationRequest("My App", "desc")
+        );
 
     [Fact]
-    public void CreateApplicationRequest_EmptyName_FailsOnName()
-        => AssertInvalidFor(new CreateApplicationRequestValidator(),
-            new CreateApplicationRequest("", null), "Name");
+    public void CreateApplicationRequest_EmptyName_FailsOnName() =>
+        AssertInvalidFor(
+            new CreateApplicationRequestValidator(),
+            new CreateApplicationRequest("", null),
+            "Name"
+        );
 
     [Fact]
-    public void CreateApplicationRequest_NameTooLong_FailsOnName()
-        => AssertInvalidFor(new CreateApplicationRequestValidator(),
-            new CreateApplicationRequest(new string('a', 201), null), "Name");
+    public void CreateApplicationRequest_NameTooLong_FailsOnName() =>
+        AssertInvalidFor(
+            new CreateApplicationRequestValidator(),
+            new CreateApplicationRequest(new string('a', 201), null),
+            "Name"
+        );
 
     [Fact]
-    public void UpdateApplicationRequest_ValidInput_Passes()
-        => AssertValid(new UpdateApplicationRequestValidator(),
-            new UpdateApplicationRequest("New Name", "desc"));
+    public void UpdateApplicationRequest_ValidInput_Passes() =>
+        AssertValid(
+            new UpdateApplicationRequestValidator(),
+            new UpdateApplicationRequest("New Name", "desc")
+        );
 
     [Fact]
-    public void UpdateApplicationRequest_EmptyName_Fails()
-        => AssertInvalidFor(new UpdateApplicationRequestValidator(),
-            new UpdateApplicationRequest("", null), "Name");
+    public void UpdateApplicationRequest_EmptyName_Fails() =>
+        AssertInvalidFor(
+            new UpdateApplicationRequestValidator(),
+            new UpdateApplicationRequest("", null),
+            "Name"
+        );
 
     [Fact]
-    public void CreateEnvironmentRequest_EmptyName_FailsOnName()
-        => AssertInvalidFor(new CreateEnvironmentRequestValidator(),
-            new CreateEnvironmentRequest(""), "Name");
+    public void CreateEnvironmentRequest_EmptyName_FailsOnName() =>
+        AssertInvalidFor(
+            new CreateEnvironmentRequestValidator(),
+            new CreateEnvironmentRequest(""),
+            "Name"
+        );
 
     [Fact]
-    public void CreateEnvironmentRequest_ValidName_Passes()
-        => AssertValid(new CreateEnvironmentRequestValidator(),
-            new CreateEnvironmentRequest("Production"));
+    public void CreateEnvironmentRequest_ValidName_Passes() =>
+        AssertValid(
+            new CreateEnvironmentRequestValidator(),
+            new CreateEnvironmentRequest("Production")
+        );
 
     [Fact]
-    public void CreateSecretRequest_EmptyName_FailsOnName()
-        => AssertInvalidFor(new CreateSecretRequestValidator(),
-            new CreateSecretRequest("", null), "Name");
+    public void CreateSecretRequest_EmptyName_FailsOnName() =>
+        AssertInvalidFor(
+            new CreateSecretRequestValidator(),
+            new CreateSecretRequest("", null),
+            "Name"
+        );
 
     [Fact]
-    public void SetSecretValueRequest_EmptyEnvironmentSlug_Fails()
-        => AssertInvalidFor(new SetSecretValueRequestValidator(),
-            new SetSecretValueRequest("", "value"), "EnvironmentSlug");
+    public void SetSecretValueRequest_EmptyEnvironmentSlug_Fails() =>
+        AssertInvalidFor(
+            new SetSecretValueRequestValidator(),
+            new SetSecretValueRequest("", "value"),
+            "EnvironmentSlug"
+        );
 
     [Fact]
-    public void SetSecretValueRequest_EmptyValue_Fails()
-        => AssertInvalidFor(new SetSecretValueRequestValidator(),
-            new SetSecretValueRequest("local", ""), "Value");
+    public void SetSecretValueRequest_EmptyValue_Fails() =>
+        AssertInvalidFor(
+            new SetSecretValueRequestValidator(),
+            new SetSecretValueRequest("local", ""),
+            "Value"
+        );
 
     [Fact]
-    public void SetSecretValueRequest_ValidInput_Passes()
-        => AssertValid(new SetSecretValueRequestValidator(),
-            new SetSecretValueRequest("local", "val", true));
+    public void SetSecretValueRequest_ValidInput_Passes() =>
+        AssertValid(
+            new SetSecretValueRequestValidator(),
+            new SetSecretValueRequest("local", "val", true)
+        );
 
     [Fact]
     public void SetSecretValueRequest_ExpiresBeforeNotBefore_FailsOnExpiresAt()
     {
         var now = DateTimeOffset.UtcNow;
-        AssertInvalidFor(new SetSecretValueRequestValidator(),
-            new SetSecretValueRequest("local", "v", true,
-                ExpiresAt: now.AddDays(-1), NotBefore: now),
-            "ExpiresAt");
+        AssertInvalidFor(
+            new SetSecretValueRequestValidator(),
+            new SetSecretValueRequest(
+                "local",
+                "v",
+                true,
+                ExpiresAt: now.AddDays(-1),
+                NotBefore: now
+            ),
+            "ExpiresAt"
+        );
     }
 
     [Fact]
-    public void CreateConfigurationRequest_EmptyKey_Fails()
-        => AssertInvalidFor(new CreateConfigurationRequestValidator(),
-            new CreateConfigurationRequest("local", "", "value"), "Key");
+    public void CreateConfigurationRequest_EmptyKey_Fails() =>
+        AssertInvalidFor(
+            new CreateConfigurationRequestValidator(),
+            new CreateConfigurationRequest("local", "", "value"),
+            "Key"
+        );
 
     [Fact]
-    public void CreateConfigurationRequest_EmptyEnvironmentSlug_Fails()
-        => AssertInvalidFor(new CreateConfigurationRequestValidator(),
-            new CreateConfigurationRequest("", "key", "value"), "EnvironmentSlug");
+    public void CreateConfigurationRequest_EmptyEnvironmentSlug_Fails() =>
+        AssertInvalidFor(
+            new CreateConfigurationRequestValidator(),
+            new CreateConfigurationRequest("", "key", "value"),
+            "EnvironmentSlug"
+        );
 
     [Fact]
-    public void CreateConfigurationRequest_ValidInput_Passes()
-        => AssertValid(new CreateConfigurationRequestValidator(),
-            new CreateConfigurationRequest("local", "Feature:EnableX", "true"));
+    public void CreateConfigurationRequest_ValidInput_Passes() =>
+        AssertValid(
+            new CreateConfigurationRequestValidator(),
+            new CreateConfigurationRequest("local", "Feature:EnableX", "true")
+        );
 
     [Fact]
-    public void UpdateConfigurationRequest_ValidInput_Passes()
-        => AssertValid(new UpdateConfigurationRequestValidator(),
-            new UpdateConfigurationRequest("new-value"));
+    public void UpdateConfigurationRequest_ValidInput_Passes() =>
+        AssertValid(
+            new UpdateConfigurationRequestValidator(),
+            new UpdateConfigurationRequest("new-value")
+        );
 }

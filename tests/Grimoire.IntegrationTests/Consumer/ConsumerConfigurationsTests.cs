@@ -14,8 +14,15 @@ public class ConsumerConfigurationsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(MgmtClient);
         var key = TestHelpers.UniqueName("Feature");
-        await MgmtClient.PostAsJsonAsync($"/api/management/applications/{slug}/configurations",
-            new { environmentSlug = "local", key, value = "true" });
+        await MgmtClient.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/configurations",
+            new
+            {
+                environmentSlug = "local",
+                key,
+                value = "true",
+            }
+        );
 
         var consumer = factory.CreateConsumerClient(apiKey);
         var response = await consumer.GetAsync("/api/consumer/configurations?environment=local");
@@ -23,10 +30,13 @@ public class ConsumerConfigurationsTests(GrimoireWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
         var items = json["items"]!.AsArray();
-        Assert.Contains(items, i =>
-            i!["key"]!.GetValue<string>() == key &&
-            i["value"]!.GetValue<string>() == "true" &&
-            i["label"]!.GetValue<string>() == "local");
+        Assert.Contains(
+            items,
+            i =>
+                i!["key"]!.GetValue<string>() == key
+                && i["value"]!.GetValue<string>() == "true"
+                && i["label"]!.GetValue<string>() == "local"
+        );
     }
 
     [Fact]
@@ -47,11 +57,20 @@ public class ConsumerConfigurationsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(MgmtClient);
         var key = TestHelpers.UniqueName("conn-str");
-        await MgmtClient.PostAsJsonAsync($"/api/management/applications/{slug}/configurations",
-            new { environmentSlug = "local", key, value = "Server=localhost" });
+        await MgmtClient.PostAsJsonAsync(
+            $"/api/management/applications/{slug}/configurations",
+            new
+            {
+                environmentSlug = "local",
+                key,
+                value = "Server=localhost",
+            }
+        );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync($"/api/consumer/configurations/{key}?environment=local");
+        var response = await consumer.GetAsync(
+            $"/api/consumer/configurations/{key}?environment=local"
+        );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -66,7 +85,9 @@ public class ConsumerConfigurationsTests(GrimoireWebApplicationFactory factory)
         var (_, apiKey) = await TestHelpers.CreateApplicationAsync(MgmtClient);
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync("/api/consumer/configurations/no-such-key?environment=local");
+        var response = await consumer.GetAsync(
+            "/api/consumer/configurations/no-such-key?environment=local"
+        );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
