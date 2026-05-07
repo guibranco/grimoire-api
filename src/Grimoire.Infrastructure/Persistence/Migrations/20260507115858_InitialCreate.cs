@@ -18,16 +18,25 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     Name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
                     Slug = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: true),
-                    ApiKeyHash = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
+                    Description = table.Column<string>(
+                        type: "TEXT",
+                        maxLength: 1000,
+                        nullable: true
+                    ),
+                    ApiKeyHash = table.Column<string>(
+                        type: "TEXT",
+                        maxLength: 500,
+                        nullable: false
+                    ),
                     IsDeleted = table.Column<bool>(type: "INTEGER", nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Applications", x => x.Id);
-                });
+                }
+            );
 
             migrationBuilder.CreateTable(
                 name: "Environments",
@@ -38,7 +47,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     Name = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
                     Slug = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
                 },
                 constraints: table =>
                 {
@@ -48,8 +57,10 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         column: x => x.ApplicationId,
                         principalTable: "Applications",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+                        onDelete: ReferentialAction.Cascade
+                    );
+                }
+            );
 
             migrationBuilder.CreateTable(
                 name: "Secrets",
@@ -58,9 +69,13 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     ApplicationId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: true),
+                    Description = table.Column<string>(
+                        type: "TEXT",
+                        maxLength: 1000,
+                        nullable: true
+                    ),
                     CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
                 },
                 constraints: table =>
                 {
@@ -70,8 +85,10 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         column: x => x.ApplicationId,
                         principalTable: "Applications",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+                        onDelete: ReferentialAction.Cascade
+                    );
+                }
+            );
 
             migrationBuilder.CreateTable(
                 name: "ConfigurationEntries",
@@ -82,9 +99,13 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     EnvironmentId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Key = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
                     Value = table.Column<string>(type: "TEXT", nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: true),
+                    Description = table.Column<string>(
+                        type: "TEXT",
+                        maxLength: 1000,
+                        nullable: true
+                    ),
                     CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
                 },
                 constraints: table =>
                 {
@@ -94,14 +115,17 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         column: x => x.ApplicationId,
                         principalTable: "Applications",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Cascade
+                    );
                     table.ForeignKey(
                         name: "FK_ConfigurationEntries_Environments_EnvironmentId",
                         column: x => x.EnvironmentId,
                         principalTable: "Environments",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+                        onDelete: ReferentialAction.Cascade
+                    );
+                }
+            );
 
             migrationBuilder.CreateTable(
                 name: "SecretVersions",
@@ -115,7 +139,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     ExpiresAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
                     NotBefore = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
                     Version = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
                 },
                 constraints: table =>
                 {
@@ -125,78 +149,84 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         column: x => x.EnvironmentId,
                         principalTable: "Environments",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Cascade
+                    );
                     table.ForeignKey(
                         name: "FK_SecretVersions_Secrets_SecretId",
                         column: x => x.SecretId,
                         principalTable: "Secrets",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+                        onDelete: ReferentialAction.Cascade
+                    );
+                }
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_Applications_Name",
                 table: "Applications",
                 column: "Name",
-                unique: true);
+                unique: true
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_Applications_Slug",
                 table: "Applications",
                 column: "Slug",
-                unique: true);
+                unique: true
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_ConfigurationEntries_ApplicationId_EnvironmentId_Key",
                 table: "ConfigurationEntries",
                 columns: new[] { "ApplicationId", "EnvironmentId", "Key" },
-                unique: true);
+                unique: true
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_ConfigurationEntries_EnvironmentId",
                 table: "ConfigurationEntries",
-                column: "EnvironmentId");
+                column: "EnvironmentId"
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_Environments_ApplicationId_Slug",
                 table: "Environments",
                 columns: new[] { "ApplicationId", "Slug" },
-                unique: true);
+                unique: true
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_Secrets_ApplicationId_Name",
                 table: "Secrets",
                 columns: new[] { "ApplicationId", "Name" },
-                unique: true);
+                unique: true
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_SecretVersions_EnvironmentId",
                 table: "SecretVersions",
-                column: "EnvironmentId");
+                column: "EnvironmentId"
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_SecretVersions_SecretId",
                 table: "SecretVersions",
-                column: "SecretId");
+                column: "SecretId"
+            );
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "ConfigurationEntries");
+            migrationBuilder.DropTable(name: "ConfigurationEntries");
 
-            migrationBuilder.DropTable(
-                name: "SecretVersions");
+            migrationBuilder.DropTable(name: "SecretVersions");
 
-            migrationBuilder.DropTable(
-                name: "Environments");
+            migrationBuilder.DropTable(name: "Environments");
 
-            migrationBuilder.DropTable(
-                name: "Secrets");
+            migrationBuilder.DropTable(name: "Secrets");
 
-            migrationBuilder.DropTable(
-                name: "Applications");
+            migrationBuilder.DropTable(name: "Applications");
         }
     }
 }

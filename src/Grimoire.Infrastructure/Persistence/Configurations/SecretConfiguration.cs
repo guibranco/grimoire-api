@@ -14,7 +14,8 @@ public class SecretConfiguration : IEntityTypeConfiguration<Secret>
 
         builder.HasIndex(x => new { x.ApplicationId, x.Name }).IsUnique();
 
-        builder.HasOne(x => x.Application)
+        builder
+            .HasOne(x => x.Application)
             .WithMany(x => x.Secrets)
             .HasForeignKey(x => x.ApplicationId)
             .OnDelete(DeleteBehavior.Cascade);

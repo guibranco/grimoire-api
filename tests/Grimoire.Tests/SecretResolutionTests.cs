@@ -18,9 +18,32 @@ public class SecretResolutionTests
 
     private static (Guid secretId, Guid envId) SeedBasicData(GrimoireDbContext db)
     {
-        var app = new Application { Id = Guid.NewGuid(), Name = "Test", Slug = "test", ApiKeyHash = "hash", CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow };
-        var env = new AppEnvironment { Id = Guid.NewGuid(), ApplicationId = app.Id, Name = "Local", Slug = "local", CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow };
-        var secret = new Secret { Id = Guid.NewGuid(), ApplicationId = app.Id, Name = "db-pass", CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow };
+        var app = new Application
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test",
+            Slug = "test",
+            ApiKeyHash = "hash",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+        var env = new AppEnvironment
+        {
+            Id = Guid.NewGuid(),
+            ApplicationId = app.Id,
+            Name = "Local",
+            Slug = "local",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+        var secret = new Secret
+        {
+            Id = Guid.NewGuid(),
+            ApplicationId = app.Id,
+            Name = "db-pass",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
         db.Applications.Add(app);
         db.Environments.Add(env);
         db.Secrets.Add(secret);
@@ -33,7 +56,18 @@ public class SecretResolutionTests
     {
         var db = CreateDb();
         var (secretId, envId) = SeedBasicData(db);
-        db.SecretVersions.Add(new SecretVersion { Id = Guid.NewGuid(), SecretId = secretId, EnvironmentId = envId, EncryptedValue = "enc", IsEnabled = true, Version = 1, CreatedAt = DateTimeOffset.UtcNow });
+        db.SecretVersions.Add(
+            new SecretVersion
+            {
+                Id = Guid.NewGuid(),
+                SecretId = secretId,
+                EnvironmentId = envId,
+                EncryptedValue = "enc",
+                IsEnabled = true,
+                Version = 1,
+                CreatedAt = DateTimeOffset.UtcNow,
+            }
+        );
         await db.SaveChangesAsync();
 
         var repo = new SecretRepository(db);
@@ -48,7 +82,18 @@ public class SecretResolutionTests
     {
         var db = CreateDb();
         var (secretId, envId) = SeedBasicData(db);
-        db.SecretVersions.Add(new SecretVersion { Id = Guid.NewGuid(), SecretId = secretId, EnvironmentId = envId, EncryptedValue = "enc", IsEnabled = false, Version = 1, CreatedAt = DateTimeOffset.UtcNow });
+        db.SecretVersions.Add(
+            new SecretVersion
+            {
+                Id = Guid.NewGuid(),
+                SecretId = secretId,
+                EnvironmentId = envId,
+                EncryptedValue = "enc",
+                IsEnabled = false,
+                Version = 1,
+                CreatedAt = DateTimeOffset.UtcNow,
+            }
+        );
         await db.SaveChangesAsync();
 
         var repo = new SecretRepository(db);
@@ -62,7 +107,19 @@ public class SecretResolutionTests
     {
         var db = CreateDb();
         var (secretId, envId) = SeedBasicData(db);
-        db.SecretVersions.Add(new SecretVersion { Id = Guid.NewGuid(), SecretId = secretId, EnvironmentId = envId, EncryptedValue = "enc", IsEnabled = true, ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1), Version = 1, CreatedAt = DateTimeOffset.UtcNow });
+        db.SecretVersions.Add(
+            new SecretVersion
+            {
+                Id = Guid.NewGuid(),
+                SecretId = secretId,
+                EnvironmentId = envId,
+                EncryptedValue = "enc",
+                IsEnabled = true,
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1),
+                Version = 1,
+                CreatedAt = DateTimeOffset.UtcNow,
+            }
+        );
         await db.SaveChangesAsync();
 
         var repo = new SecretRepository(db);
@@ -76,7 +133,19 @@ public class SecretResolutionTests
     {
         var db = CreateDb();
         var (secretId, envId) = SeedBasicData(db);
-        db.SecretVersions.Add(new SecretVersion { Id = Guid.NewGuid(), SecretId = secretId, EnvironmentId = envId, EncryptedValue = "enc", IsEnabled = true, NotBefore = DateTimeOffset.UtcNow.AddDays(1), Version = 1, CreatedAt = DateTimeOffset.UtcNow });
+        db.SecretVersions.Add(
+            new SecretVersion
+            {
+                Id = Guid.NewGuid(),
+                SecretId = secretId,
+                EnvironmentId = envId,
+                EncryptedValue = "enc",
+                IsEnabled = true,
+                NotBefore = DateTimeOffset.UtcNow.AddDays(1),
+                Version = 1,
+                CreatedAt = DateTimeOffset.UtcNow,
+            }
+        );
         await db.SaveChangesAsync();
 
         var repo = new SecretRepository(db);
@@ -91,8 +160,26 @@ public class SecretResolutionTests
         var db = CreateDb();
         var (secretId, envId) = SeedBasicData(db);
         db.SecretVersions.AddRange(
-            new SecretVersion { Id = Guid.NewGuid(), SecretId = secretId, EnvironmentId = envId, EncryptedValue = "enc1", IsEnabled = true, Version = 1, CreatedAt = DateTimeOffset.UtcNow },
-            new SecretVersion { Id = Guid.NewGuid(), SecretId = secretId, EnvironmentId = envId, EncryptedValue = "enc2", IsEnabled = true, Version = 2, CreatedAt = DateTimeOffset.UtcNow }
+            new SecretVersion
+            {
+                Id = Guid.NewGuid(),
+                SecretId = secretId,
+                EnvironmentId = envId,
+                EncryptedValue = "enc1",
+                IsEnabled = true,
+                Version = 1,
+                CreatedAt = DateTimeOffset.UtcNow,
+            },
+            new SecretVersion
+            {
+                Id = Guid.NewGuid(),
+                SecretId = secretId,
+                EnvironmentId = envId,
+                EncryptedValue = "enc2",
+                IsEnabled = true,
+                Version = 2,
+                CreatedAt = DateTimeOffset.UtcNow,
+            }
         );
         await db.SaveChangesAsync();
 
