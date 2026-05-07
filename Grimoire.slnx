@@ -6,6 +6,8 @@
     <Project Path="src/Grimoire.Infrastructure/Grimoire.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Grimoire.E2eTests/Grimoire.E2eTests.csproj" />
+    <Project Path="tests/Grimoire.IntegrationTests/Grimoire.IntegrationTests.csproj" />
     <Project Path="tests/Grimoire.Tests/Grimoire.Tests.csproj" />
   </Folder>
 </Solution>

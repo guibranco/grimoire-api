@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: grimoire-api:local
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Management__AdminApiKey: "change-me-in-production"
+      Encryption__MasterKey: "change-me-32-chars-minimum-key!!"
+      Cors__AllowedOrigins__0: "http://localhost:5173"
+    volumes:
+      - grimoire-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  grimoire-data:

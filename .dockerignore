@@ -1,0 +1,15 @@
+**/.git
+**/.github
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/logs
+**/*.user
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/coverage
+**/TestResults
+tests/
+*.md

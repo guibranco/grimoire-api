@@ -76,6 +76,7 @@ builder.Services.AddCors(options =>
 );
 
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -102,5 +103,8 @@ app.UseCors();
 app.UseMiddleware<AdminApiKeyMiddleware>();
 app.UseMiddleware<ConsumerApiKeyMiddleware>();
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
+
+public partial class Program { }
