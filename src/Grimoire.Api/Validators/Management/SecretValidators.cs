@@ -18,6 +18,8 @@ public class SetSecretValueRequestValidator : AbstractValidator<SetSecretValueRe
     {
         RuleFor(x => x.EnvironmentSlug).NotEmpty();
         RuleFor(x => x.Value).NotEmpty();
-        RuleFor(x => x.ExpiresAt).GreaterThan(x => x.NotBefore).When(x => x.ExpiresAt.HasValue && x.NotBefore.HasValue);
+        RuleFor(x => x.ExpiresAt)
+            .GreaterThan(x => x.NotBefore)
+            .When(x => x.ExpiresAt.HasValue && x.NotBefore.HasValue);
     }
 }

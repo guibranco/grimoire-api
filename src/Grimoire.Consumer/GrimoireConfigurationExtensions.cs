@@ -8,7 +8,8 @@ public static class GrimoireConfigurationExtensions
         this IConfigurationBuilder builder,
         string baseUrl,
         string apiKey,
-        string environment)
+        string environment
+    )
     {
         builder.Add(new GrimoireConfigurationClient(baseUrl, apiKey, environment));
         return builder;

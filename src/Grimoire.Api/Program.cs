@@ -19,8 +19,11 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase);
+builder
+    .Services.AddControllers()
+    .AddJsonOptions(o =>
+        o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+    );
 
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -34,33 +37,43 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("management", new() { Title = "Grimoire Management API", Version = "v1" });
     c.SwaggerDoc("consumer", new() { Title = "Grimoire Consumer API", Version = "v1" });
-    c.DocInclusionPredicate((docName, apiDesc) =>
-    {
-        var tags = apiDesc.ActionDescriptor.EndpointMetadata
-            .OfType<TagsAttribute>()
-            .SelectMany(t => t.Tags);
-        return docName == "management"
-            ? tags.Any(t => t.StartsWith("Management"))
-            : tags.Any(t => t.StartsWith("Consumer"));
-    });
-    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-        Scheme = "bearer"
-    });
-    c.AddSecurityDefinition("ApiKey", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-    {
-        Name = "X-Api-Key",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header
-    });
+    c.DocInclusionPredicate(
+        (docName, apiDesc) =>
+        {
+            var tags = apiDesc
+                .ActionDescriptor.EndpointMetadata.OfType<TagsAttribute>()
+                .SelectMany(t => t.Tags);
+            return docName == "management"
+                ? tags.Any(t => t.StartsWith("Management"))
+                : tags.Any(t => t.StartsWith("Consumer"));
+        }
+    );
+    c.AddSecurityDefinition(
+        "Bearer",
+        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+            Scheme = "bearer",
+        }
+    );
+    c.AddSecurityDefinition(
+        "ApiKey",
+        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Name = "X-Api-Key",
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        }
+    );
 });
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
-        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()
+    )
+);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks();

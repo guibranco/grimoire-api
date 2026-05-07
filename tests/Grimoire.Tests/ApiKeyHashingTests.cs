@@ -12,7 +12,12 @@ public class ApiKeyHashingTests
     public void HashAndVerify_Succeeds()
     {
         var hasher = CreateHasher();
-        var app = new Application { Id = Guid.NewGuid(), Name = "Test", Slug = "test" };
+        var app = new Application
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test",
+            Slug = "test",
+        };
         var plainKey = "grm_supersecretapikey1234567890ab";
 
         var hash = hasher.HashPassword(app, plainKey);
@@ -25,7 +30,12 @@ public class ApiKeyHashingTests
     public void HashAndVerify_FailsWithWrongKey()
     {
         var hasher = CreateHasher();
-        var app = new Application { Id = Guid.NewGuid(), Name = "Test", Slug = "test" };
+        var app = new Application
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test",
+            Slug = "test",
+        };
 
         var hash = hasher.HashPassword(app, "correct-key");
         var result = hasher.VerifyHashedPassword(app, hash, "wrong-key");
@@ -37,7 +47,12 @@ public class ApiKeyHashingTests
     public void Hash_IsDifferentEachTime()
     {
         var hasher = CreateHasher();
-        var app = new Application { Id = Guid.NewGuid(), Name = "Test", Slug = "test" };
+        var app = new Application
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test",
+            Slug = "test",
+        };
         var key = "same-api-key";
 
         var hash1 = hasher.HashPassword(app, key);
