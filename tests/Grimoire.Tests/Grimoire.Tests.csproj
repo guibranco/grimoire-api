@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -30,5 +29,4 @@
     <ProjectReference Include="..\..\src\Grimoire.Infrastructure\Grimoire.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Grimoire.Consumer\Grimoire.Consumer.csproj" />
   </ItemGroup>
-
 </Project>

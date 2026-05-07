@@ -7,21 +7,24 @@ public record SetSecretValueRequest(
     string Value,
     bool IsEnabled = true,
     DateTimeOffset? ExpiresAt = null,
-    DateTimeOffset? NotBefore = null);
+    DateTimeOffset? NotBefore = null
+);
 
 public record SecretResponse(
     Guid Id,
     string Name,
     string? Description,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt
+);
 
 public record CreateSecretResponse(
     Guid Id,
     string Name,
     string? Description,
     DateTimeOffset CreatedAt,
-    IReadOnlyList<RequiredEnvironment> RequiredEnvironments);
+    IReadOnlyList<RequiredEnvironment> RequiredEnvironments
+);
 
 public record RequiredEnvironment(string Slug, string Name, bool ValueProvided);
 
@@ -31,4 +34,5 @@ public record SecretVersionMetadata(
     bool IsEnabled,
     DateTimeOffset? ExpiresAt,
     DateTimeOffset? NotBefore,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt
+);

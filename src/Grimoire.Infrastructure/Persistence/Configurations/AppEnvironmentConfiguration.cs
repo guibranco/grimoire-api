@@ -14,7 +14,8 @@ public class AppEnvironmentConfiguration : IEntityTypeConfiguration<AppEnvironme
 
         builder.HasIndex(x => new { x.ApplicationId, x.Slug }).IsUnique();
 
-        builder.HasOne(x => x.Application)
+        builder
+            .HasOne(x => x.Application)
             .WithMany(x => x.Environments)
             .HasForeignKey(x => x.ApplicationId)
             .OnDelete(DeleteBehavior.Cascade);
