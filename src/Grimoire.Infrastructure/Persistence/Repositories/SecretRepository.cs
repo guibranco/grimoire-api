@@ -30,15 +30,19 @@ public class SecretRepository(GrimoireDbContext db) : ISecretRepository
             .OrderByDescending(v => v.Version)
             .ToListAsync(ct);
 
-    public Task<SecretVersion?> GetActiveVersionAsync(Guid secretId, Guid environmentId, DateTimeOffset now, CancellationToken ct = default) =>
-        db.SecretVersions
-            .Where(v => v.SecretId == secretId
-                && v.EnvironmentId == environmentId
-                && v.IsEnabled
-                && (v.NotBefore == null || v.NotBefore <= now)
-                && (v.ExpiresAt == null || v.ExpiresAt >= now))
+    public async Task<SecretVersion?> GetActiveVersionAsync(Guid secretId, Guid environmentId, DateTimeOffset now, CancellationToken ct = default)
+    {
+        // Two-stage: filter indexable columns in SQL, then apply nullable DateTimeOffset comparisons in memory
+        // (EF Core 10 SQLite provider cannot translate nullable DateTimeOffset OR expressions)
+        var candidates = await db.SecretVersions
+            .Where(v => v.SecretId == secretId && v.EnvironmentId == environmentId && v.IsEnabled)
             .OrderByDescending(v => v.Version)
-            .FirstOrDefaultAsync(ct);
+            .ToListAsync(ct);
+
+        return candidates.FirstOrDefault(v =>
+            (v.NotBefore == null || v.NotBefore <= now) &&
+            (v.ExpiresAt == null || v.ExpiresAt >= now));
+    }
 
     public async Task<int> GetNextVersionNumberAsync(Guid secretId, Guid environmentId, CancellationToken ct = default)
     {

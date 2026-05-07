@@ -63,6 +63,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
 
 builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -89,5 +90,8 @@ app.UseCors();
 app.UseMiddleware<AdminApiKeyMiddleware>();
 app.UseMiddleware<ConsumerApiKeyMiddleware>();
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
+
+public partial class Program { }

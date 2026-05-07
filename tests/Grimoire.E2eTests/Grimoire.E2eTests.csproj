@@ -8,28 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.*">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="Testcontainers" Version="3.*" />
     <PackageReference Include="xunit" Version="2.*" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Grimoire.Core\Grimoire.Core.csproj" />
-    <ProjectReference Include="..\..\src\Grimoire.Infrastructure\Grimoire.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Grimoire.Consumer\Grimoire.Consumer.csproj" />
-    <ProjectReference Include="..\..\src\Grimoire.Api\Grimoire.Api.csproj" />
   </ItemGroup>
 </Project>
