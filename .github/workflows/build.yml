@@ -13,9 +13,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          fetch-depth: 0  # SonarCloud needs full history for blame/new-code detection
+          fetch-depth: 0
 
       - name: Set up Java 21 (required by SonarScanner)
         uses: actions/setup-java@v4
@@ -23,10 +23,10 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Set up .NET 8
+      - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.x
+          dotnet-version: 10.x
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
@@ -47,8 +47,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           dotnet sonarscanner begin \
-            /k:"${{ vars.SONAR_PROJECT_KEY }}" \
-            /o:"${{ vars.SONAR_ORGANIZATION }}" \
+            /k:"guibranco_grimoire-api" \
+            /o:"guibranco" \
             /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
             /d:sonar.host.url="https://sonarcloud.io" \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
