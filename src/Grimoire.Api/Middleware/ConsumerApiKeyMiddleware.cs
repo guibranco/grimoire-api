@@ -9,7 +9,11 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
     private const string Prefix = "/api/consumer";
     public const string AppContextKey = "GrimoireApplication";
 
-    public async Task InvokeAsync(HttpContext context, IApplicationRepository appRepo, IPasswordHasher<Application> hasher)
+    public async Task InvokeAsync(
+        HttpContext context,
+        IApplicationRepository appRepo,
+        IPasswordHasher<Application> hasher
+    )
     {
         if (!context.Request.Path.StartsWithSegments(Prefix))
         {
@@ -51,11 +55,13 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
     {
         context.Response.StatusCode = 401;
         context.Response.ContentType = "application/problem+json";
-        return context.Response.WriteAsJsonAsync(new
-        {
-            type = "https://tools.ietf.org/html/rfc7235#section-3.1",
-            title = "Unauthorized",
-            status = 401
-        });
+        return context.Response.WriteAsJsonAsync(
+            new
+            {
+                type = "https://tools.ietf.org/html/rfc7235#section-3.1",
+                title = "Unauthorized",
+                status = 401,
+            }
+        );
     }
 }
