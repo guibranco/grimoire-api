@@ -107,8 +107,9 @@ All **consumer** endpoints require an `X-Api-Key` header with a valid applicatio
 | `DELETE` | `/api/management/applications/{slug}/environments/{envSlug}` | Delete environment |
 | `GET` | `/api/management/applications/{slug}/secrets` | List secrets |
 | `POST` | `/api/management/applications/{slug}/secrets` | Create secret |
+| `GET` | `/api/management/applications/{slug}/secrets/{name}` | Get secret metadata |
 | `POST` | `/api/management/applications/{slug}/secrets/{name}/values` | Set secret value(s) |
-| `GET` | `/api/management/applications/{slug}/secrets/{name}/versions` | List versions |
+| `GET` | `/api/management/applications/{slug}/secrets/{name}/versions/{environmentSlug}` | List versions |
 | `DELETE` | `/api/management/applications/{slug}/secrets/{name}` | Delete secret |
 | `GET` | `/api/management/applications/{slug}/configurations` | List configurations |
 | `POST` | `/api/management/applications/{slug}/configurations` | Create configuration |
@@ -222,7 +223,7 @@ dotnet test --filter "FullyQualifiedName!~E2eTests" \
 | ---------- | :---: | ---- |
 | 🔬 `Grimoire.Tests` | **43** | Unit — validators, slug service |
 | 🔗 `Grimoire.IntegrationTests` | **50** | Integration — full HTTP via `WebApplicationFactory` |
-| 🐳 `Grimoire.E2eTests` | **6** | End-to-end — real Docker container via Testcontainers |
+| 🐳 `Grimoire.E2eTests` | **7** | End-to-end — real Docker container via Testcontainers |
 
 ---
 

@@ -27,7 +27,7 @@ Grimoire has three levels of testing coverage — unit, integration, and end-to-
 | :---- | :------ | :---: | :---- | :------- |
 | Unit | `Grimoire.Tests` | **43** | ~2 s | Nothing |
 | Integration | `Grimoire.IntegrationTests` | **50** | ~10 s | .NET SDK |
-| End-to-end | `Grimoire.E2eTests` | **6** | ~60 s | Docker |
+| End-to-end | `Grimoire.E2eTests` | **7** | ~60 s | Docker |
 
 ---
 
