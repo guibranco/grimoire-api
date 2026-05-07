@@ -13,11 +13,18 @@ public class AesGcmEncryptionService : IEncryptionService
 
     public AesGcmEncryptionService(IConfiguration configuration)
     {
-        var masterKey = configuration["Encryption:MasterKey"]
+        var masterKey =
+            configuration["Encryption:MasterKey"]
             ?? throw new InvalidOperationException("Encryption:MasterKey is not configured.");
         var masterBytes = Encoding.UTF8.GetBytes(masterKey);
         // HKDF derive a 32-byte key
-        _key = HKDF.DeriveKey(HashAlgorithmName.SHA256, masterBytes, 32, salt: null, info: "grimoire-aes-key"u8.ToArray());
+        _key = HKDF.DeriveKey(
+            HashAlgorithmName.SHA256,
+            masterBytes,
+            32,
+            salt: null,
+            info: "grimoire-aes-key"u8.ToArray()
+        );
     }
 
     public string Encrypt(string plaintext)

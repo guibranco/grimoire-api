@@ -17,7 +17,10 @@ public class GrimoireSecretClient
 
     public async Task<GrimoireSecret> GetSecretAsync(string name, CancellationToken ct = default)
     {
-        var response = await _http.GetAsync($"api/consumer/secrets/{Uri.EscapeDataString(name)}?environment={Uri.EscapeDataString(_environment)}", ct);
+        var response = await _http.GetAsync(
+            $"api/consumer/secrets/{Uri.EscapeDataString(name)}?environment={Uri.EscapeDataString(_environment)}",
+            ct
+        );
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<GrimoireSecret>(ct))!;
     }

@@ -1,6 +1,7 @@
 namespace Grimoire.Api.DTOs.Management;
 
 public record CreateApplicationRequest(string Name, string? Description);
+
 public record UpdateApplicationRequest(string Name, string? Description);
 
 public record ApplicationResponse(
@@ -9,7 +10,8 @@ public record ApplicationResponse(
     string Slug,
     string? Description,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt
+);
 
 public record CreateApplicationResponse(
     Guid Id,
@@ -17,6 +19,7 @@ public record CreateApplicationResponse(
     string Slug,
     string? Description,
     string PlainApiKey,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt
+);
 
 public record RotateKeyResponse(string PlainApiKey);

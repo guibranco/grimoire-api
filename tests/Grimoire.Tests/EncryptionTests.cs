@@ -7,12 +7,16 @@ namespace Grimoire.Tests;
 public class EncryptionTests
 {
     private static AesGcmEncryptionService CreateService() =>
-        new(new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Encryption:MasterKey"] = "test-master-key-32-chars-minimum!"
-            })
-            .Build());
+        new(
+            new ConfigurationBuilder()
+                .AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["Encryption:MasterKey"] = "test-master-key-32-chars-minimum!",
+                    }
+                )
+                .Build()
+        );
 
     [Fact]
     public void Encrypt_Decrypt_RoundTrip()

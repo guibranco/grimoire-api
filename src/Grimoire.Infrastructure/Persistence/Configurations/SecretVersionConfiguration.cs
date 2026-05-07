@@ -11,12 +11,14 @@ public class SecretVersionConfiguration : IEntityTypeConfiguration<SecretVersion
         builder.HasKey(x => x.Id);
         builder.Property(x => x.EncryptedValue).IsRequired();
 
-        builder.HasOne(x => x.Secret)
+        builder
+            .HasOne(x => x.Secret)
             .WithMany(x => x.Versions)
             .HasForeignKey(x => x.SecretId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(x => x.Environment)
+        builder
+            .HasOne(x => x.Environment)
             .WithMany(x => x.SecretVersions)
             .HasForeignKey(x => x.EnvironmentId)
             .OnDelete(DeleteBehavior.Cascade);

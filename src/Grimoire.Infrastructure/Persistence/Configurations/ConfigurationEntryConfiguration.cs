@@ -13,14 +13,23 @@ public class ConfigurationEntryConfiguration : IEntityTypeConfiguration<Configur
         builder.Property(x => x.Value).IsRequired();
         builder.Property(x => x.Description).HasMaxLength(1000);
 
-        builder.HasIndex(x => new { x.ApplicationId, x.EnvironmentId, x.Key }).IsUnique();
+        builder
+            .HasIndex(x => new
+            {
+                x.ApplicationId,
+                x.EnvironmentId,
+                x.Key,
+            })
+            .IsUnique();
 
-        builder.HasOne(x => x.Application)
+        builder
+            .HasOne(x => x.Application)
             .WithMany(x => x.ConfigurationEntries)
             .HasForeignKey(x => x.ApplicationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(x => x.Environment)
+        builder
+            .HasOne(x => x.Environment)
             .WithMany(x => x.ConfigurationEntries)
             .HasForeignKey(x => x.EnvironmentId)
             .OnDelete(DeleteBehavior.Cascade);

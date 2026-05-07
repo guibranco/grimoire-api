@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <ItemGroup>
     <ProjectReference Include="..\Grimoire.Core\Grimoire.Core.csproj" />
   </ItemGroup>
@@ -11,7 +10,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.*" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -19,5 +18,4 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
 </Project>
