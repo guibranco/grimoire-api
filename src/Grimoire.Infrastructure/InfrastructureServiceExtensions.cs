@@ -11,10 +11,14 @@ namespace Grimoire.Infrastructure;
 
 public static class InfrastructureServiceExtensions
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration
+    )
     {
         services.AddDbContext<GrimoireDbContext>(options =>
-            options.UseSqlite(configuration.GetConnectionString("Default")));
+            options.UseSqlite(configuration.GetConnectionString("Default"))
+        );
 
         services.AddScoped<IApplicationRepository, ApplicationRepository>();
         services.AddScoped<IEnvironmentRepository, EnvironmentRepository>();

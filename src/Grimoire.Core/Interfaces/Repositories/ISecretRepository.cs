@@ -9,8 +9,21 @@ public interface ISecretRepository
     Task AddAsync(Secret secret, CancellationToken ct = default);
     Task DeleteAsync(Secret secret, CancellationToken ct = default);
 
-    Task<List<SecretVersion>> GetVersionsAsync(Guid secretId, Guid environmentId, CancellationToken ct = default);
-    Task<SecretVersion?> GetActiveVersionAsync(Guid secretId, Guid environmentId, DateTimeOffset now, CancellationToken ct = default);
-    Task<int> GetNextVersionNumberAsync(Guid secretId, Guid environmentId, CancellationToken ct = default);
+    Task<List<SecretVersion>> GetVersionsAsync(
+        Guid secretId,
+        Guid environmentId,
+        CancellationToken ct = default
+    );
+    Task<SecretVersion?> GetActiveVersionAsync(
+        Guid secretId,
+        Guid environmentId,
+        DateTimeOffset now,
+        CancellationToken ct = default
+    );
+    Task<int> GetNextVersionNumberAsync(
+        Guid secretId,
+        Guid environmentId,
+        CancellationToken ct = default
+    );
     Task AddVersionAsync(SecretVersion version, CancellationToken ct = default);
 }

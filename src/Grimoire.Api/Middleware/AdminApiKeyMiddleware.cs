@@ -15,18 +15,22 @@ public class AdminApiKeyMiddleware(RequestDelegate next, IConfiguration configur
         }
 
         var adminKey = configuration["Management:AdminApiKey"];
-        if (!context.Request.Headers.TryGetValue("Authorization", out var authHeader)
+        if (
+            !context.Request.Headers.TryGetValue("Authorization", out var authHeader)
             || !authHeader.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
-            || authHeader.ToString()["Bearer ".Length..].Trim() != adminKey)
+            || authHeader.ToString()["Bearer ".Length..].Trim() != adminKey
+        )
         {
             context.Response.StatusCode = 401;
             context.Response.ContentType = "application/problem+json";
-            await context.Response.WriteAsJsonAsync(new
-            {
-                type = "https://tools.ietf.org/html/rfc7235#section-3.1",
-                title = "Unauthorized",
-                status = 401
-            });
+            await context.Response.WriteAsJsonAsync(
+                new
+                {
+                    type = "https://tools.ietf.org/html/rfc7235#section-3.1",
+                    title = "Unauthorized",
+                    status = 401,
+                }
+            );
             return;
         }
 
