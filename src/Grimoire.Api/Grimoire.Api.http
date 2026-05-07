@@ -1,0 +1,6 @@
+@Grimoire.Api_HostAddress = http://localhost:5078
+
+GET {{Grimoire.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

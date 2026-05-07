@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Grimoire.Api/Grimoire.Api.csproj" />
+    <Project Path="src/Grimoire.Consumer/Grimoire.Consumer.csproj" />
+    <Project Path="src/Grimoire.Core/Grimoire.Core.csproj" />
+    <Project Path="src/Grimoire.Infrastructure/Grimoire.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Grimoire.Tests/Grimoire.Tests.csproj" />
+  </Folder>
+</Solution>
