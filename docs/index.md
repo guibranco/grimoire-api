@@ -60,7 +60,7 @@ Self-hosted Vault & Configuration Manager built with ASP.NET Core 10 and SQLite.
 | **Azure-compatible consumer** | Response shape matches Azure Key Vault / App Config for easy migration |
 | **.NET `IConfigurationSource`** | Pull configs into `builder.Configuration` with one line |
 | **Docker-first** | Multi-stage Dockerfile, `docker compose up`, `/health` endpoint |
-| **93 tests** | 43 unit · 50 integration · 6 E2E (Testcontainers) |
+| **100 tests** | 43 unit · 50 integration · 7 E2E (Testcontainers) |
 
 ---
 
