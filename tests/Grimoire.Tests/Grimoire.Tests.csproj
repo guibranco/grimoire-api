@@ -13,7 +13,6 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector">
-      <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
