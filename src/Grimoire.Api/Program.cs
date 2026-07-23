@@ -50,20 +50,20 @@ builder.Services.AddSwaggerGen(c =>
     );
     c.AddSecurityDefinition(
         "Bearer",
-        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        new Microsoft.OpenApi.OpenApiSecurityScheme
         {
             Name = "Authorization",
-            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+            Type = Microsoft.OpenApi.SecuritySchemeType.Http,
             Scheme = "bearer",
         }
     );
     c.AddSecurityDefinition(
         "ApiKey",
-        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        new Microsoft.OpenApi.OpenApiSecurityScheme
         {
             Name = "X-Api-Key",
-            Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            Type = Microsoft.OpenApi.SecuritySchemeType.ApiKey,
+            In = Microsoft.OpenApi.ParameterLocation.Header,
         }
     );
 });
