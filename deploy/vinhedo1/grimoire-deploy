@@ -1,0 +1,110 @@
+#!/bin/bash
+# grimoire-deploy <version>
+# Installs a Grimoire API release read from stdin (a .tgz of `dotnet publish` output),
+# switches /opt/grimoire/app to it, and rolls back code + database if the new
+# release does not report itself healthy with the expected version.
+# Runs as root via sudo; invoked by /usr/local/bin/grimoire-deploy-ssh.
+set -euo pipefail
+
+VERSION="${1:-}"
+VERSION_RE='^[0-9]+\.[0-9]+\.[0-9]+([-+.][0-9A-Za-z.-]+)?$'
+[[ "$VERSION" =~ $VERSION_RE ]] || { echo "❌ invalid version: '$VERSION'" >&2; exit 2; }
+
+SERVICE=grimoire-api
+BASE=/opt/grimoire
+APP_LINK=$BASE/app
+RELEASES=$BASE/releases
+DATA=/var/lib/grimoire
+BACKUPS=$DATA/backups
+HEALTH_URL=http://127.0.0.1:5080/health
+MAX_BYTES=$((200 * 1024 * 1024))
+KEEP_RELEASES=5
+KEEP_BACKUPS=10
+
+STAMP=$(date -u +%Y%m%d%H%M%S)
+TARGET="$RELEASES/$VERSION-$STAMP"
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+echo "📦 Receiving release $VERSION"
+head -c $((MAX_BYTES + 1)) > "$TMP/release.tgz"
+SIZE=$(stat -c %s "$TMP/release.tgz")
+[ "$SIZE" -gt 0 ] || { echo "❌ empty upload" >&2; exit 1; }
+[ "$SIZE" -le "$MAX_BYTES" ] || { echo "❌ upload larger than $MAX_BYTES bytes" >&2; exit 1; }
+
+# Refuse archives with absolute paths, '..' components or links.
+if tar -tzf "$TMP/release.tgz" | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
+  echo "❌ archive contains unsafe paths" >&2; exit 1
+fi
+if tar -tvzf "$TMP/release.tgz" | grep -Eq '^[lh]'; then
+  echo "❌ archive contains links" >&2; exit 1
+fi
+
+install -d -m 755 "$RELEASES"
+mkdir -m 755 "$TARGET"
+tar -xzf "$TMP/release.tgz" -C "$TARGET" --no-same-owner --no-same-permissions
+[ -f "$TARGET/Grimoire.Api.dll" ] || { echo "❌ Grimoire.Api.dll missing from archive" >&2; rm -rf "$TARGET"; exit 1; }
+rm -rf "$TARGET/logs" "$TARGET"/*.db
+chown -R root:root "$TARGET"
+chmod -R u=rwX,go=rX "$TARGET"
+
+# One-time migration: the first manual install was a plain directory.
+if [ -d "$APP_LINK" ] && [ ! -L "$APP_LINK" ]; then
+  mv "$APP_LINK" "$RELEASES/legacy-$STAMP"
+  ln -s "$RELEASES/legacy-$STAMP" "$APP_LINK"
+fi
+PREVIOUS=$(readlink -f "$APP_LINK" 2>/dev/null || true)
+
+echo "⏸️  Stopping $SERVICE and backing up the database"
+systemctl stop "$SERVICE"
+install -d -o grimoire -g grimoire -m 750 "$BACKUPS"
+BACKUP_DIR="$BACKUPS/$STAMP"
+install -d -o grimoire -g grimoire -m 750 "$BACKUP_DIR"
+for f in grimoire.db grimoire.db-wal grimoire.db-shm; do
+  [ -f "$DATA/$f" ] && cp -a "$DATA/$f" "$BACKUP_DIR/"
+done
+
+switch_to() {
+  ln -sfn "$1" "$BASE/app.next"
+  mv -Tf "$BASE/app.next" "$APP_LINK"
+}
+
+wait_healthy() {
+  local expected="$1" body
+  for _ in $(seq 1 30); do
+    body=$(curl -s --max-time 3 "$HEALTH_URL" || true)
+    if grep -q '"status":"ok"' <<<"$body" && grep -qF "\"version\":\"$expected" <<<"$body"; then
+      echo "✅ healthy: $body"
+      return 0
+    fi
+    sleep 2
+  done
+  echo "⚠️  last health response: ${body:-<none>}" >&2
+  return 1
+}
+
+echo "🔀 Switching to $TARGET"
+switch_to "$TARGET"
+systemctl start "$SERVICE"
+
+if wait_healthy "$VERSION"; then
+  # Prune old releases (never the active one) and old backups.
+  { ls -1dt "$RELEASES"/*/ 2>/dev/null | sed 's#/$##' | grep -vxF "$TARGET" \
+    | tail -n +"$KEEP_RELEASES" | xargs -r rm -rf; } || true
+  { ls -1dt "$BACKUPS"/*/ 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm -rf; } || true
+  echo "🚀 Grimoire API $VERSION deployed"
+  exit 0
+fi
+
+echo "❌ $VERSION failed its health check — rolling back" >&2
+journalctl -u "$SERVICE" -n 40 --no-pager >&2 || true
+systemctl stop "$SERVICE"
+rm -f "$DATA/grimoire.db-wal" "$DATA/grimoire.db-shm"
+cp -a "$BACKUP_DIR"/. "$DATA/"
+if [ -n "$PREVIOUS" ] && [ -d "$PREVIOUS" ]; then
+  switch_to "$PREVIOUS"
+  systemctl start "$SERVICE"
+  wait_healthy "" || echo "⚠️  previous release is not healthy either" >&2
+fi
+rm -rf "$TARGET"
+exit 1
