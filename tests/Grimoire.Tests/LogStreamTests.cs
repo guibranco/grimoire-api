@@ -54,7 +54,12 @@ public class LogStreamTests
     [InlineData("https://logs", "key", "  ")]
     public void Options_MissingValue_IsNotConfigured(string? server, string? key, string? token)
     {
-        var options = new LogStreamOptions { Server = server, ApiKey = key, ApiToken = token };
+        var options = new LogStreamOptions
+        {
+            Server = server,
+            ApiKey = key,
+            ApiToken = token,
+        };
         Assert.False(options.IsConfigured);
     }
 
@@ -97,12 +102,20 @@ public class LogStreamTests
         var entry = LogStreamPayload.BuildEntry(
             Event(
                 "Secret {Name} read by {App}",
-                properties: [("Name", "db-password"), ("App", "billing"), ("SourceContext", "Grimoire.Api.Test")]
+                properties:
+                [
+                    ("Name", "db-password"),
+                    ("App", "billing"),
+                    ("SourceContext", "Grimoire.Api.Test"),
+                ]
             )
         );
 
         Assert.Equal("info", entry["level"]!.GetValue<string>());
-        Assert.Equal("Secret \"db-password\" read by \"billing\"", entry["message"]!.GetValue<string>());
+        Assert.Equal(
+            "Secret \"db-password\" read by \"billing\"",
+            entry["message"]!.GetValue<string>()
+        );
         Assert.Equal("Secret {Name} read by {App}", entry["message_template"]!.GetValue<string>());
         Assert.Equal("Grimoire.Api.Test", entry["category"]!.GetValue<string>());
         Assert.Equal("2026-11-14T19:30:00.123Z", entry["timestamp"]!.GetValue<string>());
@@ -122,7 +135,9 @@ public class LogStreamTests
     public void BuildEntry_LongSourceContext_IsTruncatedTo100Chars()
     {
         var source = new string('a', 50) + "." + new string('b', 80);
-        var entry = LogStreamPayload.BuildEntry(Event("Hello", properties: [("SourceContext", source)]));
+        var entry = LogStreamPayload.BuildEntry(
+            Event("Hello", properties: [("SourceContext", source)])
+        );
 
         var category = entry["category"]!.GetValue<string>();
         Assert.Equal(LogStreamPayload.MaxCategoryLength, category.Length);
@@ -161,33 +176,42 @@ public class LogStreamTests
     [Fact]
     public void ToJson_ConvertsStructuredValues()
     {
-        var value = new StructureValue(
-            [
-                new LogEventProperty("Count", new ScalarValue(3)),
-                new LogEventProperty("Ok", new ScalarValue(true)),
-                new LogEventProperty("Missing", new ScalarValue(null)),
-                new LogEventProperty(
-                    "Tags",
-                    new SequenceValue([new ScalarValue("a"), new ScalarValue("b")])
-                ),
-                new LogEventProperty(
-                    "Map",
-                    new DictionaryValue([
-                        new KeyValuePair<ScalarValue, LogEventPropertyValue>(new ScalarValue(1), new ScalarValue("one")),
-                    ])
-                ),
-            ]
-        );
+        var value = new StructureValue([
+            new LogEventProperty("Count", new ScalarValue(3)),
+            new LogEventProperty("Ok", new ScalarValue(true)),
+            new LogEventProperty("Missing", new ScalarValue(null)),
+            new LogEventProperty(
+                "Tags",
+                new SequenceValue([new ScalarValue("a"), new ScalarValue("b")])
+            ),
+            new LogEventProperty(
+                "Map",
+                new DictionaryValue([
+                    new KeyValuePair<ScalarValue, LogEventPropertyValue>(
+                        new ScalarValue(1),
+                        new ScalarValue("one")
+                    ),
+                ])
+            ),
+        ]);
 
         var json = LogStreamPayload.ToJson(value)!.ToJsonString();
-        Assert.Equal("{\"Count\":3,\"Ok\":true,\"Missing\":null,\"Tags\":[\"a\",\"b\"],\"Map\":{\"1\":\"one\"}}", json);
+        Assert.Equal(
+            "{\"Count\":3,\"Ok\":true,\"Missing\":null,\"Tags\":[\"a\",\"b\"],\"Map\":{\"1\":\"one\"}}",
+            json
+        );
     }
 
     [Fact]
     public void Build_WrapsEntriesInBatch()
     {
         var batchId = Guid.NewGuid();
-        var payload = LogStreamPayload.Build([Event("One"), Event("Two")], "grimoire-api", "1.2.3", batchId);
+        var payload = LogStreamPayload.Build(
+            [Event("One"), Event("Two")],
+            "grimoire-api",
+            "1.2.3",
+            batchId
+        );
 
         Assert.Equal("grimoire-api", payload["app_key"]!.GetValue<string>());
         Assert.Equal("1.2.3", payload["app_id"]!.GetValue<string>());
@@ -208,8 +232,13 @@ public class LogStreamTests
         )
         {
             Request = request;
-            Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(status) { Content = new StringContent("{\"error\":\"x\"}") };
+            Body = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+            return new HttpResponseMessage(status)
+            {
+                Content = new StringContent("{\"error\":\"x\"}"),
+            };
         }
     }
 

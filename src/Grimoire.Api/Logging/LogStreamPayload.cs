@@ -42,11 +42,10 @@ internal static class LogStreamPayload
             ["category"] = Category(logEvent),
             ["message"] = logEvent.RenderMessage(CultureInfo.InvariantCulture),
             ["message_template"] = logEvent.MessageTemplate.Text,
-            ["timestamp"] = logEvent
-                .Timestamp.UtcDateTime.ToString(
-                    "yyyy-MM-dd'T'HH:mm:ss.fff'Z'",
-                    CultureInfo.InvariantCulture
-                ),
+            ["timestamp"] = logEvent.Timestamp.UtcDateTime.ToString(
+                "yyyy-MM-dd'T'HH:mm:ss.fff'Z'",
+                CultureInfo.InvariantCulture
+            ),
         };
 
         var traceId = TraceId(logEvent);

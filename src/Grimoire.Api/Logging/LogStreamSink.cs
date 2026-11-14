@@ -23,7 +23,10 @@ public sealed class LogStreamSink : IBatchedLogEventSink, IDisposable
     private readonly string _appId;
 
     public LogStreamSink(LogStreamOptions options)
-        : this(options, new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) }) { }
+        : this(
+            options,
+            new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) }
+        ) { }
 
     internal LogStreamSink(LogStreamOptions options, HttpMessageHandler handler)
     {
@@ -32,7 +35,9 @@ public sealed class LogStreamSink : IBatchedLogEventSink, IDisposable
 
         _ingestUri = options.IngestUri;
         _appKey = options.ApiKey!.Trim();
-        _appId = string.IsNullOrWhiteSpace(options.AppId) ? AppVersion.Current : options.AppId.Trim();
+        _appId = string.IsNullOrWhiteSpace(options.AppId)
+            ? AppVersion.Current
+            : options.AppId.Trim();
 
         _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
         _http.DefaultRequestHeaders.Add("X-Api-Key", _appKey);
@@ -40,7 +45,9 @@ public sealed class LogStreamSink : IBatchedLogEventSink, IDisposable
         _http.DefaultRequestHeaders.UserAgent.Add(
             new ProductInfoHeaderValue("Grimoire.Api", AppVersion.Current)
         );
-        _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        _http.DefaultRequestHeaders.Accept.Add(
+            new MediaTypeWithQualityHeaderValue("application/json")
+        );
     }
 
     public async Task EmitBatchAsync(IReadOnlyCollection<LogEvent> batch)
@@ -49,7 +56,11 @@ public sealed class LogStreamSink : IBatchedLogEventSink, IDisposable
             return;
 
         var payload = LogStreamPayload.Build(batch, _appKey, _appId, Guid.NewGuid());
-        using var content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json");
+        using var content = new StringContent(
+            payload.ToJsonString(),
+            Encoding.UTF8,
+            "application/json"
+        );
         using var response = await _http.PostAsync(_ingestUri, content).ConfigureAwait(false);
 
         if (response.IsSuccessStatusCode)
@@ -59,7 +70,11 @@ public sealed class LogStreamSink : IBatchedLogEventSink, IDisposable
         if (status >= 500 || response.StatusCode == HttpStatusCode.TooManyRequests)
         {
             // Throwing makes Serilog retry the batch with backoff.
-            throw new HttpRequestException($"LogStream ingest failed with HTTP {status}.", null, response.StatusCode);
+            throw new HttpRequestException(
+                $"LogStream ingest failed with HTTP {status}.",
+                null,
+                response.StatusCode
+            );
         }
 
         var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);

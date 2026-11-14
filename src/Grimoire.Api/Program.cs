@@ -13,8 +13,9 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var logStreamOptions =
-    builder.Configuration.GetSection(LogStreamOptions.SectionName).Get<LogStreamOptions>()
+var logStreamOptions = builder
+    .Configuration.GetSection(LogStreamOptions.SectionName)
+    .Get<LogStreamOptions>()
     ?? new LogStreamOptions();
 
 Log.Logger = new LoggerConfiguration()
