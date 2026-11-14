@@ -30,12 +30,10 @@ public class ConsumerConfigurationsTests(GrimoireWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
         var items = json["items"]!.AsArray();
-        Assert.Contains(
-            items,
-            i =>
-                i!["key"]!.GetValue<string>() == key
-                && i["value"]!.GetValue<string>() == "true"
-                && i["label"]!.GetValue<string>() == "local"
+        Assert.Contains(items, i =>
+            i!["key"]!.GetValue<string>() == key
+            && i["value"]!.GetValue<string>() == "true"
+            && i["label"]!.GetValue<string>() == "local"
         );
     }
 

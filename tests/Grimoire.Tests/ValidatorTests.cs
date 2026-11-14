@@ -17,9 +17,8 @@ public class ValidatorTests
     {
         var result = v.Validate(model);
         Assert.False(result.IsValid);
-        Assert.Contains(
-            result.Errors,
-            e => e.PropertyName.Equals(propertyName, StringComparison.OrdinalIgnoreCase)
+        Assert.Contains(result.Errors, e =>
+            e.PropertyName.Equals(propertyName, StringComparison.OrdinalIgnoreCase)
         );
     }
 

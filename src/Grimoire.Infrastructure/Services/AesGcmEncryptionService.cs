@@ -13,8 +13,7 @@ public class AesGcmEncryptionService : IEncryptionService
 
     public AesGcmEncryptionService(IConfiguration configuration)
     {
-        var masterKey =
-            configuration["Encryption:MasterKey"]
+        var masterKey = configuration["Encryption:MasterKey"]
             ?? throw new InvalidOperationException("Encryption:MasterKey is not configured.");
         var masterBytes = Encoding.UTF8.GetBytes(masterKey);
         // HKDF derive a 32-byte key
