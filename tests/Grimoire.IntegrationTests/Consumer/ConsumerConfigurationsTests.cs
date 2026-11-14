@@ -68,9 +68,7 @@ public class ConsumerConfigurationsTests(GrimoireWebApplicationFactory factory)
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/consumer/configurations/{key}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/configurations/{key}?environment=local");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;

@@ -89,9 +89,7 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
         );
 
         var consumer = fixture.CreateConsumerClient(apiKey);
-        var cfgResp = await consumer.GetAsync(
-            $"/consumer/configurations/{key}?environment=local"
-        );
+        var cfgResp = await consumer.GetAsync($"/consumer/configurations/{key}?environment=local");
         Assert.Equal(HttpStatusCode.OK, cfgResp.StatusCode);
         var cfgJson = JsonNode.Parse(await cfgResp.Content.ReadAsStringAsync())!;
         Assert.Equal("true", cfgJson["value"]!.GetValue<string>());
@@ -120,10 +118,7 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
         var mgmt = fixture.CreateManagementClient();
         var (slug, oldKey) = await CreateApplicationAsync(mgmt);
 
-        var rotateResp = await mgmt.PostAsync(
-            $"/management/applications/{slug}/rotate-key",
-            null
-        );
+        var rotateResp = await mgmt.PostAsync($"/management/applications/{slug}/rotate-key", null);
         var rotateJson = JsonNode.Parse(await rotateResp.Content.ReadAsStringAsync())!;
         var newKey = rotateJson["plainApiKey"]!.GetValue<string>();
 

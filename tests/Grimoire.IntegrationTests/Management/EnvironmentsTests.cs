@@ -72,9 +72,7 @@ public class EnvironmentsTests(GrimoireWebApplicationFactory factory)
     [Fact]
     public async Task ListEnvironments_ForNonExistentApp_Returns404()
     {
-        var response = await Client.GetAsync(
-            "/management/applications/no-app-xyz/environments"
-        );
+        var response = await Client.GetAsync("/management/applications/no-app-xyz/environments");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 

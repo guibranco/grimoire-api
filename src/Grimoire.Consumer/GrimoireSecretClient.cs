@@ -9,9 +9,18 @@ public class GrimoireSecretClient
     private readonly string _environment;
 
     public GrimoireSecretClient(string baseUrl, string apiKey, string environment)
+        : this(baseUrl, apiKey, environment, new HttpClient()) { }
+
+    internal GrimoireSecretClient(
+        string baseUrl,
+        string apiKey,
+        string environment,
+        HttpClient http
+    )
     {
         _environment = environment;
-        _http = new HttpClient { BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/") };
+        _http = http;
+        _http.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
         _http.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
     }
 

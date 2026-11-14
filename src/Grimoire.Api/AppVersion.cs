@@ -13,12 +13,19 @@ public static class AppVersion
 
     private static string Resolve()
     {
-        var informational = typeof(AppVersion)
-            .Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
+        var assembly = typeof(AppVersion).Assembly;
+        return Format(
+            assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion,
+            assembly.GetName().Version
+        );
+    }
 
+    internal static string Format(string? informational, Version? assemblyVersion)
+    {
         if (string.IsNullOrWhiteSpace(informational))
-            return typeof(AppVersion).Assembly.GetName().Version?.ToString(3) ?? "dev";
+            return assemblyVersion?.ToString(3) ?? "dev";
 
         var plus = informational.IndexOf('+');
         if (plus < 0 || informational.Length - plus - 1 <= 7)

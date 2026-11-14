@@ -23,9 +23,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/consumer/secrets/{secretName}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/secrets/{secretName}?environment=local");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -47,9 +45,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/consumer/secrets/{secretName}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/secrets/{secretName}?environment=local");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -106,9 +102,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/consumer/secrets/{secretName}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/secrets/{secretName}?environment=local");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -139,9 +133,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/consumer/secrets/{secretName}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/secrets/{secretName}?environment=local");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -166,9 +158,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/consumer/secrets/{secretName}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/secrets/{secretName}?environment=local");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;

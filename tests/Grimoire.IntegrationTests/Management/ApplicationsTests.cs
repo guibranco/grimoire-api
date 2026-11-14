@@ -99,10 +99,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, originalKey) = await TestHelpers.CreateApplicationAsync(Client);
 
-        var response = await Client.PostAsync(
-            $"/management/applications/{slug}/rotate-key",
-            null
-        );
+        var response = await Client.PostAsync($"/management/applications/{slug}/rotate-key", null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;

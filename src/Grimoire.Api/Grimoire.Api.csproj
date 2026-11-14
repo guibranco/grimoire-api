@@ -21,4 +21,8 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.*" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="11.*" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Grimoire.Tests" />
+  </ItemGroup>
 </Project>

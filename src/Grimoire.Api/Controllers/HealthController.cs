@@ -32,7 +32,10 @@ public class HealthController(GrimoireDbContext db) : ControllerBase
         {
             status,
             version = AppVersion.Current,
-            time =DateTimeOffset.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ssK", CultureInfo.InvariantCulture),
+            time = DateTimeOffset.UtcNow.ToString(
+                "yyyy-MM-dd'T'HH:mm:ssK",
+                CultureInfo.InvariantCulture
+            ),
             database = new { status },
         };
 
