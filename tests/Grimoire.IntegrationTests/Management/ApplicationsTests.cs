@@ -12,7 +12,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     [Fact]
     public async Task GetApplications_ReturnsEmptyListInitially()
     {
-        var response = await Client.GetAsync("/api/management/applications");
+        var response = await Client.GetAsync("/management/applications");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsArray();
         Assert.NotNull(json);
@@ -23,7 +23,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     {
         var name = TestHelpers.UniqueName("create-app");
         var response = await Client.PostAsJsonAsync(
-            "/api/management/applications",
+            "/management/applications",
             new { name, description = "Integration test app" }
         );
 
@@ -38,7 +38,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     public async Task CreateApplication_AutoGeneratesSlugFromName()
     {
         var response = await Client.PostAsJsonAsync(
-            "/api/management/applications",
+            "/management/applications",
             new { name = "My Test Application", description = "" }
         );
 
@@ -52,7 +52,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
 
-        var response = await Client.GetAsync($"/api/management/applications/{slug}");
+        var response = await Client.GetAsync($"/management/applications/{slug}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -62,7 +62,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     [Fact]
     public async Task GetApplicationBySlug_Returns404_WhenNotFound()
     {
-        var response = await Client.GetAsync("/api/management/applications/nonexistent-slug-xyz");
+        var response = await Client.GetAsync("/management/applications/nonexistent-slug-xyz");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -73,7 +73,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
         var newName = TestHelpers.UniqueName("updated");
 
         var response = await Client.PutAsJsonAsync(
-            $"/api/management/applications/{slug}",
+            $"/management/applications/{slug}",
             new { name = newName, description = "updated desc" }
         );
 
@@ -87,10 +87,10 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
 
-        var deleteResponse = await Client.DeleteAsync($"/api/management/applications/{slug}");
+        var deleteResponse = await Client.DeleteAsync($"/management/applications/{slug}");
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
-        var getResponse = await Client.GetAsync($"/api/management/applications/{slug}");
+        var getResponse = await Client.GetAsync($"/management/applications/{slug}");
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
 
@@ -100,7 +100,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
         var (slug, originalKey) = await TestHelpers.CreateApplicationAsync(Client);
 
         var response = await Client.PostAsync(
-            $"/api/management/applications/{slug}/rotate-key",
+            $"/management/applications/{slug}/rotate-key",
             null
         );
 
@@ -116,7 +116,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
 
-        var response = await Client.GetAsync($"/api/management/applications/{slug}/environments");
+        var response = await Client.GetAsync($"/management/applications/{slug}/environments");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var envs = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsArray();
         Assert.Contains(envs, e => e!["slug"]!.GetValue<string>() == "local");
@@ -126,9 +126,9 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
     public async Task CreateApplication_DuplicateName_Returns409()
     {
         var name = TestHelpers.UniqueName("dup-app");
-        await Client.PostAsJsonAsync("/api/management/applications", new { name });
+        await Client.PostAsJsonAsync("/management/applications", new { name });
 
-        var response = await Client.PostAsJsonAsync("/api/management/applications", new { name });
+        var response = await Client.PostAsJsonAsync("/management/applications", new { name });
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 }

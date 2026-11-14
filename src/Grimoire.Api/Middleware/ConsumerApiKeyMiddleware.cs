@@ -6,7 +6,7 @@ namespace Grimoire.Api.Middleware;
 
 public class ConsumerApiKeyMiddleware(RequestDelegate next)
 {
-    private const string Prefix = "/api/consumer";
+    private const string Prefix = "/consumer";
     public const string AppContextKey = "GrimoireApplication";
 
     public async Task InvokeAsync(

@@ -129,7 +129,7 @@ The linear scan across applications is acceptable at small scale. For deployment
 ### Key rotation
 
 ```
-POST /api/management/applications/{slug}/rotate-key
+POST /management/applications/{slug}/rotate-key
 ```
 
 - Generates a new `grm_` prefixed key
@@ -145,7 +145,7 @@ There is no grace period. Schedule rotations during low-traffic windows or use a
 
 ### `AdminApiKeyMiddleware`
 
-- Intercepts **all** requests to `/api/management/*`
+- Intercepts **all** requests to `/management/*`
 - Extracts the `Authorization: Bearer <token>` header
 - Compares it against `Management:AdminApiKey` from configuration using `string.Equals(..., OrdinalIgnoreCase)`
 - Returns `401` and short-circuits if missing or mismatched
@@ -153,7 +153,7 @@ There is no grace period. Schedule rotations during low-traffic windows or use a
 
 ### `ConsumerApiKeyMiddleware`
 
-- Intercepts **all** requests to `/api/consumer/*`
+- Intercepts **all** requests to `/consumer/*`
 - Extracts the `X-Api-Key` header
 - Performs the hash verification loop described above
 - Returns `401` and short-circuits on failure

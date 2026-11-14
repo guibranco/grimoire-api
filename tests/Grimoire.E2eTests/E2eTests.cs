@@ -24,7 +24,7 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
 
         // Create application
         var createResp = await mgmt.PostAsJsonAsync(
-            "/api/management/applications",
+            "/management/applications",
             new { name = appName, description = "E2E test" }
         );
         Assert.Equal(HttpStatusCode.Created, createResp.StatusCode);
@@ -35,11 +35,11 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
         // Create secret with value
         var secretName = UniqueName("db-pass");
         await mgmt.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets",
+            $"/management/applications/{slug}/secrets",
             new { name = secretName }
         );
         var setVal = await mgmt.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets/{secretName}/values",
+            $"/management/applications/{slug}/secrets/{secretName}/values",
             new[]
             {
                 new
@@ -55,7 +55,7 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
         // Consume secret via Consumer API
         var consumer = fixture.CreateConsumerClient(apiKey);
         var secretResp = await consumer.GetAsync(
-            $"/api/consumer/secrets/{secretName}?environment=local"
+            $"/consumer/secrets/{secretName}?environment=local"
         );
         Assert.Equal(HttpStatusCode.OK, secretResp.StatusCode);
         var secretJson = JsonNode.Parse(await secretResp.Content.ReadAsStringAsync())!;
@@ -70,7 +70,7 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
         var appName = UniqueName("cfg-app");
 
         var createResp = await mgmt.PostAsJsonAsync(
-            "/api/management/applications",
+            "/management/applications",
             new { name = appName }
         );
         var app = JsonNode.Parse(await createResp.Content.ReadAsStringAsync())!;
@@ -79,7 +79,7 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
 
         var key = UniqueName("Feature");
         await mgmt.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/configurations",
+            $"/management/applications/{slug}/configurations",
             new
             {
                 environmentSlug = "local",
@@ -90,7 +90,7 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
 
         var consumer = fixture.CreateConsumerClient(apiKey);
         var cfgResp = await consumer.GetAsync(
-            $"/api/consumer/configurations/{key}?environment=local"
+            $"/consumer/configurations/{key}?environment=local"
         );
         Assert.Equal(HttpStatusCode.OK, cfgResp.StatusCode);
         var cfgJson = JsonNode.Parse(await cfgResp.Content.ReadAsStringAsync())!;
@@ -101,7 +101,7 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
     [Fact]
     public async Task ManagementApi_RequiresAuthentication()
     {
-        var response = await fixture.HttpClient.GetAsync("/api/management/applications");
+        var response = await fixture.HttpClient.GetAsync("/management/applications");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -109,7 +109,7 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
     public async Task ConsumerApi_RequiresApiKey()
     {
         var response = await fixture.HttpClient.GetAsync(
-            "/api/consumer/secrets/anything?environment=local"
+            "/consumer/secrets/anything?environment=local"
         );
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -121,7 +121,7 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
         var (slug, oldKey) = await CreateApplicationAsync(mgmt);
 
         var rotateResp = await mgmt.PostAsync(
-            $"/api/management/applications/{slug}/rotate-key",
+            $"/management/applications/{slug}/rotate-key",
             null
         );
         var rotateJson = JsonNode.Parse(await rotateResp.Content.ReadAsStringAsync())!;
@@ -129,12 +129,12 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
 
         // Old key should no longer work
         var oldConsumer = fixture.CreateConsumerClient(oldKey);
-        var oldResp = await oldConsumer.GetAsync("/api/consumer/configurations?environment=local");
+        var oldResp = await oldConsumer.GetAsync("/consumer/configurations?environment=local");
         Assert.Equal(HttpStatusCode.Unauthorized, oldResp.StatusCode);
 
         // New key should work
         var newConsumer = fixture.CreateConsumerClient(newKey);
-        var newResp = await newConsumer.GetAsync("/api/consumer/configurations?environment=local");
+        var newResp = await newConsumer.GetAsync("/consumer/configurations?environment=local");
         Assert.Equal(HttpStatusCode.OK, newResp.StatusCode);
     }
 
@@ -144,16 +144,16 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
         var mgmt = fixture.CreateManagementClient();
         var (slug, _) = await CreateApplicationAsync(mgmt);
 
-        await mgmt.DeleteAsync($"/api/management/applications/{slug}");
+        await mgmt.DeleteAsync($"/management/applications/{slug}");
 
-        var getResp = await mgmt.GetAsync($"/api/management/applications/{slug}");
+        var getResp = await mgmt.GetAsync($"/management/applications/{slug}");
         Assert.Equal(HttpStatusCode.NotFound, getResp.StatusCode);
     }
 
     private static async Task<(string slug, string apiKey)> CreateApplicationAsync(HttpClient mgmt)
     {
         var name = UniqueName("e2e-lifecycle");
-        var resp = await mgmt.PostAsJsonAsync("/api/management/applications", new { name });
+        var resp = await mgmt.PostAsJsonAsync("/management/applications", new { name });
         resp.EnsureSuccessStatusCode();
         var json = JsonNode.Parse(await resp.Content.ReadAsStringAsync())!;
         return (json["slug"]!.GetValue<string>(), json["plainApiKey"]!.GetValue<string>());

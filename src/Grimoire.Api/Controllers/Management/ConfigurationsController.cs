@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Grimoire.Api.Controllers.Management;
 
 [ApiController]
-[Route("api/management/applications/{slug}/configurations")]
+[Route("management/applications/{slug}/configurations")]
 [Tags("Management - Configurations")]
 public class ConfigurationsController(
     IApplicationRepository appRepo,

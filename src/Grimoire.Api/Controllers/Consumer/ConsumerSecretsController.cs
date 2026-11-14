@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Grimoire.Api.Controllers.Consumer;
 
 [ApiController]
-[Route("api/consumer/secrets")]
+[Route("consumer/secrets")]
 [Tags("Consumer - Secrets")]
 public class ConsumerSecretsController(
     ISecretRepository secretRepo,

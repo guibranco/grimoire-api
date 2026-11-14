@@ -40,7 +40,7 @@ That's it. All configuration entries for the `production` environment are loaded
 `AddGrimoire()` calls `builder.Configuration.Add(new GrimoireConfigurationClient(...))`, which:
 
 1. When `IConfiguration` is first built, calls `Load()` synchronously
-2. `Load()` calls `GET /api/consumer/configurations?environment={env}`
+2. `Load()` calls `GET /consumer/configurations?environment={env}`
 3. Receives a flat list of `{ key, value }` pairs
 4. Populates the internal `Data` dictionary (inherited from `ConfigurationProvider`)
 
