@@ -102,9 +102,9 @@ Request
   ├─► Exception handler (ProblemDetails)
   ├─► CORS
   ├─► AdminApiKeyMiddleware
-  │     (validates Bearer token for /api/management/*)
+  │     (validates Bearer token for /management/*)
   ├─► ConsumerApiKeyMiddleware
-  │     (validates X-Api-Key for /api/consumer/*)
+  │     (validates X-Api-Key for /consumer/*)
   │     (stores matched Application in HttpContext.Items)
   └─► Controllers
         ├─► Management controllers (FluentValidation, repository calls)

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 
 namespace Grimoire.IntegrationTests;
 
@@ -9,7 +10,7 @@ public class AuthenticationTests(GrimoireWebApplicationFactory factory)
     public async Task ManagementApi_WithoutAuthHeader_Returns401()
     {
         var client = factory.CreateClient();
-        var response = await client.GetAsync("/api/management/applications");
+        var response = await client.GetAsync("/management/applications");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -18,7 +19,7 @@ public class AuthenticationTests(GrimoireWebApplicationFactory factory)
     {
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("Authorization", "Bearer wrong-key");
-        var response = await client.GetAsync("/api/management/applications");
+        var response = await client.GetAsync("/management/applications");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -26,7 +27,7 @@ public class AuthenticationTests(GrimoireWebApplicationFactory factory)
     public async Task ManagementApi_WithCorrectBearerToken_Returns200()
     {
         var client = factory.CreateManagementClient();
-        var response = await client.GetAsync("/api/management/applications");
+        var response = await client.GetAsync("/management/applications");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
@@ -34,7 +35,7 @@ public class AuthenticationTests(GrimoireWebApplicationFactory factory)
     public async Task ConsumerApi_WithoutApiKeyHeader_Returns401()
     {
         var client = factory.CreateClient();
-        var response = await client.GetAsync("/api/consumer/secrets/anything?environment=local");
+        var response = await client.GetAsync("/consumer/secrets/anything?environment=local");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -43,7 +44,7 @@ public class AuthenticationTests(GrimoireWebApplicationFactory factory)
     {
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Api-Key", "grm_wrongkey");
-        var response = await client.GetAsync("/api/consumer/secrets/anything?environment=local");
+        var response = await client.GetAsync("/consumer/secrets/anything?environment=local");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -53,5 +54,14 @@ public class AuthenticationTests(GrimoireWebApplicationFactory factory)
         var client = factory.CreateClient();
         var response = await client.GetAsync("/health");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.Equal("ok", body.GetProperty("status").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(body.GetProperty("version").GetString()));
+        Assert.True(
+            DateTimeOffset.TryParse(body.GetProperty("time").GetString(), out _),
+            "time must be an RFC 3339 timestamp"
+        );
+        Assert.Equal("ok", body.GetProperty("database").GetProperty("status").GetString());
     }
 }

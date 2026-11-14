@@ -26,7 +26,7 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
     {
         using var http = CreateClient();
         var response = await http.GetAsync(
-            $"api/consumer/configurations/{Uri.EscapeDataString(key)}?environment={Uri.EscapeDataString(_environment)}",
+            $"consumer/configurations/{Uri.EscapeDataString(key)}?environment={Uri.EscapeDataString(_environment)}",
             ct
         );
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -50,7 +50,7 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
     {
         using var http = CreateClient();
         var response = await http.GetAsync(
-            $"api/consumer/configurations?environment={Uri.EscapeDataString(_environment)}",
+            $"consumer/configurations?environment={Uri.EscapeDataString(_environment)}",
             ct
         );
         response.EnsureSuccessStatusCode();

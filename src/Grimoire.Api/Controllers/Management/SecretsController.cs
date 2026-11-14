@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Grimoire.Api.Controllers.Management;
 
 [ApiController]
-[Route("api/management/applications/{slug}/secrets")]
+[Route("management/applications/{slug}/secrets")]
 [Tags("Management - Secrets")]
 public class SecretsController(
     IApplicationRepository appRepo,

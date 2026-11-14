@@ -133,7 +133,7 @@ dotnet run --project src/Grimoire.Api --configuration Release
 All deployment methods expose a health endpoint:
 
 ```
-GET /health  →  200 OK
+GET /health  →  200 OK  {"status":"ok","time":"...","database":{"status":"ok"}}
 ```
 
 This is used by Docker's built-in health check and by the Testcontainers wait strategy in E2E tests.

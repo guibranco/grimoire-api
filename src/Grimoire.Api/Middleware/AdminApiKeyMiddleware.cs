@@ -1,10 +1,12 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Http;
 
 namespace Grimoire.Api.Middleware;
 
 public class AdminApiKeyMiddleware(RequestDelegate next, IConfiguration configuration)
 {
-    private const string Prefix = "/api/management";
+    private const string Prefix = "/management";
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -16,9 +18,10 @@ public class AdminApiKeyMiddleware(RequestDelegate next, IConfiguration configur
 
         var adminKey = configuration["Management:AdminApiKey"];
         if (
-            !context.Request.Headers.TryGetValue("Authorization", out var authHeader)
+            string.IsNullOrWhiteSpace(adminKey)
+            || !context.Request.Headers.TryGetValue("Authorization", out var authHeader)
             || !authHeader.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
-            || authHeader.ToString()["Bearer ".Length..].Trim() != adminKey
+            || !KeysMatch(authHeader.ToString()["Bearer ".Length..].Trim(), adminKey)
         )
         {
             context.Response.StatusCode = 401;
@@ -36,4 +39,12 @@ public class AdminApiKeyMiddleware(RequestDelegate next, IConfiguration configur
 
         await next(context);
     }
+
+    // Compare SHA-256 digests in constant time so neither the key's contents
+    // nor its length can be inferred from response timing.
+    private static bool KeysMatch(string provided, string expected) =>
+        CryptographicOperations.FixedTimeEquals(
+            SHA256.HashData(Encoding.UTF8.GetBytes(provided)),
+            SHA256.HashData(Encoding.UTF8.GetBytes(expected))
+        );
 }

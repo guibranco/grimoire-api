@@ -32,7 +32,7 @@ The two planes are completely independent. A consumer API key cannot call manage
 Include the admin bearer token in every management request:
 
 ```bash
-curl https://grimoire.example.com/api/management/applications \
+curl https://grimoire.example.com/management/applications \
   -H "Authorization: Bearer your-admin-key"
 ```
 
@@ -56,7 +56,7 @@ Store it in a password manager or secrets manager. There is no UI to retrieve it
 Consumer API keys are per-application. The plain key is shown **once** when the application is created or its key is rotated.
 
 ```bash
-curl https://grimoire.example.com/api/consumer/secrets/my-secret?environment=production \
+curl https://grimoire.example.com/consumer/secrets/my-secret?environment=production \
   -H "X-Api-Key: grm_a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
 ```
 
@@ -75,7 +75,7 @@ The plain key is **never stored** by Grimoire. Only the PBKDF2 hash is persisted
 ### Rotating a key
 
 ```bash
-curl -X POST https://grimoire.example.com/api/management/applications/my-app/rotate-key \
+curl -X POST https://grimoire.example.com/management/applications/my-app/rotate-key \
   -H "Authorization: Bearer your-admin-key"
 ```
 

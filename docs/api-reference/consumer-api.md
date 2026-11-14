@@ -23,7 +23,7 @@ All consumer endpoints require `X-Api-Key: <key>`. The key is scoped to a single
 ### Get secret
 
 ```
-GET /api/consumer/secrets/{name}?environment={envSlug}
+GET /consumer/secrets/{name}?environment={envSlug}
 ```
 
 Returns the **latest active version** of the named secret in the given environment.
@@ -80,7 +80,7 @@ A `404` on a version-level issue (disabled/expired) is intentional — the consu
 ### Get all configurations
 
 ```
-GET /api/consumer/configurations?environment={envSlug}
+GET /consumer/configurations?environment={envSlug}
 ```
 
 Returns all configuration entries for the current application in the given environment.
@@ -106,7 +106,7 @@ The `label` field contains the environment slug. This matches the **Azure App Co
 ### Get configuration by key
 
 ```
-GET /api/consumer/configurations/{key}?environment={envSlug}
+GET /consumer/configurations/{key}?environment={envSlug}
 ```
 
 Returns a single configuration entry.
