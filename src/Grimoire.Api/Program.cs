@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Grimoire.Api;
+using Grimoire.Api.Logging;
 using Grimoire.Api.Middleware;
 using Grimoire.Api.Swagger;
 using Grimoire.Core.Entities;
@@ -12,12 +13,24 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var logStreamOptions =
+    builder.Configuration.GetSection(LogStreamOptions.SectionName).Get<LogStreamOptions>()
+    ?? new LogStreamOptions();
+
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
     .WriteTo.Console()
     .WriteTo.File("logs/grimoire-.log", rollingInterval: RollingInterval.Day)
+    .WriteToLogStream(logStreamOptions)
     .CreateLogger();
+
+Log.Information(
+    "LogStream shipping is {LogStreamState}",
+    logStreamOptions.IsConfigured ? "enabled"
+        : logStreamOptions.Enabled ? "not configured"
+        : "disabled"
+);
 
 builder.Host.UseSerilog();
 
@@ -116,7 +129,15 @@ app.UseMiddleware<AdminApiKeyMiddleware>();
 app.UseMiddleware<ConsumerApiKeyMiddleware>();
 app.MapControllers();
 
-app.Run();
+try
+{
+    app.Run();
+}
+finally
+{
+    // Flushes batched sinks (LogStream) so the last events before shutdown are not lost.
+    Log.CloseAndFlush();
+}
 
 static void EnsureStrongSecret(IConfiguration configuration, string key, int minLength)
 {
