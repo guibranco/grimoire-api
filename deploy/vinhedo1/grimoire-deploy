@@ -1,10 +1,52 @@
 #!/bin/bash
 # grimoire-deploy <version>
-# Installs a Grimoire API release read from stdin (a .tgz of `dotnet publish` output),
-# switches /opt/grimoire/app to it, and rolls back code + database if the new
-# release does not report itself healthy with the expected version.
+#   Installs a Grimoire API release read from stdin (a .tgz of `dotnet publish` output),
+#   switches /opt/grimoire/app to it, and rolls back code + database if the new
+#   release does not report itself healthy with the expected version.
+# grimoire-deploy --configure-logstream
+#   Replaces /etc/grimoire/logstream.env with the LogStream__* settings read from
+#   stdin (KEY=VALUE lines). Takes effect on the next (re)start of the service.
 # Runs as root via sudo; invoked by /usr/local/bin/grimoire-deploy-ssh.
 set -euo pipefail
+
+configure_logstream() {
+  local env_file=/etc/grimoire/logstream.env
+  local dropin_dir=/etc/systemd/system/grimoire-api.service.d
+  local dropin="$dropin_dir/logstream.conf"
+  local allowed='^LogStream__(Enabled|Server|ApiKey|ApiToken|AppId|MinimumLevel)$'
+  local value_re='^[A-Za-z0-9._:/@+=~-]*$'
+  local tmp keys=() line key value
+
+  tmp=$(mktemp)
+  trap 'rm -f "$tmp"' RETURN
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    [ -z "$line" ] && continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    [[ "$line" == *=* ]] || { echo "❌ malformed line (expected KEY=VALUE)" >&2; return 1; }
+    [[ "$key" =~ $allowed ]] || { echo "❌ key not allowed: $key" >&2; return 1; }
+    [[ "$value" =~ $value_re ]] || { echo "❌ value for $key contains unsupported characters" >&2; return 1; }
+    printf '%s=%s\n' "$key" "$value" >> "$tmp"
+    keys+=("$key")
+  done < <(head -c 8192)
+
+  install -o root -g grimoire -m 640 "$tmp" "$env_file"
+
+  local expected=$'[Service]\nEnvironmentFile=-/etc/grimoire/logstream.env'
+  if [ ! -f "$dropin" ] || [ "$(cat "$dropin")" != "$expected" ]; then
+    install -d -m 755 "$dropin_dir"
+    printf '%s\n' "$expected" > "$dropin"
+    systemctl daemon-reload
+  fi
+
+  echo "✅ LogStream settings updated (${keys[*]:-none}); applied on next restart"
+}
+
+if [ "${1:-}" = "--configure-logstream" ]; then
+  configure_logstream
+  exit 0
+fi
 
 VERSION="${1:-}"
 VERSION_RE='^[0-9]+\.[0-9]+\.[0-9]+([-+.][0-9A-Za-z.-]+)?$'

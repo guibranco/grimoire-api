@@ -159,8 +159,8 @@ jobs:
 
   # ── 4. Deploy to vinhedo1 ─────────────────────────────────────────────────────
   # Connection details are repository secrets (SSH_HOST, SSH_USER, SSH_PORT
-  # optional, SSH_KNOWN_HOSTS, SSH_PRIVATE_KEY, HEALTH_CHECK_URL) so they never
-  # appear here or in logs.
+  # optional, SSH_KNOWN_HOSTS, SSH_PRIVATE_KEY, HEALTH_CHECK_URL, LOGSTREAM_*)
+  # so they never appear here or in logs.
   # The deploy key is locked server-side (ForceCommand) to a single action:
   # stream the tarball into /usr/local/bin/grimoire-deploy, which installs the
   # release, backs up the database, restarts the service and rolls back if the
@@ -209,6 +209,22 @@ jobs:
             IdentitiesOnly yes
             StrictHostKeyChecking yes
           EOF
+
+      # Written to a root-owned env file on the server (never into the release
+      # tarball, which is attached to the public GitHub release). Empty secrets
+      # leave LogStream shipping disabled.
+      - name: 📡 Configure LogStream
+        env:
+          LOGSTREAM_SERVER: ${{ secrets.LOGSTREAM_SERVER }}
+          LOGSTREAM_API_KEY: ${{ secrets.LOGSTREAM_API_KEY }}
+          LOGSTREAM_API_TOKEN: ${{ secrets.LOGSTREAM_API_TOKEN }}
+        run: |
+          if [ -z "$LOGSTREAM_SERVER" ] || [ -z "$LOGSTREAM_API_KEY" ] || [ -z "$LOGSTREAM_API_TOKEN" ]; then
+            echo "::warning::LOGSTREAM_SERVER / LOGSTREAM_API_KEY / LOGSTREAM_API_TOKEN not all set — LogStream shipping will be disabled"
+          fi
+          printf 'LogStream__Server=%s\nLogStream__ApiKey=%s\nLogStream__ApiToken=%s\n' \
+            "$LOGSTREAM_SERVER" "$LOGSTREAM_API_KEY" "$LOGSTREAM_API_TOKEN" \
+            | ssh server configure-logstream
 
       - name: 🚀 Upload, install and health-check
         run: ssh server "$VERSION" < grimoire-api.tgz
