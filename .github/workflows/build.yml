@@ -1,8 +1,8 @@
 name: Build & Test
 
+# Pull requests only — pushes to main are built, tested, analysed and deployed
+# by deploy.yml.
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 

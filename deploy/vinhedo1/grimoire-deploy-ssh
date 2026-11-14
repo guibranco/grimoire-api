@@ -1,0 +1,11 @@
+#!/bin/bash
+# ForceCommand for the restricted deploy SSH user created by setup-server.sh.
+# Usage (from CI): ssh <deploy-user>@<host> <version> < release.tgz
+set -euo pipefail
+VERSION="${SSH_ORIGINAL_COMMAND:-}"
+VERSION_RE='^[0-9]+\.[0-9]+\.[0-9]+([-+.][0-9A-Za-z.-]+)?$'
+if [[ ! "$VERSION" =~ $VERSION_RE ]]; then
+  echo "usage: <version> < release.tgz" >&2
+  exit 2
+fi
+exec sudo -n /usr/local/bin/grimoire-deploy "$VERSION"

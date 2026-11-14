@@ -96,33 +96,33 @@ All **consumer** endpoints require an `X-Api-Key` header with a valid applicatio
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
-| `GET` | `/api/management/applications` | List all applications |
-| `POST` | `/api/management/applications` | Create application (auto-seeds `local` env) |
-| `GET` | `/api/management/applications/{slug}` | Get application |
-| `PUT` | `/api/management/applications/{slug}` | Update application |
-| `DELETE` | `/api/management/applications/{slug}` | Soft-delete application |
-| `POST` | `/api/management/applications/{slug}/rotate-key` | 🔄 Rotate API key |
-| `GET` | `/api/management/applications/{slug}/environments` | List environments |
-| `POST` | `/api/management/applications/{slug}/environments` | Create environment |
-| `DELETE` | `/api/management/applications/{slug}/environments/{envSlug}` | Delete environment |
-| `GET` | `/api/management/applications/{slug}/secrets` | List secrets |
-| `POST` | `/api/management/applications/{slug}/secrets` | Create secret |
-| `GET` | `/api/management/applications/{slug}/secrets/{name}` | Get secret metadata |
-| `POST` | `/api/management/applications/{slug}/secrets/{name}/values` | Set secret value(s) |
-| `GET` | `/api/management/applications/{slug}/secrets/{name}/versions/{environmentSlug}` | List versions |
-| `DELETE` | `/api/management/applications/{slug}/secrets/{name}` | Delete secret |
-| `GET` | `/api/management/applications/{slug}/configurations` | List configurations |
-| `POST` | `/api/management/applications/{slug}/configurations` | Create configuration |
-| `PUT` | `/api/management/applications/{slug}/configurations/{env}/{key}` | Update configuration |
-| `DELETE` | `/api/management/applications/{slug}/configurations/{env}/{key}` | Delete configuration |
+| `GET` | `/management/applications` | List all applications |
+| `POST` | `/management/applications` | Create application (auto-seeds `local` env) |
+| `GET` | `/management/applications/{slug}` | Get application |
+| `PUT` | `/management/applications/{slug}` | Update application |
+| `DELETE` | `/management/applications/{slug}` | Soft-delete application |
+| `POST` | `/management/applications/{slug}/rotate-key` | 🔄 Rotate API key |
+| `GET` | `/management/applications/{slug}/environments` | List environments |
+| `POST` | `/management/applications/{slug}/environments` | Create environment |
+| `DELETE` | `/management/applications/{slug}/environments/{envSlug}` | Delete environment |
+| `GET` | `/management/applications/{slug}/secrets` | List secrets |
+| `POST` | `/management/applications/{slug}/secrets` | Create secret |
+| `GET` | `/management/applications/{slug}/secrets/{name}` | Get secret metadata |
+| `POST` | `/management/applications/{slug}/secrets/{name}/values` | Set secret value(s) |
+| `GET` | `/management/applications/{slug}/secrets/{name}/versions/{environmentSlug}` | List versions |
+| `DELETE` | `/management/applications/{slug}/secrets/{name}` | Delete secret |
+| `GET` | `/management/applications/{slug}/configurations` | List configurations |
+| `POST` | `/management/applications/{slug}/configurations` | Create configuration |
+| `PUT` | `/management/applications/{slug}/configurations/{env}/{key}` | Update configuration |
+| `DELETE` | `/management/applications/{slug}/configurations/{env}/{key}` | Delete configuration |
 
 ### 🔌 Consumer API
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
-| `GET` | `/api/consumer/secrets/{name}?environment={env}` | 🔓 Get decrypted secret value |
-| `GET` | `/api/consumer/configurations?environment={env}` | Get all configurations |
-| `GET` | `/api/consumer/configurations/{key}?environment={env}` | Get single configuration |
+| `GET` | `/consumer/secrets/{name}?environment={env}` | 🔓 Get decrypted secret value |
+| `GET` | `/consumer/configurations?environment={env}` | Get all configurations |
+| `GET` | `/consumer/configurations/{key}?environment={env}` | Get single configuration |
 
 ---
 

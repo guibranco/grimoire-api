@@ -8,8 +8,7 @@ jobs:
   linter-check:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       pull-requests: write
     steps:
       - name: CSharpier Linter
-        uses: guibranco/github-csharpier-linter-action@latest
+        uses: guibranco/github-csharpier-linter-action@v1.0.5

@@ -9,12 +9,22 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
     private readonly string _baseUrl;
     private readonly string _apiKey;
     private readonly string _environment;
+    private readonly HttpMessageHandler? _handler;
 
     public GrimoireConfigurationClient(string baseUrl, string apiKey, string environment)
+        : this(baseUrl, apiKey, environment, null) { }
+
+    internal GrimoireConfigurationClient(
+        string baseUrl,
+        string apiKey,
+        string environment,
+        HttpMessageHandler? handler
+    )
     {
         _baseUrl = baseUrl.TrimEnd('/');
         _apiKey = apiKey;
         _environment = environment;
+        _handler = handler;
     }
 
     public IConfigurationProvider Build(IConfigurationBuilder builder) => this;
@@ -26,7 +36,7 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
     {
         using var http = CreateClient();
         var response = await http.GetAsync(
-            $"api/consumer/configurations/{Uri.EscapeDataString(key)}?environment={Uri.EscapeDataString(_environment)}",
+            $"consumer/configurations/{Uri.EscapeDataString(key)}?environment={Uri.EscapeDataString(_environment)}",
             ct
         );
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -50,7 +60,7 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
     {
         using var http = CreateClient();
         var response = await http.GetAsync(
-            $"api/consumer/configurations?environment={Uri.EscapeDataString(_environment)}",
+            $"consumer/configurations?environment={Uri.EscapeDataString(_environment)}",
             ct
         );
         response.EnsureSuccessStatusCode();
@@ -61,7 +71,8 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
 
     private HttpClient CreateClient()
     {
-        var http = new HttpClient { BaseAddress = new Uri(_baseUrl + "/") };
+        var http = _handler is null ? new HttpClient() : new HttpClient(_handler, false);
+        http.BaseAddress = new Uri(_baseUrl + "/");
         http.DefaultRequestHeaders.Add("X-Api-Key", _apiKey);
         return http;
     }

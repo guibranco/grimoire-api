@@ -17,7 +17,7 @@ public static class TestHelpers
     {
         name ??= UniqueName("app");
         var response = await mgmtClient.PostAsJsonAsync(
-            "/api/management/applications",
+            "/management/applications",
             new { name, description = "Test app" }
         );
         response.EnsureSuccessStatusCode();
@@ -32,7 +32,7 @@ public static class TestHelpers
     )
     {
         var response = await mgmtClient.PostAsJsonAsync(
-            $"/api/management/applications/{appSlug}/environments",
+            $"/management/applications/{appSlug}/environments",
             new { name = envName }
         );
         response.EnsureSuccessStatusCode();
@@ -49,13 +49,13 @@ public static class TestHelpers
     )
     {
         var create = await mgmtClient.PostAsJsonAsync(
-            $"/api/management/applications/{appSlug}/secrets",
+            $"/management/applications/{appSlug}/secrets",
             new { name = secretName, description = "test" }
         );
         create.EnsureSuccessStatusCode();
 
         var setValue = await mgmtClient.PostAsJsonAsync(
-            $"/api/management/applications/{appSlug}/secrets/{secretName}/values",
+            $"/management/applications/{appSlug}/secrets/{secretName}/values",
             new[]
             {
                 new

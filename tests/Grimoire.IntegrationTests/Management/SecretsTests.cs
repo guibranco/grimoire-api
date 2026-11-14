@@ -14,7 +14,7 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
 
-        var response = await Client.GetAsync($"/api/management/applications/{slug}/secrets");
+        var response = await Client.GetAsync($"/management/applications/{slug}/secrets");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var arr = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsArray();
         Assert.Empty(arr);
@@ -27,7 +27,7 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
         var secretName = TestHelpers.UniqueName("secret");
 
         var response = await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets",
+            $"/management/applications/{slug}/secrets",
             new { name = secretName, description = "test secret" }
         );
 
@@ -45,9 +45,9 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var name = TestHelpers.UniqueName("dup-secret");
 
-        await Client.PostAsJsonAsync($"/api/management/applications/{slug}/secrets", new { name });
+        await Client.PostAsJsonAsync($"/management/applications/{slug}/secrets", new { name });
         var response = await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets",
+            $"/management/applications/{slug}/secrets",
             new { name }
         );
 
@@ -63,7 +63,7 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
         await TestHelpers.CreateSecretWithValueAsync(Client, slug, secretName, "local", "s3cr3t!");
 
         var response = await Client.GetAsync(
-            $"/api/management/applications/{slug}/secrets/{secretName}"
+            $"/management/applications/{slug}/secrets/{secretName}"
         );
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -76,12 +76,12 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var secretName = TestHelpers.UniqueName("sec");
         await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets",
+            $"/management/applications/{slug}/secrets",
             new { name = secretName }
         );
 
         var response = await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets/{secretName}/values",
+            $"/management/applications/{slug}/secrets/{secretName}/values",
             new[]
             {
                 new
@@ -104,7 +104,7 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
         await TestHelpers.CreateSecretWithValueAsync(Client, slug, secretName, "local", "v1");
 
         var response = await Client.GetAsync(
-            $"/api/management/applications/{slug}/secrets/{secretName}/versions/local"
+            $"/management/applications/{slug}/secrets/{secretName}/versions/local"
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -122,7 +122,7 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
         await TestHelpers.CreateSecretWithValueAsync(Client, slug, secretName, "local", "v1");
 
         await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets/{secretName}/values",
+            $"/management/applications/{slug}/secrets/{secretName}/values",
             new[]
             {
                 new
@@ -135,7 +135,7 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
         );
 
         var response = await Client.GetAsync(
-            $"/api/management/applications/{slug}/secrets/{secretName}/versions/local"
+            $"/management/applications/{slug}/secrets/{secretName}/versions/local"
         );
         var arr = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsArray();
         Assert.Equal(2, arr.Count);
@@ -146,12 +146,12 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var name = TestHelpers.UniqueName("del");
-        await Client.PostAsJsonAsync($"/api/management/applications/{slug}/secrets", new { name });
+        await Client.PostAsJsonAsync($"/management/applications/{slug}/secrets", new { name });
 
-        var del = await Client.DeleteAsync($"/api/management/applications/{slug}/secrets/{name}");
+        var del = await Client.DeleteAsync($"/management/applications/{slug}/secrets/{name}");
         Assert.Equal(HttpStatusCode.NoContent, del.StatusCode);
 
-        var get = await Client.GetAsync($"/api/management/applications/{slug}/secrets/{name}");
+        var get = await Client.GetAsync($"/management/applications/{slug}/secrets/{name}");
         Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
     }
 
@@ -160,7 +160,7 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var response = await Client.GetAsync(
-            $"/api/management/applications/{slug}/secrets/no-such-secret"
+            $"/management/applications/{slug}/secrets/no-such-secret"
         );
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

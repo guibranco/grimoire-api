@@ -9,4 +9,8 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="11.0.*" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="11.0.*" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Grimoire.Tests" />
+  </ItemGroup>
 </Project>

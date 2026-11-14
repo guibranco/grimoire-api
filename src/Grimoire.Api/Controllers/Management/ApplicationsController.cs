@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Grimoire.Api.Controllers.Management;
 
 [ApiController]
-[Route("api/management/applications")]
+[Route("management/applications")]
 [Tags("Management - Applications")]
 public class ApplicationsController(
     IApplicationRepository appRepo,

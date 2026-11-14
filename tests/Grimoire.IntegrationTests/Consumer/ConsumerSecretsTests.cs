@@ -23,9 +23,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/api/consumer/secrets/{secretName}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/secrets/{secretName}?environment=local");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -42,14 +40,12 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(MgmtClient);
         var secretName = TestHelpers.UniqueName("no-val");
         await MgmtClient.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets",
+            $"/management/applications/{slug}/secrets",
             new { name = secretName }
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/api/consumer/secrets/{secretName}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/secrets/{secretName}?environment=local");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -61,7 +57,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
 
         var consumer = factory.CreateConsumerClient(apiKey);
         var response = await consumer.GetAsync(
-            "/api/consumer/secrets/does-not-exist?environment=local"
+            "/consumer/secrets/does-not-exist?environment=local"
         );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -76,7 +72,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
 
         var consumer = factory.CreateConsumerClient(apiKey);
         var response = await consumer.GetAsync(
-            $"/api/consumer/secrets/{secretName}?environment=no-env"
+            $"/consumer/secrets/{secretName}?environment=no-env"
         );
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -89,11 +85,11 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         var secretName = TestHelpers.UniqueName("disabled");
 
         await MgmtClient.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets",
+            $"/management/applications/{slug}/secrets",
             new { name = secretName }
         );
         await MgmtClient.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets/{secretName}/values",
+            $"/management/applications/{slug}/secrets/{secretName}/values",
             new[]
             {
                 new
@@ -106,9 +102,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/api/consumer/secrets/{secretName}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/secrets/{secretName}?environment=local");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -121,11 +115,11 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         var pastDate = DateTimeOffset.UtcNow.AddDays(-1);
 
         await MgmtClient.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets",
+            $"/management/applications/{slug}/secrets",
             new { name = secretName }
         );
         await MgmtClient.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets/{secretName}/values",
+            $"/management/applications/{slug}/secrets/{secretName}/values",
             new[]
             {
                 new
@@ -139,9 +133,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/api/consumer/secrets/{secretName}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/secrets/{secretName}?environment=local");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -153,7 +145,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         var secretName = TestHelpers.UniqueName("latest");
         await TestHelpers.CreateSecretWithValueAsync(MgmtClient, slug, secretName, "local", "v1");
         await MgmtClient.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/secrets/{secretName}/values",
+            $"/management/applications/{slug}/secrets/{secretName}/values",
             new[]
             {
                 new
@@ -166,9 +158,7 @@ public class ConsumerSecretsTests(GrimoireWebApplicationFactory factory)
         );
 
         var consumer = factory.CreateConsumerClient(apiKey);
-        var response = await consumer.GetAsync(
-            $"/api/consumer/secrets/{secretName}?environment=local"
-        );
+        var response = await consumer.GetAsync($"/consumer/secrets/{secretName}?environment=local");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;

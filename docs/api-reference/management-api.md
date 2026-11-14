@@ -23,7 +23,7 @@ All management endpoints require `Authorization: Bearer <AdminApiKey>`.
 ### List applications
 
 ```
-GET /api/management/applications
+GET /management/applications
 ```
 
 Returns all non-deleted applications.
@@ -48,7 +48,7 @@ Returns all non-deleted applications.
 ### Create application
 
 ```
-POST /api/management/applications
+POST /management/applications
 ```
 
 Creates an application and automatically seeds a **`local`** environment.
@@ -90,7 +90,7 @@ Save `plainApiKey`. It is shown once and cannot be retrieved. Call [rotate-key](
 ### Get application
 
 ```
-GET /api/management/applications/{slug}
+GET /management/applications/{slug}
 ```
 
 **Response `200`:** Application object (same shape as list item, without `plainApiKey`).  
@@ -101,7 +101,7 @@ GET /api/management/applications/{slug}
 ### Update application
 
 ```
-PUT /api/management/applications/{slug}
+PUT /management/applications/{slug}
 ```
 
 **Request body:**
@@ -120,7 +120,7 @@ PUT /api/management/applications/{slug}
 ### Delete application
 
 ```
-DELETE /api/management/applications/{slug}
+DELETE /management/applications/{slug}
 ```
 
 Soft-deletes the application. The slug becomes available for reuse.  
@@ -133,7 +133,7 @@ All child environments, secrets, and configurations are hidden (but not purged f
 ### Rotate API key
 
 ```
-POST /api/management/applications/{slug}/rotate-key
+POST /management/applications/{slug}/rotate-key
 ```
 
 Generates a new API key and invalidates the old one immediately.
@@ -153,7 +153,7 @@ Generates a new API key and invalidates the old one immediately.
 ### List environments
 
 ```
-GET /api/management/applications/{slug}/environments
+GET /management/applications/{slug}/environments
 ```
 
 **Response `200`:**
@@ -171,7 +171,7 @@ GET /api/management/applications/{slug}/environments
 ### Create environment
 
 ```
-POST /api/management/applications/{slug}/environments
+POST /management/applications/{slug}/environments
 ```
 
 **Request body:**
@@ -190,7 +190,7 @@ The slug is auto-generated from the name (e.g. `"Production"` → `"production"`
 ### Delete environment
 
 ```
-DELETE /api/management/applications/{slug}/environments/{envSlug}
+DELETE /management/applications/{slug}/environments/{envSlug}
 ```
 
 **Response `204`:** No content.
@@ -202,7 +202,7 @@ DELETE /api/management/applications/{slug}/environments/{envSlug}
 ### List secrets
 
 ```
-GET /api/management/applications/{slug}/secrets
+GET /management/applications/{slug}/secrets
 ```
 
 Returns secret metadata — **never** the decrypted values.
@@ -226,7 +226,7 @@ Returns secret metadata — **never** the decrypted values.
 ### Create secret
 
 ```
-POST /api/management/applications/{slug}/secrets
+POST /management/applications/{slug}/secrets
 ```
 
 Creates a named secret slot. Values are set separately via [Set values](#set-secret-values).
@@ -259,7 +259,7 @@ Creates a named secret slot. Values are set separately via [Set values](#set-sec
 ### Set secret values
 
 ```
-POST /api/management/applications/{slug}/secrets/{name}/values
+POST /management/applications/{slug}/secrets/{name}/values
 ```
 
 Creates new versions of the secret for one or more environments. Each call **appends** a new version — it does not overwrite existing versions.
@@ -303,7 +303,7 @@ Creates new versions of the secret for one or more environments. Each call **app
 ### Get secret metadata
 
 ```
-GET /api/management/applications/{slug}/secrets/{name}
+GET /management/applications/{slug}/secrets/{name}
 ```
 
 Returns the secret definition — not the values.
@@ -313,7 +313,7 @@ Returns the secret definition — not the values.
 ### List secret versions
 
 ```
-GET /api/management/applications/{slug}/secrets/{name}/versions/{environmentSlug}
+GET /management/applications/{slug}/secrets/{name}/versions/{environmentSlug}
 ```
 
 Returns all versions for the named secret in the given environment, ordered newest-first.
@@ -346,7 +346,7 @@ Returns all versions for the named secret in the given environment, ordered newe
 ### Delete secret
 
 ```
-DELETE /api/management/applications/{slug}/secrets/{name}
+DELETE /management/applications/{slug}/secrets/{name}
 ```
 
 Permanently deletes the secret and all its versions.
@@ -360,7 +360,7 @@ Permanently deletes the secret and all its versions.
 ### List configurations
 
 ```
-GET /api/management/applications/{slug}/configurations
+GET /management/applications/{slug}/configurations
 ```
 
 Returns all configuration entries for the application, across all environments.
@@ -386,7 +386,7 @@ Returns all configuration entries for the application, across all environments.
 ### Create configuration
 
 ```
-POST /api/management/applications/{slug}/configurations
+POST /management/applications/{slug}/configurations
 ```
 
 **Request body:**
@@ -415,7 +415,7 @@ POST /api/management/applications/{slug}/configurations
 ### Update configuration
 
 ```
-PUT /api/management/applications/{slug}/configurations/{environmentSlug}/{key}
+PUT /management/applications/{slug}/configurations/{environmentSlug}/{key}
 ```
 
 **Request body:**
@@ -432,7 +432,7 @@ PUT /api/management/applications/{slug}/configurations/{environmentSlug}/{key}
 ### Delete configuration
 
 ```
-DELETE /api/management/applications/{slug}/configurations/{environmentSlug}/{key}
+DELETE /management/applications/{slug}/configurations/{environmentSlug}/{key}
 ```
 
 **Response `204`:** No content.

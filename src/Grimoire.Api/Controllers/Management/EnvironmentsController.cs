@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Grimoire.Api.Controllers.Management;
 
 [ApiController]
-[Route("api/management/applications/{slug}/environments")]
+[Route("management/applications/{slug}/environments")]
 [Tags("Management - Environments")]
 public class EnvironmentsController(IApplicationRepository appRepo, IEnvironmentRepository envRepo)
     : ControllerBase

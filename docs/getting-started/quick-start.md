@@ -45,7 +45,7 @@ BASE_URL="http://localhost:8080"
 A Grimoire **application** maps to one of your services (e.g. `payments-api`, `frontend`).
 
 ```bash
-curl -s -X POST "$BASE_URL/api/management/applications" \
+curl -s -X POST "$BASE_URL/management/applications" \
   -H "Authorization: Bearer $ADMIN_KEY" \
   -H "Content-Type: application/json" \
   -d '{"name": "my-service", "description": "My first Grimoire app"}' \
@@ -83,13 +83,13 @@ Create a secret (a named slot), then set its value for the `local` environment:
 
 ```bash
 # Create the secret slot
-curl -s -X POST "$BASE_URL/api/management/applications/$SLUG/secrets" \
+curl -s -X POST "$BASE_URL/management/applications/$SLUG/secrets" \
   -H "Authorization: Bearer $ADMIN_KEY" \
   -H "Content-Type: application/json" \
   -d '{"name": "database-password"}' | jq .
 
 # Set the value for the "local" environment
-curl -s -X POST "$BASE_URL/api/management/applications/$SLUG/secrets/database-password/values" \
+curl -s -X POST "$BASE_URL/management/applications/$SLUG/secrets/database-password/values" \
   -H "Authorization: Bearer $ADMIN_KEY" \
   -H "Content-Type: application/json" \
   -d '[{"environmentSlug": "local", "value": "super-secret-db-pass", "isEnabled": true}]'
@@ -104,7 +104,7 @@ The value is immediately encrypted with AES-256-GCM before being stored.
 Use the application's API key to read back the secret:
 
 ```bash
-curl -s "$BASE_URL/api/consumer/secrets/database-password?environment=local" \
+curl -s "$BASE_URL/consumer/secrets/database-password?environment=local" \
   -H "X-Api-Key: $API_KEY" | jq .
 ```
 
@@ -131,13 +131,13 @@ curl -s "$BASE_URL/api/consumer/secrets/database-password?environment=local" \
 
 ```bash
 # Create a config entry
-curl -s -X POST "$BASE_URL/api/management/applications/$SLUG/configurations" \
+curl -s -X POST "$BASE_URL/management/applications/$SLUG/configurations" \
   -H "Authorization: Bearer $ADMIN_KEY" \
   -H "Content-Type: application/json" \
   -d '{"environmentSlug": "local", "key": "Feature:DarkMode", "value": "true"}' | jq .
 
 # Read it back
-curl -s "$BASE_URL/api/consumer/configurations/Feature:DarkMode?environment=local" \
+curl -s "$BASE_URL/consumer/configurations/Feature:DarkMode?environment=local" \
   -H "X-Api-Key: $API_KEY" | jq .
 ```
 

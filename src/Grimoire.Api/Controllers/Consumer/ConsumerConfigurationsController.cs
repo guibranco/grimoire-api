@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Grimoire.Api.Controllers.Consumer;
 
 [ApiController]
-[Route("api/consumer/configurations")]
+[Route("consumer/configurations")]
 [Tags("Consumer - Configurations")]
 public class ConsumerConfigurationsController(
     IConfigurationRepository configRepo,

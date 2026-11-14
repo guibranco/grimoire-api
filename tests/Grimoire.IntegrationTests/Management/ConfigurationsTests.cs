@@ -14,7 +14,7 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
 
-        var response = await Client.GetAsync($"/api/management/applications/{slug}/configurations");
+        var response = await Client.GetAsync($"/management/applications/{slug}/configurations");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var arr = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsArray();
@@ -28,7 +28,7 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
         var key = TestHelpers.UniqueName("Feature");
 
         var response = await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/configurations",
+            $"/management/applications/{slug}/configurations",
             new
             {
                 environmentSlug = "local",
@@ -51,7 +51,7 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
         var key = TestHelpers.UniqueName("dup-key");
 
         await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/configurations",
+            $"/management/applications/{slug}/configurations",
             new
             {
                 environmentSlug = "local",
@@ -60,7 +60,7 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
             }
         );
         var response = await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/configurations",
+            $"/management/applications/{slug}/configurations",
             new
             {
                 environmentSlug = "local",
@@ -79,7 +79,7 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
         var key = TestHelpers.UniqueName("upd-key");
 
         await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/configurations",
+            $"/management/applications/{slug}/configurations",
             new
             {
                 environmentSlug = "local",
@@ -89,7 +89,7 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
         );
 
         var response = await Client.PutAsJsonAsync(
-            $"/api/management/applications/{slug}/configurations/local/{key}",
+            $"/management/applications/{slug}/configurations/local/{key}",
             new { value = "new" }
         );
 
@@ -105,7 +105,7 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
         var key = TestHelpers.UniqueName("del-key");
 
         await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/configurations",
+            $"/management/applications/{slug}/configurations",
             new
             {
                 environmentSlug = "local",
@@ -115,7 +115,7 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
         );
 
         var response = await Client.DeleteAsync(
-            $"/api/management/applications/{slug}/configurations/local/{key}"
+            $"/management/applications/{slug}/configurations/local/{key}"
         );
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
@@ -126,7 +126,7 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var response = await Client.PutAsJsonAsync(
-            $"/api/management/applications/{slug}/configurations/local/no-key",
+            $"/management/applications/{slug}/configurations/local/no-key",
             new { value = "x" }
         );
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -137,7 +137,7 @@ public class ConfigurationsTests(GrimoireWebApplicationFactory factory)
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
         var response = await Client.PostAsJsonAsync(
-            $"/api/management/applications/{slug}/configurations",
+            $"/management/applications/{slug}/configurations",
             new
             {
                 environmentSlug = "no-env",

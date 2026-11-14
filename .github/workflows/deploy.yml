@@ -1,0 +1,262 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Only one deploy at a time: a new run waits for the in-progress one to finish
+# instead of cancelling it. GitHub keeps at most one pending run per group, so
+# if several pushes queue up, only the latest is deployed.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+
+  # ── 1. Determine version ──────────────────────────────────────────────────────
+  version:
+    name: 🏷️ Determine Version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      fullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: 🔧 Install GitVersion
+        uses: gittools/actions/gitversion/setup@7417b1089e2c7de93510f1901d656ddf60bb024f # v4.7.0
+        with:
+          versionSpec: "6.x"
+
+      - name: 🏷️ Determine version number
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@7417b1089e2c7de93510f1901d656ddf60bb024f # v4.7.0
+
+  # ── 2. Build, test, SonarCloud and package ────────────────────────────────────
+  build:
+    name: 🧪 Build, Test, SonarCloud & Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [version]
+    env:
+      VERSION: ${{ needs.version.outputs.fullSemVer }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: ☕ Setup Java 21 (required by SonarScanner)
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: 🟣 Setup .NET 10
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          dotnet-version: 10.x
+
+      - name: 💾 Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: 🔧 Install SonarScanner for .NET
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: 📦 Restore dependencies
+        run: dotnet restore
+
+      - name: 📊 Begin SonarCloud analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet sonarscanner begin \
+            /k:"guibranco_grimoire-api" \
+            /o:"guibranco" \
+            /v:"$VERSION" \
+            /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
+            /d:sonar.exclusions="**/Migrations/**,**/obj/**,**/bin/**" \
+            /d:sonar.coverage.exclusions="**/Migrations/**,**/Program.cs"
+
+      - name: 🔨 Build
+        run: dotnet build --no-restore --configuration Release -p:Version="$VERSION"
+
+      - name: 🧪 Run unit and integration tests
+        run: |
+          dotnet test --no-build --configuration Release \
+            --filter "FullyQualifiedName!~E2eTests" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./coverage \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: 📊 End SonarCloud analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
+      - name: 📤 Publish
+        run: |
+          dotnet publish src/Grimoire.Api/Grimoire.Api.csproj \
+            --configuration Release \
+            --output ./publish \
+            -p:UseAppHost=false \
+            -p:Version="$VERSION"
+          rm -rf ./publish/logs ./publish/*.db
+          tar -C ./publish -czf grimoire-api.tgz .
+
+      - name: ⬆️ Upload release artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: grimoire-api-${{ env.VERSION }}
+          path: grimoire-api.tgz
+          retention-days: 30
+          if-no-files-found: error
+
+  # ── 3. End-to-end tests (Docker) ──────────────────────────────────────────────
+  e2e:
+    name: 🐳 E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [version]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: 🟣 Setup .NET 10
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          dotnet-version: 10.x
+
+      - name: 🐳 Build Docker image
+        run: docker build -t grimoire-api:e2e .
+
+      - name: 🧪 Run E2E tests
+        env:
+          GRIMOIRE_TEST_IMAGE: grimoire-api:e2e
+        run: dotnet test tests/Grimoire.E2eTests --configuration Release --logger "console;verbosity=normal"
+
+  # ── 4. Deploy to vinhedo1 ─────────────────────────────────────────────────────
+  # Connection details are repository secrets (SSH_HOST, SSH_USER, SSH_PORT
+  # optional, SSH_KNOWN_HOSTS, SSH_PRIVATE_KEY, HEALTH_CHECK_URL) so they never
+  # appear here or in logs.
+  # The deploy key is locked server-side (ForceCommand) to a single action:
+  # stream the tarball into /usr/local/bin/grimoire-deploy, which installs the
+  # release, backs up the database, restarts the service and rolls back if the
+  # new version does not report healthy. See deploy/vinhedo1/.
+  deploy:
+    name: 🚀 Deploy to vinhedo1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [version, build, e2e]
+    if: github.ref == 'refs/heads/main'
+    env:
+      VERSION: ${{ needs.version.outputs.fullSemVer }}
+
+    steps:
+      - name: ⬇️ Download release artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: grimoire-api-${{ env.VERSION }}
+
+      - name: 🔑 Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          for name in SSH_PRIVATE_KEY SSH_HOST SSH_USER SSH_KNOWN_HOSTS; do
+            [ -n "${!name}" ] || { echo "❌ secret $name is not set"; exit 1; }
+          done
+          mkdir -p ~/.ssh
+          # Strip a UTF-8 BOM and CRs in case the secret was saved from Windows;
+          # either one makes OpenSSH fail with "error in libcrypto".
+          umask 077
+          printf '%s\n' "$SSH_PRIVATE_KEY" | sed '1s/^\xEF\xBB\xBF//' | tr -d '\r' > ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null \
+            || { echo "❌ SSH_PRIVATE_KEY is not a valid private key"; exit 1; }
+          # Pinned host key — ssh-keyscan would trip fail2ban on the server.
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host server
+            HostName $SSH_HOST
+            User $SSH_USER
+            Port $SSH_PORT
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+          EOF
+
+      - name: 🚀 Upload, install and health-check
+        run: ssh server "$VERSION" < grimoire-api.tgz
+
+      - name: 🔍 Verify public endpoint
+        env:
+          HEALTH_CHECK_URL: ${{ secrets.HEALTH_CHECK_URL }}
+        run: |
+          [ -n "$HEALTH_CHECK_URL" ] || { echo "❌ secret HEALTH_CHECK_URL is not set"; exit 1; }
+          BODY=$(curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "$HEALTH_CHECK_URL/health")
+          echo "$BODY"
+          grep -q '"status":"ok"' <<<"$BODY" || { echo "❌ public /health is not ok"; exit 1; }
+          grep -qF "\"version\":\"$VERSION" <<<"$BODY" \
+            || { echo "❌ public /health does not report version $VERSION"; exit 1; }
+          echo "✅ Public endpoint is serving $VERSION"
+
+      - name: 🧹 Remove private key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+  # ── 5. GitHub Release ─────────────────────────────────────────────────────────
+  # Tagging v<version> is what bumps the next GitVersion calculation.
+  create_release:
+    name: 📢 Create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    needs: [version, deploy]
+
+    steps:
+      - name: ⬇️ Download release artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: grimoire-api-${{ needs.version.outputs.fullSemVer }}
+
+      - name: 🏷️ Create release
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
+        with:
+          skipIfReleaseExists: true
+          allowUpdates: false
+          draft: false
+          makeLatest: true
+          commit: ${{ github.sha }}
+          tag: v${{ needs.version.outputs.fullSemVer }}
+          name: Release v${{ needs.version.outputs.fullSemVer }}
+          generateReleaseNotes: true
+          artifacts: grimoire-api.tgz
+          body: |
+            ## grimoire-api v${{ needs.version.outputs.fullSemVer }}
+            Built from `${{ github.sha }}` and deployed to production.
