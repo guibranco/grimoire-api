@@ -26,6 +26,24 @@
 
 ---
 
+## 🖼️ Management UI
+
+Grimoire is managed through [**Grimoire UI**](https://github.com/guibranco/grimoire-ui), a React front end for the Management API.
+
+> 🔮 **See it running** — open the [live demo](http://guilherme.stracini.com.br/grimoire-ui/) and click **Launch Live Demo (Mock API)**. It runs entirely in the browser against a mock API with demo data, so no server is needed.
+
+![Application secrets](https://raw.githubusercontent.com/guibranco/grimoire-ui/main/docs/screenshots/02-application-secrets.png)
+
+| Secret version history | Application configuration |
+| :---: | :---: |
+| ![Secret version history](https://raw.githubusercontent.com/guibranco/grimoire-ui/main/docs/screenshots/03-secret-versions.png) | ![Application configuration](https://raw.githubusercontent.com/guibranco/grimoire-ui/main/docs/screenshots/04-application-configuration.png) |
+| **Global configuration** | **Global secrets** |
+| ![Global configuration](https://raw.githubusercontent.com/guibranco/grimoire-ui/main/docs/screenshots/05-global-configuration.png) | ![Global secrets](https://raw.githubusercontent.com/guibranco/grimoire-ui/main/docs/screenshots/06-global-secrets.png) |
+
+More screenshots in the [Grimoire UI README](https://github.com/guibranco/grimoire-ui#%EF%B8%8F-screenshots).
+
+---
+
 ## 🏗️ Architecture
 
 ```text
