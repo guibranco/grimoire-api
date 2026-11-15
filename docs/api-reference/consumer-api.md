@@ -7,7 +7,7 @@ nav_order: 3
 # 🔌 Consumer API
 {: .no_toc }
 
-All consumer endpoints require `X-Api-Key: <key>`. The key is scoped to a single application — it can only access that application's own secrets and configurations.
+All consumer endpoints require `X-Api-Key: <key>`. The key is scoped to a single application — it can only access that application's own secrets and configurations, plus any [global values](#global-secrets-and-configuration) the application inherits.
 
 <details open markdown="block">
   <summary>Table of contents</summary>
@@ -66,7 +66,7 @@ The response shape matches **Azure Key Vault** secret responses to allow transpa
 
 **Response `404`:** Returned when:
 
-- The secret name does not exist
+- The secret name does not exist (neither on the application nor, for applications that inherit globals, as a global secret)
 - The environment does not exist
 - No active version exists for this secret/environment combination (disabled, expired, or not yet active)
 
@@ -83,7 +83,7 @@ A `404` on a version-level issue (disabled/expired) is intentional — the consu
 GET /consumer/configurations?environment={envSlug}
 ```
 
-Returns all configuration entries for the current application in the given environment.
+Returns all configuration entries for the current application in the given environment, merged with any inherited global entries (application values win on the same key).
 
 **Response `200`:**
 
@@ -109,7 +109,7 @@ The `label` field contains the environment slug. This matches the **Azure App Co
 GET /consumer/configurations/{key}?environment={envSlug}
 ```
 
-Returns a single configuration entry.
+Returns a single configuration entry, falling back to an inherited global entry when the application doesn't define the key.
 
 **Response `200`:**
 
@@ -139,6 +139,24 @@ This allows using `IOptions<T>` and `GetSection()` just as you would with `appse
 
 ---
 
+## Global secrets and configuration
+
+Administrators can define [global configuration and secrets](management-api.md#global-configurations) once for all applications. Consumers don't need to change anything: the same endpoints, API key and response shapes return the merged result, so existing clients (including `Grimoire.Consumer`) keep working.
+
+For applications with `inheritGlobals: true` (the default), values resolve in this order, highest first:
+
+1. The application's own value for the environment
+2. A global value for the environment's slug (e.g. `production`)
+3. A global value for `*` (all environments)
+
+Applications with `inheritGlobals: false` only see their own values.
+
+**Secret fallback rule:** a global secret is returned **only when the application has no secret with that name**. If the application defines the secret but has no active version for the environment (disabled, expired, not yet valid, or never set), the response is `404`. An explicit application-level disable is never silently replaced by a global value.
+
+The `label` of a configuration item is always the requested environment slug, whether the value came from the application or a global entry.
+
+---
+
 ## Error scenarios
 
 | Scenario | Status |
@@ -148,6 +166,7 @@ This allows using `IOptions<T>` and `GetSection()` just as you would with `appse
 | Secret does not exist | `404` |
 | Environment does not exist | `404` |
 | Secret exists but no active version | `404` |
+| Application secret has no active version, but a global secret with the same name does | `404` (no fallback) |
 | Secret version is disabled | `404` |
 | Secret version is expired | `404` |
 | Secret version is not yet active (`NotBefore`) | `404` |

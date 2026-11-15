@@ -8,6 +8,7 @@ public class Application
     public string? Description { get; set; }
     public string ApiKeyHash { get; set; } = string.Empty;
     public bool IsDeleted { get; set; }
+    public bool InheritGlobals { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 

@@ -11,6 +11,10 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
     public DbSet<Secret> Secrets => Set<Secret>();
     public DbSet<SecretVersion> SecretVersions => Set<SecretVersion>();
     public DbSet<ConfigurationEntry> ConfigurationEntries => Set<ConfigurationEntry>();
+    public DbSet<GlobalConfigurationEntry> GlobalConfigurationEntries =>
+        Set<GlobalConfigurationEntry>();
+    public DbSet<GlobalSecret> GlobalSecrets => Set<GlobalSecret>();
+    public DbSet<GlobalSecretVersion> GlobalSecretVersions => Set<GlobalSecretVersion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -19,5 +23,8 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
         modelBuilder.ApplyConfiguration(new SecretConfiguration());
         modelBuilder.ApplyConfiguration(new SecretVersionConfiguration());
         modelBuilder.ApplyConfiguration(new ConfigurationEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new GlobalConfigurationEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new GlobalSecretConfiguration());
+        modelBuilder.ApplyConfiguration(new GlobalSecretVersionConfiguration());
     }
 }

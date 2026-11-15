@@ -37,6 +37,7 @@ Returns all non-deleted applications.
     "name": "payments-api",
     "slug": "payments-api",
     "description": "Payment processing service",
+    "inheritGlobals": true,
     "createdAt": "2025-01-01T00:00:00Z",
     "updatedAt": "2025-01-01T00:00:00Z"
   }
@@ -58,7 +59,8 @@ Creates an application and automatically seeds a **`local`** environment.
 ```json
 {
   "name": "payments-api",
-  "description": "Payment processing service"
+  "description": "Payment processing service",
+  "inheritGlobals": true
 }
 ```
 
@@ -66,6 +68,7 @@ Creates an application and automatically seeds a **`local`** environment.
 | :---- | :------: | :---------- |
 | `name` | ✅ | 1–200 characters |
 | `description` | ➖ | Optional |
+| `inheritGlobals` | ➖ | Defaults to `true`. When `false`, [global values](#global-configurations) don't apply to this application |
 
 **Response `201`:**
 
@@ -76,7 +79,8 @@ Creates an application and automatically seeds a **`local`** environment.
   "slug": "payments-api",
   "description": "Payment processing service",
   "plainApiKey": "grm_4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a",
-  "createdAt": "2025-01-01T00:00:00Z"
+  "createdAt": "2025-01-01T00:00:00Z",
+  "inheritGlobals": true
 }
 ```
 
@@ -109,9 +113,12 @@ PUT /management/applications/{slug}
 ```json
 {
   "name": "Payments API v2",
-  "description": "Updated description"
+  "description": "Updated description",
+  "inheritGlobals": false
 }
 ```
+
+`inheritGlobals` is optional; when omitted the current setting is kept.
 
 **Response `200`:** Updated application object.
 
@@ -434,5 +441,281 @@ PUT /management/applications/{slug}/configurations/{environmentSlug}/{key}
 ```
 DELETE /management/applications/{slug}/configurations/{environmentSlug}/{key}
 ```
+
+**Response `204`:** No content.
+
+---
+
+### Effective configuration
+
+```
+GET /management/applications/{slug}/configurations/effective?environment={envSlug}
+```
+
+Returns the configuration the application actually receives for an environment, with [global values](#global-configurations) merged in, and where each value comes from. This is the same merge the Consumer API uses.
+
+**Response `200`:**
+
+```json
+[
+  {
+    "key": "LogStream:Url",
+    "value": "https://logs.example.com",
+    "description": "Shared log endpoint",
+    "source": "global",
+    "globalEnvironmentSlug": "*",
+    "overridesGlobal": false
+  },
+  {
+    "key": "MaxRetries",
+    "value": "5",
+    "description": null,
+    "source": "application",
+    "globalEnvironmentSlug": "production",
+    "overridesGlobal": true
+  }
+]
+```
+
+| Field | Description |
+| :---- | :---------- |
+| `source` | `application` or `global` |
+| `globalEnvironmentSlug` | For a global value, the slug of the global entry that supplied it (`*` or an environment slug). For an application value that overrides a global, the slug of the global it shadows. Otherwise `null` |
+| `overridesGlobal` | `true` when an application value hides a global value with the same key |
+
+**Response `404`:** Application or environment not found.
+
+---
+
+## Secrets (effective)
+
+### Effective secrets
+
+```
+GET /management/applications/{slug}/secrets/effective
+```
+
+Returns the secrets the application can read, including inherited [global secrets](#global-secrets). Metadata only, never values.
+
+**Response `200`:**
+
+```json
+[
+  { "name": "amqp-uri",          "description": "CloudAMQP", "source": "global",      "overridesGlobal": false },
+  { "name": "database-password", "description": null,        "source": "application", "overridesGlobal": false }
+]
+```
+
+{: .note }
+Because this route is matched literally, an application secret named `effective` can't be read with `GET /management/applications/{slug}/secrets/effective`.
+
+---
+
+## Global configurations
+
+Global configuration entries are defined once and inherited by every application with `inheritGlobals: true`. They target environments **by slug**: `production` applies to every application's `production` environment, and `*` applies to all environments. See [Data Model — Global values and precedence](../architecture/data-model.md#global-values-and-precedence) for the resolution rules.
+
+### List global configurations
+
+```
+GET /management/global/configurations?environment={envSlug}
+```
+
+`environment` is optional and filters on the exact slug (use `*` to list only all-environment entries).
+
+**Response `200`:**
+
+```json
+[
+  {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "environmentSlug": "*",
+    "key": "LogStream:Url",
+    "value": "https://logs.example.com",
+    "description": "Shared log endpoint",
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-01-01T00:00:00Z"
+  }
+]
+```
+
+---
+
+### Create global configuration
+
+```
+POST /management/global/configurations
+```
+
+**Request body:**
+
+```json
+{
+  "environmentSlug": "*",
+  "key": "LogStream:Url",
+  "value": "https://logs.example.com",
+  "description": "Shared log endpoint"
+}
+```
+
+| Field | Required | Constraints |
+| :---- | :------: | :---------- |
+| `environmentSlug` | ➖ | `*` (default when omitted) or a lowercase slug such as `production`. The environment doesn't have to exist in any application yet |
+| `key` | ✅ | 1–500 characters |
+| `value` | ✅ | String |
+| `description` | ➖ | Up to 1000 characters |
+
+**Response `201`:** Created entry.  
+**Response `400`:** Invalid `environmentSlug`.  
+**Response `409`:** Key already exists for that environment slug.
+
+---
+
+### Update global configuration
+
+```
+PUT /management/global/configurations/{environmentSlug}/{key}
+```
+
+Use `*` as `{environmentSlug}` for all-environment entries.
+
+**Request body:**
+
+```json
+{ "value": "https://logs-2.example.com", "description": "Updated description" }
+```
+
+**Response `200`:** Updated entry.  
+**Response `404`:** Entry not found.
+
+---
+
+### Delete global configuration
+
+```
+DELETE /management/global/configurations/{environmentSlug}/{key}
+```
+
+**Response `204`:** No content.  
+**Response `404`:** Entry not found.
+
+---
+
+### List environments
+
+```
+GET /management/global/environments
+```
+
+Distinct environment slugs across all non-deleted applications, to populate an environment picker for global values. When applications give the same slug different display names, the most common name is returned.
+
+**Response `200`:**
+
+```json
+[
+  { "slug": "local",      "name": "Local",      "applicationCount": 12 },
+  { "slug": "production", "name": "Production", "applicationCount": 9 }
+]
+```
+
+---
+
+## Global secrets
+
+Global secrets mirror application secrets. Values are encrypted at rest with the same AES-256-GCM key, and no management endpoint ever returns them. A consumer receives a global secret **only when its application has no secret with that name** (see the [Consumer API](consumer-api.md#global-secrets-and-configuration)).
+
+### List global secrets
+
+```
+GET /management/global/secrets
+```
+
+**Response `200`:** Array of `{ id, name, description, createdAt, updatedAt }`. No values.
+
+---
+
+### Create global secret
+
+```
+POST /management/global/secrets
+```
+
+**Request body:**
+
+```json
+{ "name": "amqp-uri", "description": "CloudAMQP connection string" }
+```
+
+| Field | Required | Constraints |
+| :---- | :------: | :---------- |
+| `name` | ✅ | 1–200 characters, unique |
+| `description` | ➖ | Up to 1000 characters |
+
+**Response `201`:** Created secret metadata.  
+**Response `409`:** A global secret with that name already exists.
+
+---
+
+### Get global secret metadata
+
+```
+GET /management/global/secrets/{name}
+```
+
+**Response `200`:** `{ id, name, description, createdAt, updatedAt }`.  
+**Response `404`:** Not found.
+
+---
+
+### Set global secret values
+
+```
+POST /management/global/secrets/{name}/values
+```
+
+Each item creates a new version for its environment slug.
+
+**Request body:**
+
+```json
+[
+  { "environmentSlug": "*",          "value": "amqps://shared", "isEnabled": true },
+  { "environmentSlug": "production", "value": "amqps://prod",   "isEnabled": true, "expiresAt": "2026-12-31T00:00:00Z" }
+]
+```
+
+| Field | Required | Description |
+| :---- | :------: | :---------- |
+| `environmentSlug` | ✅ | `*` or a lowercase slug |
+| `value` | ✅ | Plaintext; encrypted before storage |
+| `isEnabled` | ➖ | Defaults to `true` |
+| `expiresAt` | ➖ | Version inactive after this |
+| `notBefore` | ➖ | Version inactive before this |
+
+For an environment, the consumer gets the latest active version for that slug, or if there is none, the latest active version for `*`.
+
+**Response `200`:** Empty body.  
+**Response `400`:** Invalid item (e.g. bad `environmentSlug`, empty `value`, `expiresAt` not after `notBefore`).  
+**Response `404`:** Global secret not found.
+
+---
+
+### List global secret versions
+
+```
+GET /management/global/secrets/{name}/versions/{environmentSlug}
+```
+
+Version metadata for one environment slug (`*` allowed), newest first. Same shape as [List secret versions](#list-secret-versions); never includes values.
+
+---
+
+### Delete global secret
+
+```
+DELETE /management/global/secrets/{name}
+```
+
+Deletes the secret and all its versions.
 
 **Response `204`:** No content.

@@ -21,4 +21,8 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Grimoire.Consumer\Grimoire.Consumer.csproj" />
+  </ItemGroup>
 </Project>

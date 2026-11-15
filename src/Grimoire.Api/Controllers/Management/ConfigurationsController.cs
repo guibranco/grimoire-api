@@ -1,5 +1,6 @@
 using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Entities;
+using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,9 +12,42 @@ namespace Grimoire.Api.Controllers.Management;
 public class ConfigurationsController(
     IApplicationRepository appRepo,
     IEnvironmentRepository envRepo,
-    IConfigurationRepository configRepo
+    IConfigurationRepository configRepo,
+    IEffectiveConfigurationService effective
 ) : ControllerBase
 {
+    /// <summary>
+    /// The configuration the application receives for an environment, with globals merged in
+    /// and each value's origin.
+    /// </summary>
+    [HttpGet("effective")]
+    public async Task<IActionResult> Effective(
+        string slug,
+        [FromQuery] string environment,
+        CancellationToken ct
+    )
+    {
+        var app = await appRepo.GetBySlugAsync(slug, ct);
+        if (app is null)
+            return NotFound(Problem("Application not found.", statusCode: 404));
+
+        var env = await envRepo.GetBySlugAsync(app.Id, environment, ct);
+        if (env is null)
+            return NotFound(Problem("Environment not found.", statusCode: 404));
+
+        var entries = await effective.GetConfigurationAsync(app, env, ct);
+        return Ok(
+            entries.Select(e => new EffectiveConfigurationResponse(
+                e.Key,
+                e.Value,
+                e.Description,
+                ValueSourceNames.ToName(e.Source),
+                e.GlobalEnvironmentSlug,
+                e.OverridesGlobal
+            ))
+        );
+    }
+
     [HttpGet]
     public async Task<IActionResult> List(string slug, CancellationToken ct)
     {

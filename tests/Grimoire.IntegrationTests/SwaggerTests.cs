@@ -1,0 +1,26 @@
+using System.Net;
+using System.Text.Json.Nodes;
+
+namespace Grimoire.IntegrationTests;
+
+public class SwaggerTests(GrimoireWebApplicationFactory factory)
+    : IClassFixture<GrimoireWebApplicationFactory>
+{
+    [Theory]
+    [InlineData("/management/global/configurations")]
+    [InlineData("/management/global/configurations/{environmentSlug}/{key}")]
+    [InlineData("/management/global/secrets")]
+    [InlineData("/management/global/secrets/{name}/values")]
+    [InlineData("/management/global/secrets/{name}/versions/{environmentSlug}")]
+    [InlineData("/management/global/environments")]
+    [InlineData("/management/applications/{slug}/configurations/effective")]
+    [InlineData("/management/applications/{slug}/secrets/effective")]
+    public async Task ManagementDocument_IncludesGlobalRoutes(string path)
+    {
+        var response = await factory.CreateClient().GetAsync("/swagger/management/swagger.json");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var doc = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
+        Assert.NotNull(doc["paths"]![path]);
+    }
+}

@@ -1,6 +1,7 @@
 using Grimoire.Api.DTOs.Consumer;
 using Grimoire.Api.Middleware;
 using Grimoire.Core.Entities;
+using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,8 +11,8 @@ namespace Grimoire.Api.Controllers.Consumer;
 [Route("consumer/configurations")]
 [Tags("Consumer - Configurations")]
 public class ConsumerConfigurationsController(
-    IConfigurationRepository configRepo,
-    IEnvironmentRepository envRepo
+    IEnvironmentRepository envRepo,
+    IEffectiveConfigurationService effective
 ) : ControllerBase
 {
     [HttpGet]
@@ -25,7 +26,7 @@ public class ConsumerConfigurationsController(
         if (env is null)
             return NotFound(Problem("Environment not found.", statusCode: 404));
 
-        var entries = await configRepo.GetByEnvironmentAsync(app.Id, env.Id, ct);
+        var entries = await effective.GetConfigurationAsync(app, env, ct);
         var items = entries
             .Select(e => new ConfigurationItem(e.Key, e.Value, environment))
             .ToList();
@@ -47,7 +48,7 @@ public class ConsumerConfigurationsController(
         if (env is null)
             return NotFound(Problem("Environment not found.", statusCode: 404));
 
-        var entry = await configRepo.GetByKeyAsync(app.Id, env.Id, key, ct);
+        var entry = await effective.GetConfigurationValueAsync(app, env, key, ct);
         if (entry is null)
             return NotFound(Problem("Configuration key not found.", statusCode: 404));
 

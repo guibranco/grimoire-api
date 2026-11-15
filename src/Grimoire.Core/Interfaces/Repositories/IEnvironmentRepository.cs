@@ -13,6 +13,9 @@ public interface IEnvironmentRepository
         string slug,
         CancellationToken ct = default
     );
+
+    /// <summary>All environments belonging to non-deleted applications.</summary>
+    Task<List<AppEnvironment>> GetAllForActiveApplicationsAsync(CancellationToken ct = default);
     Task AddAsync(AppEnvironment environment, CancellationToken ct = default);
     Task DeleteAsync(AppEnvironment environment, CancellationToken ct = default);
 }
