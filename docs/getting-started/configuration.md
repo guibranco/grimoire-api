@@ -77,18 +77,18 @@ Log files are written to `logs/grimoire-YYYYMMDD.log` with daily rolling. Add `-
 
 ### LogStream (centralised logging)
 
-Logs can also be shipped to a [logstream-server](https://github.com/guibranco/logstream-server). Shipping is enabled only when `Server`, `ApiKey` and `ApiToken` are all set; otherwise nothing changes.
+Logs can also be shipped to a [logstream-server](https://github.com/guibranco/logstream-server), through the [`Serilog.Sinks.LogStream`](https://www.nuget.org/packages/Serilog.Sinks.LogStream) sink. Shipping is enabled only when `Server`, `ApiKey` and `ApiToken` are all set; otherwise nothing changes.
 
 | Setting | Default | Description |
 | :------ | :------ | :---------- |
 | `LogStream:Enabled` | `true` | Kill switch — `false` stops all LogStream traffic (e.g. while the server is down) |
-| `LogStream:Server` | — | Base URL of the logstream-server (`/api/logs` is appended) |
+| `LogStream:Server` | — | Base URL of the logstream-server (`/api/logs` is appended; a URL already ending in it is accepted too) |
 | `LogStream:ApiKey` | — | The client's app_key, sent as `X-Api-Key` |
 | `LogStream:ApiToken` | — | The client's token, sent as `X-Api-Token` |
 | `LogStream:AppId` | running version | Stored as `app_id` |
 | `LogStream:MinimumLevel` | `Information` | Lowest level shipped (console/file logs are unaffected) |
 
-Every Serilog event is sent in background batches (up to 100 events every 2 s) with its rendered message, message template, source context as `category`, properties as `context`, and the request's W3C trace id as `trace_id`, so all entries of one request can be found together. A slow or unreachable LogStream server never blocks requests: transient failures are retried with backoff for up to 5 minutes, then dropped.
+Every Serilog event is sent in background batches (up to 100 events every 2 s) with its rendered message, message template, source context as `category`, properties as `context`, the exception (type, message, stack trace, inner exceptions) in `context.exception`, and the request's W3C trace id (32 hex characters) as `trace_id`, so all entries of one request can be found together. A slow or unreachable LogStream server never blocks requests: at most 10,000 events wait in memory, transient failures (network errors, timeouts, HTTP 408, 429 and 5xx) are retried with backoff for up to 5 minutes, then dropped, and other rejections are dropped at once. The sink reports its own problems through Serilog's `SelfLog`.
 
 ```bash
 LogStream__Server=https://logs.example.com

@@ -35,15 +35,18 @@ public sealed class LogStreamOptions
         && !string.IsNullOrWhiteSpace(ApiKey)
         && !string.IsNullOrWhiteSpace(ApiToken);
 
-    /// <summary>The ingest endpoint, accepting a <see cref="Server"/> with or without the <c>/api/logs</c> path.</summary>
-    public Uri IngestUri
+    /// <summary>
+    /// The server's base address, accepting a <see cref="Server"/> with or without the
+    /// <c>/api/logs</c> path (the sink appends it).
+    /// </summary>
+    public Uri ServerUri
     {
         get
         {
             var server = (Server ?? string.Empty).Trim().TrimEnd('/');
-            if (!server.EndsWith("/api/logs", StringComparison.OrdinalIgnoreCase))
-                server += "/api/logs";
-            return new Uri(server, UriKind.Absolute);
+            if (server.EndsWith("/api/logs", StringComparison.OrdinalIgnoreCase))
+                server = server[..^"/api/logs".Length];
+            return new Uri(server + "/", UriKind.Absolute);
         }
     }
 }
