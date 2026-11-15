@@ -124,6 +124,18 @@ public class ValidatorTests
     }
 
     [Fact]
+    public void SetSecretValuesRequest_ValidatesEachItem()
+    {
+        var result = new SetSecretValuesRequestValidator().Validate([
+            new SetSecretValueRequest("local", "ok"),
+            new SetSecretValueRequest("local", ""),
+        ]);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == "x[1].Value");
+    }
+
+    [Fact]
     public void CreateConfigurationRequest_EmptyKey_Fails() =>
         AssertInvalidFor(
             new CreateConfigurationRequestValidator(),

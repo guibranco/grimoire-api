@@ -164,4 +164,50 @@ public class SecretsTests(GrimoireWebApplicationFactory factory)
         );
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    public static TheoryData<object> InvalidSecretValues =>
+        new()
+        {
+            new
+            {
+                environmentSlug = "",
+                value = "x",
+                isEnabled = true,
+            },
+            new
+            {
+                environmentSlug = "local",
+                value = "",
+                isEnabled = true,
+            },
+            new
+            {
+                environmentSlug = "local",
+                value = "x",
+                isEnabled = true,
+                notBefore = DateTime.UtcNow.AddDays(2),
+                expiresAt = DateTime.UtcNow.AddDays(1),
+            },
+        };
+
+    [Theory]
+    [MemberData(nameof(InvalidSecretValues))]
+    public async Task SetValues_InvalidItem_Returns400_AndStoresNothing(object item)
+    {
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
+        var name = TestHelpers.UniqueName("invalid");
+        await Client.PostAsJsonAsync($"/management/applications/{slug}/secrets", new { name });
+
+        var response = await Client.PostAsJsonAsync(
+            $"/management/applications/{slug}/secrets/{name}/values",
+            new[] { item }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var versions = await Client.GetAsync(
+            $"/management/applications/{slug}/secrets/{name}/versions/local"
+        );
+        var arr = JsonNode.Parse(await versions.Content.ReadAsStringAsync())!.AsArray();
+        Assert.Empty(arr);
+    }
 }
