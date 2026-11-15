@@ -115,6 +115,21 @@ All **consumer** endpoints require an `X-Api-Key` header with a valid applicatio
 | `POST` | `/management/applications/{slug}/configurations` | Create configuration |
 | `PUT` | `/management/applications/{slug}/configurations/{env}/{key}` | Update configuration |
 | `DELETE` | `/management/applications/{slug}/configurations/{env}/{key}` | Delete configuration |
+| `GET` | `/management/applications/{slug}/configurations/effective?environment={env}` | Effective configuration (app + inherited globals) |
+| `GET` | `/management/applications/{slug}/secrets/effective` | Effective secrets (metadata only) |
+| `GET` | `/management/global/configurations` | 🌐 List global configurations (`?environment=` filter) |
+| `POST` | `/management/global/configurations` | 🌐 Create global configuration (`environmentSlug` `*` or a slug) |
+| `PUT` | `/management/global/configurations/{env}/{key}` | 🌐 Update global configuration |
+| `DELETE` | `/management/global/configurations/{env}/{key}` | 🌐 Delete global configuration |
+| `GET` | `/management/global/secrets` | 🌐 List global secrets |
+| `POST` | `/management/global/secrets` | 🌐 Create global secret |
+| `GET` | `/management/global/secrets/{name}` | 🌐 Get global secret metadata |
+| `POST` | `/management/global/secrets/{name}/values` | 🌐 Set global secret value(s) |
+| `GET` | `/management/global/secrets/{name}/versions/{env}` | 🌐 List global secret versions |
+| `DELETE` | `/management/global/secrets/{name}` | 🌐 Delete global secret |
+| `GET` | `/management/global/environments` | 🌐 Environment slugs in use across applications |
+
+Global values apply to every application with `inheritGlobals: true` (the default). Precedence, highest first: the application's value, a global for the environment slug, a global for `*`. See the [data model docs](docs/architecture/data-model.md#global-values-and-precedence).
 
 ### 🔌 Consumer API
 

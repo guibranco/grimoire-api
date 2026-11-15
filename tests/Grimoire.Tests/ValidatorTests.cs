@@ -152,4 +152,81 @@ public class ValidatorTests
             new UpdateConfigurationRequestValidator(),
             new UpdateConfigurationRequest("new-value")
         );
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("*")]
+    [InlineData("production")]
+    [InlineData("eu-west-1")]
+    public void CreateGlobalConfigurationRequest_ValidEnvironmentSlug_Passes(string? slug) =>
+        AssertValid(
+            new CreateGlobalConfigurationRequestValidator(),
+            new CreateGlobalConfigurationRequest("LogStream:Url", "https://x", slug)
+        );
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Production")]
+    [InlineData("prod env")]
+    [InlineData("-prod")]
+    [InlineData("prod--x")]
+    [InlineData("**")]
+    public void CreateGlobalConfigurationRequest_InvalidEnvironmentSlug_Fails(string slug) =>
+        AssertInvalidFor(
+            new CreateGlobalConfigurationRequestValidator(),
+            new CreateGlobalConfigurationRequest("Key", "v", slug),
+            "EnvironmentSlug"
+        );
+
+    [Fact]
+    public void CreateGlobalConfigurationRequest_EmptyKey_Fails() =>
+        AssertInvalidFor(
+            new CreateGlobalConfigurationRequestValidator(),
+            new CreateGlobalConfigurationRequest("", "v"),
+            "Key"
+        );
+
+    [Fact]
+    public void CreateGlobalConfigurationRequest_KeyTooLong_Fails() =>
+        AssertInvalidFor(
+            new CreateGlobalConfigurationRequestValidator(),
+            new CreateGlobalConfigurationRequest(new string('k', 501), "v"),
+            "Key"
+        );
+
+    [Fact]
+    public void CreateGlobalSecretRequest_EmptyName_Fails() =>
+        AssertInvalidFor(
+            new CreateGlobalSecretRequestValidator(),
+            new CreateGlobalSecretRequest("", null),
+            "Name"
+        );
+
+    [Fact]
+    public void SetGlobalSecretValueRequest_StarEnvironment_Passes() =>
+        AssertValid(
+            new SetGlobalSecretValueRequestValidator(),
+            new SetGlobalSecretValueRequest("*", "value")
+        );
+
+    [Fact]
+    public void SetGlobalSecretValueRequest_InvalidEnvironment_Fails() =>
+        AssertInvalidFor(
+            new SetGlobalSecretValueRequestValidator(),
+            new SetGlobalSecretValueRequest("Not A Slug", "value"),
+            "EnvironmentSlug"
+        );
+
+    [Fact]
+    public void SetGlobalSecretValueRequest_ExpiresBeforeNotBefore_Fails() =>
+        AssertInvalidFor(
+            new SetGlobalSecretValueRequestValidator(),
+            new SetGlobalSecretValueRequest(
+                "*",
+                "value",
+                ExpiresAt: DateTimeOffset.UtcNow,
+                NotBefore: DateTimeOffset.UtcNow.AddDays(1)
+            ),
+            "ExpiresAt"
+        );
 }

@@ -69,6 +69,72 @@ public static class TestHelpers
         setValue.EnsureSuccessStatusCode();
     }
 
+    public static async Task CreateConfigurationAsync(
+        HttpClient mgmtClient,
+        string appSlug,
+        string envSlug,
+        string key,
+        string value
+    )
+    {
+        var response = await mgmtClient.PostAsJsonAsync(
+            $"/management/applications/{appSlug}/configurations",
+            new
+            {
+                environmentSlug = envSlug,
+                key,
+                value,
+            }
+        );
+        response.EnsureSuccessStatusCode();
+    }
+
+    public static async Task CreateGlobalConfigurationAsync(
+        HttpClient mgmtClient,
+        string key,
+        string value,
+        string? environmentSlug = null
+    )
+    {
+        var response = await mgmtClient.PostAsJsonAsync(
+            "/management/global/configurations",
+            new
+            {
+                environmentSlug,
+                key,
+                value,
+            }
+        );
+        response.EnsureSuccessStatusCode();
+    }
+
+    public static async Task CreateGlobalSecretAsync(
+        HttpClient mgmtClient,
+        string name,
+        params (string environmentSlug, string value, bool isEnabled)[] values
+    )
+    {
+        var create = await mgmtClient.PostAsJsonAsync(
+            "/management/global/secrets",
+            new { name, description = "global test" }
+        );
+        create.EnsureSuccessStatusCode();
+
+        if (values.Length == 0)
+            return;
+
+        var setValues = await mgmtClient.PostAsJsonAsync(
+            $"/management/global/secrets/{name}/values",
+            values.Select(v => new
+            {
+                v.environmentSlug,
+                v.value,
+                v.isEnabled,
+            })
+        );
+        setValues.EnsureSuccessStatusCode();
+    }
+
     public static async Task<T> ReadAsAsync<T>(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<T>(JsonOpts))!;
 }

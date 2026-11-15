@@ -15,7 +15,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.26");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.15");
 
             modelBuilder.Entity("Grimoire.Core.Entities.AppEnvironment", b =>
                 {
@@ -67,6 +67,9 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("InheritGlobals")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
@@ -134,6 +137,113 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("ConfigurationEntries");
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.GlobalConfigurationEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EnvironmentSlug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvironmentSlug", "Key")
+                        .IsUnique();
+
+                    b.ToTable("GlobalConfigurationEntries");
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.GlobalSecret", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("GlobalSecrets");
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.GlobalSecretVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EncryptedValue")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EnvironmentSlug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("GlobalSecretId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("NotBefore")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GlobalSecretId", "EnvironmentSlug", "Version");
+
+                    b.ToTable("GlobalSecretVersions");
                 });
 
             modelBuilder.Entity("Grimoire.Core.Entities.Secret", b =>
@@ -238,6 +348,17 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Navigation("Environment");
                 });
 
+            modelBuilder.Entity("Grimoire.Core.Entities.GlobalSecretVersion", b =>
+                {
+                    b.HasOne("Grimoire.Core.Entities.GlobalSecret", "GlobalSecret")
+                        .WithMany("Versions")
+                        .HasForeignKey("GlobalSecretId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GlobalSecret");
+                });
+
             modelBuilder.Entity("Grimoire.Core.Entities.Secret", b =>
                 {
                     b.HasOne("Grimoire.Core.Entities.Application", "Application")
@@ -282,6 +403,11 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Navigation("Environments");
 
                     b.Navigation("Secrets");
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.GlobalSecret", b =>
+                {
+                    b.Navigation("Versions");
                 });
 
             modelBuilder.Entity("Grimoire.Core.Entities.Secret", b =>

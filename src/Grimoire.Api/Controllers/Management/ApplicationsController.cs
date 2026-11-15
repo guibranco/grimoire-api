@@ -20,16 +20,7 @@ public class ApplicationsController(
     public async Task<IActionResult> List(CancellationToken ct)
     {
         var apps = await appRepo.GetAllAsync(ct);
-        return Ok(
-            apps.Select(a => new ApplicationResponse(
-                a.Id,
-                a.Name,
-                a.Slug,
-                a.Description,
-                a.CreatedAt,
-                a.UpdatedAt
-            ))
-        );
+        return Ok(apps.Select(ToResponse));
     }
 
     [HttpPost]
@@ -49,6 +40,7 @@ public class ApplicationsController(
             Name = req.Name,
             Slug = slug,
             Description = req.Description,
+            InheritGlobals = req.InheritGlobals ?? true,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
@@ -77,7 +69,8 @@ public class ApplicationsController(
                 app.Slug,
                 app.Description,
                 plainKey,
-                app.CreatedAt
+                app.CreatedAt,
+                app.InheritGlobals
             )
         );
     }
@@ -88,16 +81,7 @@ public class ApplicationsController(
         var app = await appRepo.GetBySlugAsync(slug, ct);
         if (app is null)
             return NotFound(ProblemDetailsFor("Application not found."));
-        return Ok(
-            new ApplicationResponse(
-                app.Id,
-                app.Name,
-                app.Slug,
-                app.Description,
-                app.CreatedAt,
-                app.UpdatedAt
-            )
-        );
+        return Ok(ToResponse(app));
     }
 
     [HttpPut("{slug}")]
@@ -113,19 +97,12 @@ public class ApplicationsController(
 
         app.Name = req.Name;
         app.Description = req.Description;
+        if (req.InheritGlobals is { } inheritGlobals)
+            app.InheritGlobals = inheritGlobals;
         app.UpdatedAt = DateTimeOffset.UtcNow;
         await appRepo.UpdateAsync(app, ct);
 
-        return Ok(
-            new ApplicationResponse(
-                app.Id,
-                app.Name,
-                app.Slug,
-                app.Description,
-                app.CreatedAt,
-                app.UpdatedAt
-            )
-        );
+        return Ok(ToResponse(app));
     }
 
     [HttpDelete("{slug}")]
@@ -156,6 +133,17 @@ public class ApplicationsController(
 
         return Ok(new RotateKeyResponse(plainKey));
     }
+
+    private static ApplicationResponse ToResponse(Application app) =>
+        new(
+            app.Id,
+            app.Name,
+            app.Slug,
+            app.Description,
+            app.InheritGlobals,
+            app.CreatedAt,
+            app.UpdatedAt
+        );
 
     private static string GenerateApiKey()
     {

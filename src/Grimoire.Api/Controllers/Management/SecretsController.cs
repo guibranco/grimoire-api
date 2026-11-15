@@ -13,9 +13,32 @@ public class SecretsController(
     IApplicationRepository appRepo,
     IEnvironmentRepository envRepo,
     ISecretRepository secretRepo,
-    IEncryptionService encryption
+    IEncryptionService encryption,
+    IEffectiveConfigurationService effective
 ) : ControllerBase
 {
+    /// <summary>
+    /// The secrets the application can read, with inherited globals and each one's origin.
+    /// Metadata only, never values.
+    /// </summary>
+    [HttpGet("effective")]
+    public async Task<IActionResult> Effective(string slug, CancellationToken ct)
+    {
+        var app = await appRepo.GetBySlugAsync(slug, ct);
+        if (app is null)
+            return NotFound(Problem("Application not found.", statusCode: 404));
+
+        var secrets = await effective.GetSecretsAsync(app, ct);
+        return Ok(
+            secrets.Select(s => new EffectiveSecretResponse(
+                s.Name,
+                s.Description,
+                ValueSourceNames.ToName(s.Source),
+                s.OverridesGlobal
+            ))
+        );
+    }
+
     [HttpGet]
     public async Task<IActionResult> List(string slug, CancellationToken ct)
     {

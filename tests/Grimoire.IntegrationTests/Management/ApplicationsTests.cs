@@ -128,4 +128,56 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
         var response = await Client.PostAsJsonAsync("/management/applications", new { name });
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
+
+    [Fact]
+    public async Task CreateApplication_InheritGlobals_DefaultsToTrue()
+    {
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
+
+        var json = JsonNode.Parse(await Client.GetStringAsync($"/management/applications/{slug}"))!;
+
+        Assert.True(json["inheritGlobals"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public async Task CreateApplication_WithInheritGlobalsFalse_IsPersisted()
+    {
+        var response = await Client.PostAsJsonAsync(
+            "/management/applications",
+            new { name = TestHelpers.UniqueName("no-inherit"), inheritGlobals = false }
+        );
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
+        Assert.False(created["inheritGlobals"]!.GetValue<bool>());
+
+        var slug = created["slug"]!.GetValue<string>();
+        var json = JsonNode.Parse(await Client.GetStringAsync($"/management/applications/{slug}"))!;
+        Assert.False(json["inheritGlobals"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public async Task UpdateApplication_InheritGlobals_TogglesAndIsKeptWhenOmitted()
+    {
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
+
+        var off = await Client.PutAsJsonAsync(
+            $"/management/applications/{slug}",
+            new { name = slug, inheritGlobals = false }
+        );
+        Assert.False(
+            JsonNode.Parse(await off.Content.ReadAsStringAsync())![
+                "inheritGlobals"
+            ]!.GetValue<bool>()
+        );
+
+        var omitted = await Client.PutAsJsonAsync(
+            $"/management/applications/{slug}",
+            new { name = slug, description = "still off" }
+        );
+        Assert.False(
+            JsonNode.Parse(await omitted.Content.ReadAsStringAsync())![
+                "inheritGlobals"
+            ]!.GetValue<bool>()
+        );
+    }
 }

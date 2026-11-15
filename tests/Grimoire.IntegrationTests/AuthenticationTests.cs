@@ -31,6 +31,51 @@ public class AuthenticationTests(GrimoireWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    public static TheoryData<string, string> GlobalManagementRoutes =>
+        new()
+        {
+            { "GET", "/management/global/configurations" },
+            { "POST", "/management/global/configurations" },
+            { "PUT", "/management/global/configurations/*/Some:Key" },
+            { "DELETE", "/management/global/configurations/*/Some:Key" },
+            { "GET", "/management/global/secrets" },
+            { "POST", "/management/global/secrets" },
+            { "GET", "/management/global/secrets/any" },
+            { "POST", "/management/global/secrets/any/values" },
+            { "GET", "/management/global/secrets/any/versions/*" },
+            { "DELETE", "/management/global/secrets/any" },
+            { "GET", "/management/global/environments" },
+            { "GET", "/management/applications/any/configurations/effective?environment=local" },
+            { "GET", "/management/applications/any/secrets/effective" },
+        };
+
+    [Theory]
+    [MemberData(nameof(GlobalManagementRoutes))]
+    public async Task GlobalManagementRoutes_WithoutAdminKey_Return401(string method, string url)
+    {
+        var response = await factory
+            .CreateClient()
+            .SendAsync(new HttpRequestMessage(new HttpMethod(method), url));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [MemberData(nameof(GlobalManagementRoutes))]
+    public async Task GlobalManagementRoutes_WithConsumerApiKey_Return401(string method, string url)
+    {
+        var (_, apiKey) = await TestHelpers.CreateApplicationAsync(
+            factory.CreateManagementClient()
+        );
+        var consumer = factory.CreateConsumerClient(apiKey);
+        consumer.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+
+        var response = await consumer.SendAsync(
+            new HttpRequestMessage(new HttpMethod(method), url)
+        );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     [Fact]
     public async Task ConsumerApi_WithoutApiKeyHeader_Returns401()
     {

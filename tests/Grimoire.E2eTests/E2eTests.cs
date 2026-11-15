@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using Grimoire.Consumer;
+using Microsoft.Extensions.Configuration;
 
 namespace Grimoire.E2eTests;
 
@@ -94,6 +96,27 @@ public class E2eTests(GrimoireApiFixture fixture) : IClassFixture<GrimoireApiFix
         var cfgJson = JsonNode.Parse(await cfgResp.Content.ReadAsStringAsync())!;
         Assert.Equal("true", cfgJson["value"]!.GetValue<string>());
         Assert.Equal("local", cfgJson["label"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task GlobalConfiguration_IsReadThroughConsumerConfigurationProvider()
+    {
+        var mgmt = fixture.CreateManagementClient();
+        var key = $"Shared:{UniqueName("LogStream")}";
+
+        var createGlobal = await mgmt.PostAsJsonAsync(
+            "/management/global/configurations",
+            new { key, value = "https://logs.example" }
+        );
+        Assert.Equal(HttpStatusCode.Created, createGlobal.StatusCode);
+
+        var (_, apiKey) = await CreateApplicationAsync(mgmt);
+
+        var configuration = new ConfigurationBuilder()
+            .AddGrimoire(fixture.BaseUrl, apiKey, "local")
+            .Build();
+
+        Assert.Equal("https://logs.example", configuration[key]);
     }
 
     [Fact]

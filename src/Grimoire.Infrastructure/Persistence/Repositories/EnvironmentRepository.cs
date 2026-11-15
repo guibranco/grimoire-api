@@ -21,6 +21,11 @@ public class EnvironmentRepository(GrimoireDbContext db) : IEnvironmentRepositor
             ct
         );
 
+    // Start from Applications so its soft-delete query filter applies.
+    public Task<List<AppEnvironment>> GetAllForActiveApplicationsAsync(
+        CancellationToken ct = default
+    ) => db.Applications.SelectMany(a => a.Environments).ToListAsync(ct);
+
     public async Task AddAsync(AppEnvironment environment, CancellationToken ct = default)
     {
         db.Environments.Add(environment);

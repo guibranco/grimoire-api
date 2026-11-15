@@ -1,6 +1,132 @@
-@Grimoire.Api_HostAddress = http://localhost:5078
+@HostAddress = http://localhost:5078
+@AdminKey = change-me-admin-key
+@AppSlug = payments-api
+@AppApiKey = grm_paste_the_plain_api_key_here
 
-GET {{Grimoire.Api_HostAddress}}/weatherforecast/
+### Health
+GET {{HostAddress}}/health
 Accept: application/json
 
-###
+### Create an application (inheritGlobals defaults to true)
+POST {{HostAddress}}/management/applications
+Authorization: Bearer {{AdminKey}}
+Content-Type: application/json
+
+{
+  "name": "{{AppSlug}}",
+  "description": "Payment processing service",
+  "inheritGlobals": true
+}
+
+### Opt an application out of global values
+PUT {{HostAddress}}/management/applications/{{AppSlug}}
+Authorization: Bearer {{AdminKey}}
+Content-Type: application/json
+
+{
+  "name": "{{AppSlug}}",
+  "inheritGlobals": false
+}
+
+### ---------------- Global configurations ----------------
+
+### List global configurations (optional ?environment= filter, exact slug or *)
+GET {{HostAddress}}/management/global/configurations
+Authorization: Bearer {{AdminKey}}
+
+### Create a global configuration for all environments ("*" when environmentSlug is omitted)
+POST {{HostAddress}}/management/global/configurations
+Authorization: Bearer {{AdminKey}}
+Content-Type: application/json
+
+{
+  "key": "LogStream:Url",
+  "value": "https://logs.example.com",
+  "description": "Shared LogStream endpoint"
+}
+
+### Create a global configuration for production only (beats "*" in production)
+POST {{HostAddress}}/management/global/configurations
+Authorization: Bearer {{AdminKey}}
+Content-Type: application/json
+
+{
+  "environmentSlug": "production",
+  "key": "LogStream:Url",
+  "value": "https://logs-prod.example.com"
+}
+
+### Update a global configuration
+PUT {{HostAddress}}/management/global/configurations/*/LogStream:Url
+Authorization: Bearer {{AdminKey}}
+Content-Type: application/json
+
+{
+  "value": "https://logs-2.example.com"
+}
+
+### Delete a global configuration
+DELETE {{HostAddress}}/management/global/configurations/production/LogStream:Url
+Authorization: Bearer {{AdminKey}}
+
+### Environment slugs in use across applications (for picking a target)
+GET {{HostAddress}}/management/global/environments
+Authorization: Bearer {{AdminKey}}
+
+### ---------------- Global secrets ----------------
+
+### Create a global secret
+POST {{HostAddress}}/management/global/secrets
+Authorization: Bearer {{AdminKey}}
+Content-Type: application/json
+
+{
+  "name": "amqp-uri",
+  "description": "CloudAMQP connection string"
+}
+
+### Set global secret values ("*" plus a production override)
+POST {{HostAddress}}/management/global/secrets/amqp-uri/values
+Authorization: Bearer {{AdminKey}}
+Content-Type: application/json
+
+[
+  { "environmentSlug": "*", "value": "amqps://user:pass@shared.example/vhost", "isEnabled": true },
+  { "environmentSlug": "production", "value": "amqps://user:pass@prod.example/vhost", "isEnabled": true }
+]
+
+### List global secrets (metadata only)
+GET {{HostAddress}}/management/global/secrets
+Authorization: Bearer {{AdminKey}}
+
+### Global secret versions for one environment slug (no values)
+GET {{HostAddress}}/management/global/secrets/amqp-uri/versions/*
+Authorization: Bearer {{AdminKey}}
+
+### Delete a global secret
+DELETE {{HostAddress}}/management/global/secrets/amqp-uri
+Authorization: Bearer {{AdminKey}}
+
+### ---------------- Effective values for an application ----------------
+
+### Effective configuration (application + inherited globals, with source)
+GET {{HostAddress}}/management/applications/{{AppSlug}}/configurations/effective?environment=local
+Authorization: Bearer {{AdminKey}}
+
+### Effective secrets (metadata only, with source)
+GET {{HostAddress}}/management/applications/{{AppSlug}}/secrets/effective
+Authorization: Bearer {{AdminKey}}
+
+### ---------------- Consumer API (unchanged contract, merged results) ----------------
+
+### All configuration for an environment
+GET {{HostAddress}}/consumer/configurations?environment=local
+X-Api-Key: {{AppApiKey}}
+
+### One configuration key (falls back to globals)
+GET {{HostAddress}}/consumer/configurations/LogStream:Url?environment=local
+X-Api-Key: {{AppApiKey}}
+
+### A secret (falls back to a global secret only if the app has none with that name)
+GET {{HostAddress}}/consumer/secrets/amqp-uri?environment=local
+X-Api-Key: {{AppApiKey}}
