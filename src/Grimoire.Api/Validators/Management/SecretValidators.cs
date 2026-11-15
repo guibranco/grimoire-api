@@ -23,3 +23,15 @@ public class SetSecretValueRequestValidator : AbstractValidator<SetSecretValueRe
             .When(x => x.ExpiresAt.HasValue && x.NotBefore.HasValue);
     }
 }
+
+/// <summary>
+/// The request body is a list, and auto-validation only resolves a validator for the root
+/// type, so the per-item validator has to be applied explicitly.
+/// </summary>
+public class SetSecretValuesRequestValidator : AbstractValidator<List<SetSecretValueRequest>>
+{
+    public SetSecretValuesRequestValidator()
+    {
+        RuleForEach(x => x).SetValidator(new SetSecretValueRequestValidator());
+    }
+}

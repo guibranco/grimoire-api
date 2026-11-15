@@ -55,6 +55,7 @@ Tests for all FluentValidation request validators using `AbstractValidator<T>.Va
 | `CreateEnvironmentRequestValidator` | Valid input · empty name |
 | `CreateSecretRequestValidator` | Empty name |
 | `SetSecretValueRequestValidator` | Valid input · empty env slug · empty value · `ExpiresAt` before `NotBefore` |
+| `SetSecretValuesRequestValidator` | Validates every item of the list body |
 | `CreateConfigurationRequestValidator` | Valid input · empty key · empty env slug |
 | `UpdateConfigurationRequestValidator` | Valid input |
 
