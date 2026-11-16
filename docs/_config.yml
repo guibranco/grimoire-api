@@ -38,6 +38,7 @@ search:
 
 # ── Appearance ───────────────────────────────────────────────────────────────
 color_scheme: dark
+favicon_ico: "/favicon.ico"
 
 # ── GitHub integration ───────────────────────────────────────────────────────
 gh_edit_link: true
