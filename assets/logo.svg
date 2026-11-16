@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Grimoire</title>
+  <!-- tile -->
+  <rect width="512" height="512" fill="#0F0F11"/>
+  <g transform="translate(-34 16)">
+  <!-- page block peeking out on the right/bottom -->
+  <rect x="168" y="112" width="220" height="320" fill="#E4E4E7"/>
+  <rect x="168" y="400" width="220" height="6" fill="#A1A1AA"/>
+  <rect x="168" y="414" width="220" height="6" fill="#A1A1AA"/>
+  <!-- cover -->
+  <rect x="124" y="96" width="248" height="320" fill="#F59E0B"/>
+  <!-- spine -->
+  <rect x="124" y="96" width="36" height="320" fill="#B45309"/>
+  <rect x="124" y="140" width="36" height="8" fill="#0F0F11" opacity="0.35"/>
+  <rect x="124" y="364" width="36" height="8" fill="#0F0F11" opacity="0.35"/>
+  <!-- inset frame -->
+  <rect x="184" y="120" width="164" height="272" fill="none" stroke="#0F0F11" stroke-width="6"/>
+  <!-- metal corner caps -->
+  <path d="M372 96 L372 136 L332 96 Z" fill="#0F0F11"/>
+  <path d="M372 416 L372 376 L332 416 Z" fill="#0F0F11"/>
+  <!-- keyhole -->
+  <circle cx="266" cy="226" r="34" fill="#0F0F11"/>
+  <path d="M252 244 L280 244 L294 324 L238 324 Z" fill="#0F0F11"/>
+  <!-- config spark -->
+  <path d="M410 46 L420 82 L456 92 L420 102 L410 138 L400 102 L364 92 L400 82 Z" fill="#38BDF8"/>
+</g>
+</svg>
