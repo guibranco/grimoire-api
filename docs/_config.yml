@@ -49,7 +49,7 @@ gh_edit_view_mode: "edit"
 
 # ── Footer ───────────────────────────────────────────────────────────────────
 footer_content: >-
-  Copyright &copy; 2025
+  Copyright &copy; 2026
   <a href="https://github.com/guibranco">Guilherme Branco Stracini</a>.
   Distributed by an
   <a href="https://github.com/guibranco/grimoire-api/blob/main/LICENSE">MIT license.</a>
