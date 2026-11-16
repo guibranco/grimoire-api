@@ -27,6 +27,7 @@
 | 🌍 **Multi-environment** | Each application can have unlimited named environments (e.g. `local`, `staging`, `production`) |
 | 🧩 **.NET client library** | Drop-in `IConfigurationSource` — pull secrets and flags directly into `IConfiguration` |
 | 🐳 **Docker-first** | Single `docker compose up` to run the entire stack |
+| 📡 **Centralised logging** | Serilog to console and rolling files, plus optional shipping to [LogStream](https://github.com/guibranco/logstream-server) |
 | 📊 **Swagger UI** | Separate Management and Consumer API docs at `/swagger` |
 
 ---
@@ -211,6 +212,7 @@ Settings can be provided via `appsettings.json`, environment variables (use `__`
 | `Encryption:MasterKey` | ✅ | *(none)* | Master key for HKDF derivation (≥ 32 chars) |
 | `Cors:AllowedOrigins` | ➖ | `[]` | Allowed CORS origins |
 | `Serilog:MinimumLevel:Default` | ➖ | `Information` | Log level |
+| `LogStream:Server` / `ApiKey` / `ApiToken` | ➖ | *(none)* | Ship logs to a [LogStream](https://github.com/guibranco/logstream-server) server; disabled unless all three are set |
 
 > ⚠️ **Security note:** Never commit real values for `AdminApiKey` or `MasterKey`.  
 > Use environment variables, Docker secrets, or a secrets manager in production.
