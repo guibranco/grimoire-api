@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="Grimoire logo" width="160" />
+</p>
+
 # 🔮 Grimoire API
 
 > **Self-hosted Vault & Configuration Manager** — securely store secrets and feature flags, then consume them at runtime via a Key Vault-compatible REST API or the native .NET client library.
@@ -5,6 +9,7 @@
 [![Build & Test](https://github.com/guibranco/grimoire-api/actions/workflows/build.yml/badge.svg)](https://github.com/guibranco/grimoire-api/actions/workflows/build.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=guibranco_grimoire-api&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=guibranco_grimoire-api)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=guibranco_grimoire-api&metric=coverage)](https://sonarcloud.io/summary/new_code?id=guibranco_grimoire-api)
+[![NuGet](https://img.shields.io/nuget/v/Grimoire.Consumer?logo=nuget&label=Grimoire.Consumer)](https://www.nuget.org/packages/Grimoire.Consumer)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -52,7 +57,7 @@ grimoire-api/
 │   ├── Grimoire.Core            # Domain entities & repository interfaces
 │   ├── Grimoire.Infrastructure  # EF Core + SQLite, AES-GCM encryption, slug service
 │   ├── Grimoire.Api             # ASP.NET Core 10 — Management & Consumer REST APIs
-│   └── Grimoire.Consumer        # .NET client library (NuGet-ready)
+│   └── Grimoire.Consumer        # .NET client library (NuGet: Grimoire.Consumer)
 └── 🧪 tests/
     ├── Grimoire.Tests            # Unit tests (validators, slug service)
     ├── Grimoire.IntegrationTests # WebApplicationFactory integration tests

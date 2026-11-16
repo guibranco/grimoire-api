@@ -35,7 +35,13 @@ Both are in the `Grimoire.Consumer` namespace. The library has no dependencies o
 
 ## Adding the library
 
-Reference the project directly (until a NuGet package is published):
+Install the [`Grimoire.Consumer`](https://www.nuget.org/packages/Grimoire.Consumer) package from NuGet.org:
+
+```bash
+dotnet add package Grimoire.Consumer
+```
+
+Or reference the project directly when working inside this repository:
 
 ```xml
 <!-- In your app's .csproj -->
