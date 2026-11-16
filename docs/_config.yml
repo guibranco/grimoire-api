@@ -8,6 +8,17 @@ theme: just-the-docs
 url: https://guibranco.github.io
 baseurl: /grimoire-api
 
+# ── Layout & URLs ────────────────────────────────────────────────────────────
+# Every page uses the theme layout (sidebar, search, header) unless it sets its
+# own; the home page overrides it with `layout: home`. Pretty permalinks serve
+# pages at /section/page/, which is how all internal links are written.
+permalink: pretty
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
 # ── Navigation ──────────────────────────────────────────────────────────────
 nav_sort: order
 heading_anchors: true

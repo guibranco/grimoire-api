@@ -75,7 +75,7 @@ Self-hosted Vault & Configuration Manager built with ASP.NET Core 10 and SQLite.
 | Auth (consumer) | API key middleware + `IPasswordHasher<T>` |
 | Validation | FluentValidation 11 |
 | Mapping | Mapster 7 |
-| Logging | Serilog (console + rolling file) |
+| Logging | Serilog (console + rolling file) + [LogStream](https://github.com/guibranco/logstream-server) via [`Serilog.Sinks.LogStream`](https://www.nuget.org/packages/Serilog.Sinks.LogStream) |
 | API docs | Swashbuckle / Swagger UI (two docs: management + consumer) |
 | Container | Docker / Docker Compose |
 | CI/CD | GitHub Actions + SonarCloud |

@@ -98,7 +98,7 @@ Every HTTP request flows through:
 ```text
 Request
   │
-  ├─► Serilog request logging
+  ├─► Serilog request logging (console, file, LogStream)
   ├─► Exception handler (ProblemDetails)
   ├─► CORS
   ├─► AdminApiKeyMiddleware
