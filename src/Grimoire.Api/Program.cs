@@ -117,10 +117,15 @@ using (var scope = app.Services.CreateScope())
 app.UseExceptionHandler();
 app.UseSerilogRequestLogging();
 
+// Serves the Grimoire favicon and Swagger UI branding from wwwroot. Runs before
+// UseSwaggerUI so wwwroot/swagger/favicon-*.png replace the embedded Swagger icons.
+app.UseStaticFiles();
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.DocumentTitle = $"Grimoire API {AppVersion.Current}";
+    c.InjectStylesheet("grimoire.css");
     c.SwaggerEndpoint("/swagger/management/swagger.json", "Management API");
     c.SwaggerEndpoint("/swagger/consumer/swagger.json", "Consumer API");
 });

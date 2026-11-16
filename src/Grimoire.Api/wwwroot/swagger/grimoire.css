@@ -1,0 +1,31 @@
+/* Grimoire branding for Swagger UI: swaps the Swagger logo for the Grimoire mark. */
+.swagger-ui .topbar {
+  background-color: #0f0f11;
+  border-bottom: 2px solid #f59e0b;
+}
+
+.swagger-ui .topbar .topbar-wrapper .link svg {
+  display: none;
+}
+
+.swagger-ui .topbar .topbar-wrapper .link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.swagger-ui .topbar .topbar-wrapper .link::before {
+  content: "";
+  width: 40px;
+  height: 40px;
+  background: url("grimoire-logo.svg") no-repeat center / contain;
+}
+
+.swagger-ui .topbar .topbar-wrapper .link::after {
+  content: "Grimoire API";
+  color: #fafafa;
+  font-family: sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}

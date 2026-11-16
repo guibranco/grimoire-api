@@ -1,0 +1,6 @@
+{%- comment -%}
+  Overrides just-the-docs' title include to show the Grimoire mark beside the
+  site title (the theme's `logo:` option would replace the title entirely).
+{%- endcomment -%}
+<img src="{{ '/assets/images/logo-mark.svg' | relative_url }}" alt="" aria-hidden="true" width="32" height="32" style="margin-right: 0.5rem; flex-shrink: 0;">
+{{ site.title }}
