@@ -32,6 +32,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
         Assert.NotNull(json["plainApiKey"]?.GetValue<string>());
         Assert.StartsWith("grm_", json["plainApiKey"]!.GetValue<string>());
         Assert.NotNull(json["slug"]?.GetValue<string>());
+        Assert.True(response.Headers.CacheControl?.NoStore);
     }
 
     [Fact]
@@ -106,6 +107,7 @@ public class ApplicationsTests(GrimoireWebApplicationFactory factory)
         var newKey = json["plainApiKey"]!.GetValue<string>();
         Assert.NotNull(newKey);
         Assert.NotEqual(originalKey, newKey);
+        Assert.True(response.Headers.CacheControl?.NoStore);
     }
 
     [Fact]
