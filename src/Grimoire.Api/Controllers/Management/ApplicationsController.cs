@@ -24,6 +24,8 @@ public class ApplicationsController(
     }
 
     [HttpPost]
+    [ProducesResponseType<CreateApplicationResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create(
         [FromBody] CreateApplicationRequest req,
         CancellationToken ct
@@ -60,6 +62,7 @@ public class ApplicationsController(
         };
         await envRepo.AddAsync(localEnv, ct);
 
+        PreventCaching();
         return CreatedAtAction(
             nameof(GetBySlug),
             new { slug = app.Slug },
@@ -120,6 +123,8 @@ public class ApplicationsController(
     }
 
     [HttpPost("{slug}/rotate-key")]
+    [ProducesResponseType<RotateKeyResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RotateKey(string slug, CancellationToken ct)
     {
         var app = await appRepo.GetBySlugAsync(slug, ct);
@@ -131,7 +136,17 @@ public class ApplicationsController(
         app.UpdatedAt = DateTimeOffset.UtcNow;
         await appRepo.UpdateAsync(app, ct);
 
+        PreventCaching();
         return Ok(new RotateKeyResponse(plainKey));
+    }
+
+    /// <summary>
+    /// The plain API key is only returned once; make sure no proxy or browser cache keeps a copy of it.
+    /// </summary>
+    private void PreventCaching()
+    {
+        Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+        Response.Headers.Pragma = "no-cache";
     }
 
     private static ApplicationResponse ToResponse(Application app) =>

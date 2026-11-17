@@ -24,6 +24,7 @@ public record ApplicationResponse(
     DateTimeOffset UpdatedAt
 );
 
+/// <param name="PlainApiKey">The application API key in plain text. Returned only once; it is stored hashed.</param>
 public record CreateApplicationResponse(
     Guid Id,
     string Name,
@@ -34,4 +35,5 @@ public record CreateApplicationResponse(
     bool InheritGlobals
 );
 
+/// <param name="PlainApiKey">The new application API key in plain text. Returned only once; it is stored hashed.</param>
 public record RotateKeyResponse(string PlainApiKey);
