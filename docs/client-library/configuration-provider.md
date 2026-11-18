@@ -77,6 +77,25 @@ Grimoire keys map directly to the IConfiguration key hierarchy:
 
 ---
 
+## Arrays and JSON values
+
+Entries with the `array` or `json` [value type](../api-reference/management-api.md#value-types) are flattened the same way `appsettings.json` is, so they bind with the usual APIs:
+
+| Grimoire entry | Loaded as |
+| :------------- | :-------- |
+| `AllowedIps` (array) = `["10.0.0.1","10.0.0.2"]` | `AllowedIps:0` = `10.0.0.1`, `AllowedIps:1` = `10.0.0.2` |
+| `Smtp` (json) = `{"host":"mail","port":25}` | `Smtp:host` = `mail`, `Smtp:port` = `25` |
+
+```csharp
+string[] allowedIps = builder.Configuration.GetSection("AllowedIps").Get<string[]>() ?? [];
+
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
+```
+
+The parent key itself (`AllowedIps`) has no value once flattened, as with a JSON file. `string` and `multiline` values are never parsed, even if they look like JSON.
+
+---
+
 ## Priority
 
 `AddGrimoire()` adds the Grimoire source at the **end** of the configuration pipeline. This means:
@@ -99,8 +118,12 @@ var client = new GrimoireConfigurationClient(baseUrl, apiKey, environment);
 // Get a single key
 string? value = await client.GetAsync("Feature:DarkMode");
 
-// Get all keys as a dictionary
+// Get all keys as a dictionary (array and JSON values as raw JSON text)
 IReadOnlyDictionary<string, string> all = await client.GetAllAsync();
+
+// Deserialise an array or JSON value
+string[]? allowedIps = await client.GetAsync<string[]>("AllowedIps");
+SmtpOptions? smtp = await client.GetAsync<SmtpOptions>("Smtp");
 ```
 
 ---

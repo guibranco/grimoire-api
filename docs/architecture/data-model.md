@@ -119,7 +119,8 @@ A plain-text key-value pair for feature flags and non-secret settings.
 | `ApplicationId` | `Guid` | FK → Application |
 | `EnvironmentId` | `Guid` | FK → AppEnvironment |
 | `Key` | `string` | Configuration key (e.g. `Feature:DarkMode`, `MaxRetries`) |
-| `Value` | `string` | Plain text — not encrypted |
+| `Value` | `string` | Plain text — not encrypted. Minified JSON for `Array` and `Json` |
+| `ValueType` | `ConfigurationValueType` | `String` (default), `Multiline`, `Array` or `Json`; stored as text |
 | `Description` | `string?` | Optional |
 | `CreatedAt` | `DateTimeOffset` | — |
 | `UpdatedAt` | `DateTimeOffset` | — |
@@ -136,7 +137,8 @@ A configuration entry defined once and inherited by every application with `Inhe
 | `Id` | `Guid` | Primary key |
 | `EnvironmentSlug` | `string` | `*` (all environments, the default) or an environment slug such as `production` |
 | `Key` | `string` | Configuration key (up to 500 chars) |
-| `Value` | `string` | Plain text — not encrypted |
+| `Value` | `string` | Plain text — not encrypted. Minified JSON for `Array` and `Json` |
+| `ValueType` | `ConfigurationValueType` | Same as `ConfigurationEntry.ValueType` |
 | `Description` | `string?` | Optional (up to 1000 chars) |
 | `CreatedAt` | `DateTimeOffset` | — |
 | `UpdatedAt` | `DateTimeOffset` | — |

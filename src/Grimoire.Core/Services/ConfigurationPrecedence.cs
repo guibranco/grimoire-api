@@ -4,6 +4,10 @@ using Grimoire.Core.Interfaces;
 namespace Grimoire.Core.Services;
 
 /// <summary>Pure precedence rules for merging application and global configuration.</summary>
+/// <remarks>
+/// An application value replaces a global value as a whole, whatever its
+/// <see cref="ConfigurationValueType"/>: arrays and JSON objects are never merged.
+/// </remarks>
 public static class ConfigurationPrecedence
 {
     /// <summary>
@@ -37,7 +41,8 @@ public static class ConfigurationPrecedence
                 entry.Description,
                 ValueSource.Application,
                 shadowed?.EnvironmentSlug,
-                shadowed is not null
+                shadowed is not null,
+                entry.ValueType
             );
         }
 
@@ -51,7 +56,8 @@ public static class ConfigurationPrecedence
                 global.Description,
                 ValueSource.Global,
                 global.EnvironmentSlug,
-                false
+                false,
+                global.ValueType
             );
         }
 

@@ -129,6 +129,13 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ValueType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("String");
+
                     b.HasKey("Id");
 
                     b.HasIndex("EnvironmentId");
@@ -168,6 +175,13 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Property<string>("Value")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("ValueType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("String");
 
                     b.HasKey("Id");
 

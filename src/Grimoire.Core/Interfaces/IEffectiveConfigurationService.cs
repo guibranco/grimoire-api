@@ -23,7 +23,8 @@ public sealed record EffectiveConfigurationEntry(
     string? Description,
     ValueSource Source,
     string? GlobalEnvironmentSlug,
-    bool OverridesGlobal
+    bool OverridesGlobal,
+    ConfigurationValueType ValueType = ConfigurationValueType.String
 );
 
 /// <summary>Secret metadata as an application sees it after globals are merged in.</summary>

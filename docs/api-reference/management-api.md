@@ -383,7 +383,8 @@ Returns all configuration entries for the application, across all environments.
     "value": "true",
     "description": null,
     "createdAt": "...",
-    "updatedAt": "..."
+    "updatedAt": "...",
+    "valueType": "string"
   }
 ]
 ```
@@ -411,11 +412,33 @@ POST /management/applications/{slug}/configurations
 | :---- | :------: | :---------- |
 | `environmentSlug` | ✅ | Must exist |
 | `key` | ✅ | Non-empty string |
-| `value` | ✅ | Non-empty string |
+| `value` | ✅ | Non-empty string, valid for `valueType` (see [Value types](#value-types)) |
 | `description` | ➖ | Optional |
+| `valueType` | ➖ | `string` (default), `multiline`, `array` or `json` |
 
 **Response `201`:** Created entry.  
+**Response `400`:** Unknown `valueType`, or a value that isn't valid for it.  
 **Response `409`:** Key already exists for that environment.
+
+#### Value types
+
+| `valueType` | Accepts | Stored as |
+| :---------- | :------ | :-------- |
+| `string` | Any text | As given |
+| `multiline` | Any text | Line endings normalised to `\n` |
+| `array` | A JSON array of strings, **or** one item per line (blank lines and surrounding spaces are ignored) | Minified JSON array, e.g. `["10.0.0.1","10.0.0.2"]` |
+| `json` | Any JSON object or array | Minified JSON |
+
+```json
+{
+  "environmentSlug": "production",
+  "key": "AllowedIps",
+  "value": "10.0.0.1\n10.0.0.2\n192.168.1.0/24",
+  "valueType": "array"
+}
+```
+
+The value is always returned as a string; for `array` and `json` it is the JSON text. Clients use `valueType` to decide how to parse it (`Grimoire.Consumer` flattens them into configuration sections — see [Configuration Provider](../client-library/configuration-provider.md#arrays-and-json-values)).
 
 ---
 
@@ -431,7 +454,10 @@ PUT /management/applications/{slug}/configurations/{environmentSlug}/{key}
 { "value": "false", "description": "Updated description" }
 ```
 
+`valueType` is optional: leave it out to keep the entry's current type (the new value is checked against it), or send it to change the type.
+
 **Response `200`:** Updated entry.  
+**Response `400`:** Unknown `valueType`, or a value that isn't valid for the type.  
 **Response `404`:** Entry not found.
 
 ---
@@ -464,7 +490,8 @@ Returns the configuration the application actually receives for an environment, 
     "description": "Shared log endpoint",
     "source": "global",
     "globalEnvironmentSlug": "*",
-    "overridesGlobal": false
+    "overridesGlobal": false,
+    "valueType": "string"
   },
   {
     "key": "MaxRetries",
@@ -472,7 +499,8 @@ Returns the configuration the application actually receives for an environment, 
     "description": null,
     "source": "application",
     "globalEnvironmentSlug": "production",
-    "overridesGlobal": true
+    "overridesGlobal": true,
+    "valueType": "string"
   }
 ]
 ```
@@ -562,11 +590,12 @@ POST /management/global/configurations
 | :---- | :------: | :---------- |
 | `environmentSlug` | ➖ | `*` (default when omitted) or a lowercase slug such as `production`. The environment doesn't have to exist in any application yet |
 | `key` | ✅ | 1–500 characters |
-| `value` | ✅ | String |
+| `value` | ✅ | String, valid for `valueType` |
 | `description` | ➖ | Up to 1000 characters |
+| `valueType` | ➖ | `string` (default), `multiline`, `array` or `json` — see [Value types](#value-types) |
 
 **Response `201`:** Created entry.  
-**Response `400`:** Invalid `environmentSlug`.  
+**Response `400`:** Invalid `environmentSlug` or `valueType`, or a value that isn't valid for the type.  
 **Response `409`:** Key already exists for that environment slug.
 
 ---
@@ -584,6 +613,10 @@ Use `*` as `{environmentSlug}` for all-environment entries.
 ```json
 { "value": "https://logs-2.example.com", "description": "Updated description" }
 ```
+
+As with application entries, `valueType` is optional and defaults to the entry's current type.
+
+An application value replaces a global value of the same key **as a whole**: arrays and JSON objects are never merged.
 
 **Response `200`:** Updated entry.  
 **Response `404`:** Entry not found.

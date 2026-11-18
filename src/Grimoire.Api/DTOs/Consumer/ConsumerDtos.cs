@@ -11,6 +11,9 @@ public record SecretProperties(
 
 public record KeyVaultSecretResponse(string Name, string Value, SecretProperties Properties);
 
-public record ConfigurationItem(string Key, string Value, string Label);
+/// <param name="ValueType">
+/// "string", "multiline", "array" (a JSON array of strings) or "json" (a JSON object or array).
+/// </param>
+public record ConfigurationItem(string Key, string Value, string Label, string ValueType);
 
 public record ConfigurationListResponse(IReadOnlyList<ConfigurationItem> Items);
