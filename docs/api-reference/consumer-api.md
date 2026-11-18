@@ -90,14 +90,16 @@ Returns all configuration entries for the current application in the given envir
 ```json
 {
   "items": [
-    { "key": "Feature:DarkMode",       "value": "true",  "label": "local" },
-    { "key": "Feature:NewOnboarding",  "value": "false", "label": "local" },
-    { "key": "MaxRetries",             "value": "3",     "label": "local" }
+    { "key": "Feature:DarkMode", "value": "true",                       "label": "local", "valueType": "string" },
+    { "key": "MaxRetries",       "value": "3",                          "label": "local", "valueType": "string" },
+    { "key": "AllowedIps",       "value": "[\"10.0.0.1\",\"10.0.0.2\"]", "label": "local", "valueType": "array" }
   ]
 }
 ```
 
 The `label` field contains the environment slug. This matches the **Azure App Configuration** response shape.
+
+`valueType` is `string`, `multiline`, `array` (a JSON array of strings) or `json` (a JSON object or array). `value` is always a string; for `array` and `json` it holds the JSON text, so parse it when `valueType` says so. Clients written before value types existed ignore the field and keep working.
 
 **Response `404`:** Environment not found.
 
@@ -115,9 +117,10 @@ Returns a single configuration entry, falling back to an inherited global entry 
 
 ```json
 {
-  "key":   "Feature:DarkMode",
-  "value": "true",
-  "label": "local"
+  "key":       "Feature:DarkMode",
+  "value":     "true",
+  "label":     "local",
+  "valueType": "string"
 }
 ```
 

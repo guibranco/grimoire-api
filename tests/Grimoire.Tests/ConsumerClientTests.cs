@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using Grimoire.Consumer;
+using Microsoft.Extensions.Configuration;
 
 namespace Grimoire.Tests;
 
@@ -148,5 +149,111 @@ public class ConsumerClientTests
         var client = new GrimoireConfigurationClient("http://127.0.0.1:1", "grm_key", "local");
 
         await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("anything"));
+    }
+
+    private const string StructuredItems = """
+        {"items":[
+          {"key":"AllowedIps","value":"[\"10.0.0.1\",\"10.0.0.2\"]","label":"local","valueType":"array"},
+          {"key":"Smtp","value":"{\"host\":\"mail\",\"port\":25,\"tls\":true,\"tags\":[\"a\"]}","label":"local","valueType":"json"},
+          {"key":"Banner","value":"line 1\nline 2","label":"local","valueType":"multiline"},
+          {"key":"Empty","value":"[]","label":"local","valueType":"array"},
+          {"key":"Legacy","value":"[\"not\",\"split\"]","label":"local"}
+        ]}
+        """;
+
+    private sealed class SmtpOptions
+    {
+        public string Host { get; set; } = "";
+        public int Port { get; set; }
+        public bool Tls { get; set; }
+        public string[] Tags { get; set; } = [];
+    }
+
+    [Fact]
+    public void ConfigurationClient_Load_FlattensArrayAndJsonValues()
+    {
+        var client = new GrimoireConfigurationClient(
+            "https://grimoire.test",
+            "grm_key",
+            "local",
+            new StubHandler(HttpStatusCode.OK, StructuredItems)
+        );
+
+        var config = new ConfigurationBuilder().Add(client).Build();
+
+        Assert.Equal(["10.0.0.1", "10.0.0.2"], config.GetSection("AllowedIps").Get<string[]>()!);
+        Assert.Equal("10.0.0.2", config["allowedips:1"]);
+        Assert.Null(config["AllowedIps"]);
+
+        var smtp = config.GetSection("Smtp").Get<SmtpOptions>()!;
+        Assert.Equal("mail", smtp.Host);
+        Assert.Equal(25, smtp.Port);
+        Assert.True(smtp.Tls);
+        Assert.Equal(["a"], smtp.Tags);
+
+        Assert.Equal("line 1\nline 2", config["Banner"]);
+        Assert.Null(config["Empty"]);
+        // Values without a value type (older servers, plain strings) are never parsed.
+        Assert.Equal("[\"not\",\"split\"]", config["Legacy"]);
+    }
+
+    [Fact]
+    public async Task ConfigurationClient_GetAllAsync_ReturnsRawJsonForStructuredValues()
+    {
+        var client = new GrimoireConfigurationClient(
+            "https://grimoire.test",
+            "grm_key",
+            "local",
+            new StubHandler(HttpStatusCode.OK, StructuredItems)
+        );
+
+        var all = await client.GetAllAsync();
+
+        Assert.Equal("[\"10.0.0.1\",\"10.0.0.2\"]", all["AllowedIps"]);
+    }
+
+    [Fact]
+    public async Task ConfigurationClient_GetAsyncOfT_DeserialisesArrayValue()
+    {
+        var client = new GrimoireConfigurationClient(
+            "https://grimoire.test",
+            "grm_key",
+            "local",
+            new StubHandler(
+                HttpStatusCode.OK,
+                """{"key":"AllowedIps","value":"[\"10.0.0.1\"]","label":"local","valueType":"array"}"""
+            )
+        );
+
+        Assert.Equal(["10.0.0.1"], (await client.GetAsync<string[]>("AllowedIps"))!);
+    }
+
+    [Fact]
+    public async Task ConfigurationClient_GetAsyncOfT_ReadsStringValueAsString()
+    {
+        var client = new GrimoireConfigurationClient(
+            "https://grimoire.test",
+            "grm_key",
+            "local",
+            new StubHandler(
+                HttpStatusCode.OK,
+                """{"key":"Name","value":"[not json]","label":"local","valueType":"string"}"""
+            )
+        );
+
+        Assert.Equal("[not json]", await client.GetAsync<string>("Name"));
+    }
+
+    [Fact]
+    public async Task ConfigurationClient_GetAsyncOfT_ReturnsDefaultWhenNotFound()
+    {
+        var client = new GrimoireConfigurationClient(
+            "https://grimoire.test",
+            "grm_key",
+            "local",
+            new StubHandler(HttpStatusCode.NotFound, "{}")
+        );
+
+        Assert.Null(await client.GetAsync<string[]>("missing"));
     }
 }

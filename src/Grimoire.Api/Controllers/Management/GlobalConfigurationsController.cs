@@ -1,6 +1,7 @@
 using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces.Repositories;
+using Grimoire.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Grimoire.Api.Controllers.Management;
@@ -30,12 +31,24 @@ public class GlobalConfigurationsController(IGlobalConfigurationRepository globa
         if (existing is not null)
             return Conflict(Problem("Global configuration key already exists.", statusCode: 409));
 
+        if (
+            !this.TryResolveConfigurationValue(
+                req.ValueType,
+                ConfigurationValueType.String,
+                req.Value,
+                out var valueType,
+                out var value
+            )
+        )
+            return ValidationProblem(ModelState);
+
         var entry = new GlobalConfigurationEntry
         {
             Id = Guid.NewGuid(),
             EnvironmentSlug = environmentSlug,
             Key = req.Key,
-            Value = req.Value,
+            Value = value,
+            ValueType = valueType,
             Description = req.Description,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
@@ -57,7 +70,19 @@ public class GlobalConfigurationsController(IGlobalConfigurationRepository globa
         if (entry is null)
             return NotFound(Problem("Global configuration not found.", statusCode: 404));
 
-        entry.Value = req.Value;
+        if (
+            !this.TryResolveConfigurationValue(
+                req.ValueType,
+                entry.ValueType,
+                req.Value,
+                out var valueType,
+                out var value
+            )
+        )
+            return ValidationProblem(ModelState);
+
+        entry.Value = value;
+        entry.ValueType = valueType;
         entry.Description = req.Description ?? entry.Description;
         entry.UpdatedAt = DateTimeOffset.UtcNow;
         await globalConfigRepo.UpdateAsync(entry, ct);
@@ -81,5 +106,14 @@ public class GlobalConfigurationsController(IGlobalConfigurationRepository globa
     }
 
     private static GlobalConfigurationEntryResponse ToResponse(GlobalConfigurationEntry e) =>
-        new(e.Id, e.EnvironmentSlug, e.Key, e.Value, e.Description, e.CreatedAt, e.UpdatedAt);
+        new(
+            e.Id,
+            e.EnvironmentSlug,
+            e.Key,
+            e.Value,
+            e.Description,
+            e.CreatedAt,
+            e.UpdatedAt,
+            ConfigurationValueNormalizer.ToName(e.ValueType)
+        );
 }

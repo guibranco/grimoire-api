@@ -3,6 +3,7 @@ using Grimoire.Api.Middleware;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
+using Grimoire.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Grimoire.Api.Controllers.Consumer;
@@ -28,7 +29,12 @@ public class ConsumerConfigurationsController(
 
         var entries = await effective.GetConfigurationAsync(app, env, ct);
         var items = entries
-            .Select(e => new ConfigurationItem(e.Key, e.Value, environment))
+            .Select(e => new ConfigurationItem(
+                e.Key,
+                e.Value,
+                environment,
+                ConfigurationValueNormalizer.ToName(e.ValueType)
+            ))
             .ToList();
         return Ok(new ConfigurationListResponse(items));
     }
@@ -52,6 +58,13 @@ public class ConsumerConfigurationsController(
         if (entry is null)
             return NotFound(Problem("Configuration key not found.", statusCode: 404));
 
-        return Ok(new ConfigurationItem(entry.Key, entry.Value, environment));
+        return Ok(
+            new ConfigurationItem(
+                entry.Key,
+                entry.Value,
+                environment,
+                ConfigurationValueNormalizer.ToName(entry.ValueType)
+            )
+        );
     }
 }

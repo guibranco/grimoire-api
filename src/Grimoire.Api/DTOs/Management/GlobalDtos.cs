@@ -2,14 +2,21 @@ using Grimoire.Core.Interfaces;
 
 namespace Grimoire.Api.DTOs.Management;
 
+/// <param name="ValueType">"string" (default), "multiline", "array" or "json".</param>
 public record CreateGlobalConfigurationRequest(
     string Key,
     string Value,
     string? EnvironmentSlug = null,
-    string? Description = null
+    string? Description = null,
+    string? ValueType = null
 );
 
-public record UpdateGlobalConfigurationRequest(string Value, string? Description = null);
+/// <param name="ValueType">Leave out to keep the entry's current value type.</param>
+public record UpdateGlobalConfigurationRequest(
+    string Value,
+    string? Description = null,
+    string? ValueType = null
+);
 
 public record GlobalConfigurationEntryResponse(
     Guid Id,
@@ -18,7 +25,8 @@ public record GlobalConfigurationEntryResponse(
     string Value,
     string? Description,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt
+    DateTimeOffset UpdatedAt,
+    string ValueType
 );
 
 public record CreateGlobalSecretRequest(string Name, string? Description);
@@ -47,7 +55,8 @@ public record EffectiveConfigurationResponse(
     string? Description,
     string Source,
     string? GlobalEnvironmentSlug,
-    bool OverridesGlobal
+    bool OverridesGlobal,
+    string ValueType
 );
 
 public record EffectiveSecretResponse(

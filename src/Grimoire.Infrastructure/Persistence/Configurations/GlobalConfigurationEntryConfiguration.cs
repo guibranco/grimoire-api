@@ -13,6 +13,11 @@ public class GlobalConfigurationEntryConfiguration
         builder.Property(x => x.EnvironmentSlug).IsRequired().HasMaxLength(100);
         builder.Property(x => x.Key).IsRequired().HasMaxLength(500);
         builder.Property(x => x.Value).IsRequired();
+        builder
+            .Property(x => x.ValueType)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(ConfigurationValueType.String);
         builder.Property(x => x.Description).HasMaxLength(1000);
 
         // "*" (not NULL) marks "all environments" so this unique index holds:

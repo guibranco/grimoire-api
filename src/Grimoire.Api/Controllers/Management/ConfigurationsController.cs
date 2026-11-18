@@ -2,6 +2,7 @@ using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
+using Grimoire.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Grimoire.Api.Controllers.Management;
@@ -43,7 +44,8 @@ public class ConfigurationsController(
                 e.Description,
                 ValueSourceNames.ToName(e.Source),
                 e.GlobalEnvironmentSlug,
-                e.OverridesGlobal
+                e.OverridesGlobal,
+                ConfigurationValueNormalizer.ToName(e.ValueType)
             ))
         );
     }
@@ -56,17 +58,7 @@ public class ConfigurationsController(
             return NotFound(Problem("Application not found.", statusCode: 404));
 
         var entries = await configRepo.GetByApplicationAsync(app.Id, ct);
-        return Ok(
-            entries.Select(e => new ConfigurationEntryResponse(
-                e.Id,
-                e.Environment.Slug,
-                e.Key,
-                e.Value,
-                e.Description,
-                e.CreatedAt,
-                e.UpdatedAt
-            ))
-        );
+        return Ok(entries.Select(e => ToResponse(e, e.Environment.Slug)));
     }
 
     [HttpPost]
@@ -88,32 +80,32 @@ public class ConfigurationsController(
         if (existing is not null)
             return Conflict(Problem("Configuration key already exists.", statusCode: 409));
 
+        if (
+            !this.TryResolveConfigurationValue(
+                req.ValueType,
+                ConfigurationValueType.String,
+                req.Value,
+                out var valueType,
+                out var value
+            )
+        )
+            return ValidationProblem(ModelState);
+
         var entry = new ConfigurationEntry
         {
             Id = Guid.NewGuid(),
             ApplicationId = app.Id,
             EnvironmentId = env.Id,
             Key = req.Key,
-            Value = req.Value,
+            Value = value,
+            ValueType = valueType,
             Description = req.Description,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
         await configRepo.AddAsync(entry, ct);
 
-        return CreatedAtAction(
-            nameof(List),
-            new { slug },
-            new ConfigurationEntryResponse(
-                entry.Id,
-                req.EnvironmentSlug,
-                entry.Key,
-                entry.Value,
-                entry.Description,
-                entry.CreatedAt,
-                entry.UpdatedAt
-            )
-        );
+        return CreatedAtAction(nameof(List), new { slug }, ToResponse(entry, req.EnvironmentSlug));
     }
 
     [HttpPut("{environmentSlug}/{key}")]
@@ -137,22 +129,24 @@ public class ConfigurationsController(
         if (entry is null)
             return NotFound(Problem("Configuration not found.", statusCode: 404));
 
-        entry.Value = req.Value;
+        if (
+            !this.TryResolveConfigurationValue(
+                req.ValueType,
+                entry.ValueType,
+                req.Value,
+                out var valueType,
+                out var value
+            )
+        )
+            return ValidationProblem(ModelState);
+
+        entry.Value = value;
+        entry.ValueType = valueType;
         entry.Description = req.Description ?? entry.Description;
         entry.UpdatedAt = DateTimeOffset.UtcNow;
         await configRepo.UpdateAsync(entry, ct);
 
-        return Ok(
-            new ConfigurationEntryResponse(
-                entry.Id,
-                environmentSlug,
-                entry.Key,
-                entry.Value,
-                entry.Description,
-                entry.CreatedAt,
-                entry.UpdatedAt
-            )
-        );
+        return Ok(ToResponse(entry, environmentSlug));
     }
 
     [HttpDelete("{environmentSlug}/{key}")]
@@ -178,4 +172,19 @@ public class ConfigurationsController(
         await configRepo.DeleteAsync(entry, ct);
         return NoContent();
     }
+
+    private static ConfigurationEntryResponse ToResponse(
+        ConfigurationEntry e,
+        string environmentSlug
+    ) =>
+        new(
+            e.Id,
+            environmentSlug,
+            e.Key,
+            e.Value,
+            e.Description,
+            e.CreatedAt,
+            e.UpdatedAt,
+            ConfigurationValueNormalizer.ToName(e.ValueType)
+        );
 }

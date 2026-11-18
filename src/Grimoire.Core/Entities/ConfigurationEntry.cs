@@ -7,6 +7,7 @@ public class ConfigurationEntry
     public Guid EnvironmentId { get; set; }
     public string Key { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
+    public ConfigurationValueType ValueType { get; set; } = ConfigurationValueType.String;
     public string? Description { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

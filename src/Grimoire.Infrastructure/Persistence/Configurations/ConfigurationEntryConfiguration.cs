@@ -11,6 +11,11 @@ public class ConfigurationEntryConfiguration : IEntityTypeConfiguration<Configur
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Key).IsRequired().HasMaxLength(500);
         builder.Property(x => x.Value).IsRequired();
+        builder
+            .Property(x => x.ValueType)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(ConfigurationValueType.String);
         builder.Property(x => x.Description).HasMaxLength(1000);
 
         builder

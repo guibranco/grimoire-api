@@ -33,6 +33,12 @@ public class CreateGlobalConfigurationRequestValidator
         RuleFor(x => x.Key).NotEmpty().MaximumLength(500);
         RuleFor(x => x.Value).NotNull();
         RuleFor(x => x.Description).MaximumLength(1000).When(x => x.Description != null);
+        ConfigurationValueRules.AddRules(
+            this,
+            x => x.ValueType,
+            x => x.Value,
+            ConfigurationValueType.String
+        );
     }
 }
 
@@ -43,6 +49,7 @@ public class UpdateGlobalConfigurationRequestValidator
     {
         RuleFor(x => x.Value).NotNull();
         RuleFor(x => x.Description).MaximumLength(1000).When(x => x.Description != null);
+        ConfigurationValueRules.AddRules(this, x => x.ValueType, x => x.Value, null);
     }
 }
 
