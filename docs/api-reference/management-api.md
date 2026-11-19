@@ -752,3 +752,69 @@ DELETE /management/global/secrets/{name}
 Deletes the secret and all its versions.
 
 **Response `204`:** No content.
+
+---
+
+## Dashboard
+
+### Get dashboard summary
+
+```
+GET /management/dashboard?expiringWithinDays=14&staleAfterDays=7
+```
+
+One aggregate, read-only call for the UI home page. Returns **metadata only, never secret or configuration values**. Soft-deleted applications are excluded. The response is sent with `Cache-Control: private, no-store`; the server reuses a computed summary for `Dashboard:CacheSeconds` (15 s by default).
+
+| Query parameter | Default | Description |
+| :-------------- | :------ | :---------- |
+| `expiringWithinDays` | `Dashboard:ExpiringWithinDays` (14) | `0`–`3650`. Window for `secret-expiring`. |
+| `staleAfterDays` | `Dashboard:StaleAfterDays` (7) | `1`–`3650`. Threshold for `consumer-stale`. |
+
+**Response `200`:**
+
+```json
+{
+  "generatedAt": "2026-11-19T19:40:00Z",
+  "totals": { "applications": 6, "environments": 14, "secrets": 41, "configurations": 128 },
+  "applications": [
+    {
+      "slug": "payslip-archiver",
+      "name": "Payslip Archiver",
+      "inheritGlobals": true,
+      "environments": [
+        { "slug": "production", "name": "Production", "secretCount": 5, "configurationCount": 12, "lastChangedAt": "2026-11-18T10:02:11Z", "lastSeenAt": null }
+      ],
+      "secretCount": 5,
+      "configurationCount": 12,
+      "lastChangedAt": "2026-11-18T10:02:11Z",
+      "lastSeenAt": null
+    }
+  ],
+  "global": { "secretCount": 3, "configurationCount": 7, "lastChangedAt": "2026-11-15T21:00:00Z" },
+  "featureFlags": null,
+  "recentActivity": null,
+  "attention": [
+    { "kind": "secret-expiring", "severity": "warning", "application": "loop-requests", "environment": "production", "target": "DB_PASSWORD", "dueAt": "2026-11-28T00:00:00Z", "lastSeenAt": null }
+  ]
+}
+```
+
+- `secretCount` on an application counts its own secrets (globals are reported under `global`); on an environment it counts the application secrets with at least one version there.
+- `lastChangedAt` is the latest `UpdatedAt` / secret-version `CreatedAt` across the application, its environments, secrets and configuration.
+- `lastSeenAt` is the last successful consumer read. It stays `null` (and the consumer rules are skipped) until consumer activity tracking ships.
+- `featureFlags` and `recentActivity` are `null` until feature flags and the audit log ship.
+
+**Attention items** are ordered by severity (`error`, `warning`, `info`). `application` is `null` for global secrets and configuration; `target` is a secret name or configuration key.
+
+| Kind | Severity | Rule |
+| :--- | :------- | :--- |
+| `secret-expired` | error | The latest enabled version in an environment has expired and no other version is valid. |
+| `secret-no-valid-version` | error | The secret has versions in an environment but none is enabled and inside its `notBefore`/`expiresAt` window, or it has no versions at all (`environment` is `null`). |
+| `secret-expiring` | warning | The active version expires within `expiringWithinDays`. |
+| `consumer-stale` | warning | Last consumer read is older than `staleAfterDays`. |
+| `consumer-never-seen` | info | The environment has secrets or configuration but no consumer read was recorded. |
+| `config-empty-value` | info | A configuration value is empty or whitespace. |
+
+Environments a secret was never given a value in (such as the auto-created `local`) are not flagged. A global secret for an environment slug is only flagged when the `*` value cannot cover it either.
+
+**Response `400`:** Threshold out of range.

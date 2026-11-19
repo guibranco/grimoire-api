@@ -31,6 +31,8 @@ public sealed class GrimoireWebApplicationFactory : WebApplicationFactory<Progra
                         ["Management:AdminApiKey"] = AdminKey,
                         ["Encryption:MasterKey"] = MasterKey,
                         ["Cors:AllowedOrigins:0"] = "http://localhost:5173",
+                        // Tests read the dashboard right after writing; never serve a cached summary.
+                        ["Dashboard:CacheSeconds"] = "0",
                     }
                 );
             }
