@@ -1,0 +1,10 @@
+[Unit]
+Description=Grimoire restore test: decrypt the latest backup into a throwaway copy and smoke-test it
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# The wrapper runs Grimoire.Api.dll --verify-backup latest as the grimoire-api unit's user and
+# environment, and pings Backup__VerifyHealthcheckUrl with the result.
+ExecStart=/usr/local/bin/grimoire-backup verify latest

@@ -52,6 +52,15 @@ For Docker deployments, environment variables are the recommended approach. Use 
 {: .warning }
 **Changing the master key makes all existing secrets unreadable.** Back up your database and key before rotation.
 
+### Backup
+
+Encrypted, scheduled backups of the database to a local directory and/or S3-compatible storage. Off by default. All `Backup:*` settings, the restore commands and the runbook are in [Backup and restore](../operations/backup-and-restore.md).
+
+| Setting | Env var | Default | Description |
+| :------ | :------ | :------ | :---------- |
+| `Backup:Enabled` | `Backup__Enabled` | `false` | Turns on scheduled backups and `/management/backups` |
+| `Backup:Key` | `Backup__Key` | *(none)* | Backup encryption passphrase (≥ 32 chars, different from the master key) |
+
 ### CORS
 
 | Setting | Env var | Default | Description |

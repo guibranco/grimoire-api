@@ -1,6 +1,7 @@
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
 using Grimoire.Core.Services;
+using Grimoire.Infrastructure.Backups;
 using Grimoire.Infrastructure.Persistence;
 using Grimoire.Infrastructure.Persistence.Repositories;
 using Grimoire.Infrastructure.Services;
@@ -29,6 +30,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IGlobalSecretRepository, GlobalSecretRepository>();
         services.AddScoped<IEffectiveConfigurationService, EffectiveConfigurationService>();
         services.AddSingleton<IEncryptionService, AesGcmEncryptionService>();
+        services.AddBackups();
 
         return services;
     }

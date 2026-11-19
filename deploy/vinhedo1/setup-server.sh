@@ -33,11 +33,25 @@ elif [ ! -s "/home/$USER_NAME/.ssh/authorized_keys" ]; then
   echo "no deploy key authorized yet for $USER_NAME — pass deploy_key.pub" >&2; exit 1
 fi
 
-echo "→ Installing deploy scripts"
-for f in grimoire-deploy grimoire-deploy-ssh; do
+echo "→ Installing deploy and backup scripts"
+for f in grimoire-deploy grimoire-deploy-ssh grimoire-backup; do
   sed 's/\r$//' "$SRC_DIR/$f" | install -o root -g root -m 755 /dev/stdin "/usr/local/bin/$f"
   bash -n "/usr/local/bin/$f"
 done
+
+echo "→ Backups: environment drop-in and daily restore test"
+[ -d /etc/grimoire ] || install -d -o root -g root -m 755 /etc/grimoire
+install -d -m 755 /etc/systemd/system/grimoire-api.service.d
+printf '[Service]\nEnvironmentFile=-/etc/grimoire/backup.env\n' > /etc/systemd/system/grimoire-api.service.d/backup.conf
+for f in grimoire-backup-verify.service grimoire-backup-verify.timer; do
+  sed 's/\r$//' "$SRC_DIR/$f" | install -o root -g root -m 644 /dev/stdin "/etc/systemd/system/$f"
+done
+systemctl daemon-reload
+if [ -f /etc/grimoire/backup.env ]; then
+  systemctl enable --now grimoire-backup-verify.timer
+else
+  echo "  /etc/grimoire/backup.env not found — backups stay off; see docs/operations/backup-and-restore.md"
+fi
 
 echo "→ Creating user $USER_NAME"
 id "$USER_NAME" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "$USER_NAME"

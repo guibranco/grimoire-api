@@ -427,3 +427,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Source folders named Backups (the Visual Studio template ignores Backup*/)
+!src/**/Backups/

@@ -130,3 +130,11 @@ X-Api-Key: {{AppApiKey}}
 ### A secret (falls back to a global secret only if the app has none with that name)
 GET {{HostAddress}}/consumer/secrets/amqp-uri?environment=local
 X-Api-Key: {{AppApiKey}}
+
+### Backups: list (409 until Backup:* is configured)
+GET {{HostAddress}}/management/backups
+Authorization: Bearer {{AdminKey}}
+
+### Backups: take one now
+POST {{HostAddress}}/management/backups
+Authorization: Bearer {{AdminKey}}

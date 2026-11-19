@@ -1,15 +1,29 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Grimoire.Api;
+using Grimoire.Api.Backups;
 using Grimoire.Api.Logging;
 using Grimoire.Api.Middleware;
 using Grimoire.Api.Swagger;
 using Grimoire.Core.Entities;
 using Grimoire.Infrastructure;
+using Grimoire.Infrastructure.Backups;
 using Grimoire.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+
+BackupCommand? backupCommand;
+try
+{
+    (backupCommand, args) = BackupCommandLine.Parse(args);
+}
+catch (ArgumentException ex)
+{
+    Console.Error.WriteLine($"❌ {ex.Message}");
+    Environment.ExitCode = 2;
+    return;
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +61,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddScoped<IPasswordHasher<Application>, PasswordHasher<Application>>();
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHostedService<BackupScheduler>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -102,11 +117,34 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
+// Backup maintenance modes run before migrations: a restore must find the database untouched.
+if (backupCommand is not null)
+{
+    try
+    {
+        Environment.ExitCode = await BackupCommandLine.RunAsync(backupCommand, app.Services);
+    }
+    finally
+    {
+        Log.CloseAndFlush();
+    }
+    return;
+}
+
 if (app.Environment.IsProduction())
 {
     EnsureStrongSecret(app.Configuration, "Management:AdminApiKey", 32);
     EnsureStrongSecret(app.Configuration, "Encryption:MasterKey", 32);
 }
+
+var backupOptions = app.Services.GetRequiredService<BackupOptions>();
+var backupErrors = backupOptions.Validate().ToList();
+if (backupOptions.Enabled && backupOptions.Key == app.Configuration["Encryption:MasterKey"])
+    backupErrors.Add("'Backup:Key' must differ from 'Encryption:MasterKey'.");
+if (backupErrors.Count > 0)
+    throw new InvalidOperationException(
+        "Invalid backup configuration: " + string.Join(" ", backupErrors)
+    );
 
 using (var scope = app.Services.CreateScope())
 {

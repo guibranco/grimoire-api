@@ -27,6 +27,7 @@
 | 🌍 **Multi-environment** | Each application can have unlimited named environments (e.g. `local`, `staging`, `production`) |
 | 🧩 **.NET client library** | Drop-in `IConfigurationSource` — pull secrets and flags directly into `IConfiguration` |
 | 🐳 **Docker-first** | Single `docker compose up` to run the entire stack |
+| 💾 **Encrypted backups** | Scheduled `VACUUM INTO` snapshots, AES-256-GCM encrypted with a separate key, to a local directory and/or S3 (OCI Object Storage), with retention, healthchecks.io pings and a tested restore ([runbook](docs/operations/backup-and-restore.md)) |
 | 📡 **Centralised logging** | Serilog to console and rolling files, plus optional shipping to [LogStream](https://github.com/guibranco/logstream-server) |
 | 📊 **Swagger UI** | Separate Management and Consumer API docs at `/swagger` |
 
@@ -152,6 +153,8 @@ All **consumer** endpoints require an `X-Api-Key` header with a valid applicatio
 | `GET` | `/management/global/secrets/{name}/versions/{env}` | 🌐 List global secret versions |
 | `DELETE` | `/management/global/secrets/{name}` | 🌐 Delete global secret |
 | `GET` | `/management/global/environments` | 🌐 Environment slugs in use across applications |
+| `GET` | `/management/backups` | 💾 List encrypted backups (all targets) |
+| `POST` | `/management/backups` | 💾 Take a backup now |
 
 Global values apply to every application with `inheritGlobals: true` (the default). Precedence, highest first: the application's value, a global for the environment slug, a global for `*`. See the [data model docs](docs/architecture/data-model.md#global-values-and-precedence).
 
@@ -212,6 +215,7 @@ Settings can be provided via `appsettings.json`, environment variables (use `__`
 | `Encryption:MasterKey` | ✅ | *(none)* | Master key for HKDF derivation (≥ 32 chars) |
 | `Cors:AllowedOrigins` | ➖ | `[]` | Allowed CORS origins |
 | `Serilog:MinimumLevel:Default` | ➖ | `Information` | Log level |
+| `Backup:Enabled` / `Key` / `Schedule` / `RetentionCount` | ➖ | off / *(none)* / `0 3 * * *` / `14` | Encrypted backups; targets under `Backup:Local:*` and `Backup:S3:*` ([details](docs/operations/backup-and-restore.md#configuration)) |
 | `LogStream:Server` / `ApiKey` / `ApiToken` | ➖ | *(none)* | Ship logs to a [LogStream](https://github.com/guibranco/logstream-server) server; disabled unless all three are set |
 
 > ⚠️ **Security note:** Never commit real values for `AdminApiKey` or `MasterKey`.  

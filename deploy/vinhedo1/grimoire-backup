@@ -1,0 +1,85 @@
+#!/bin/bash
+# grimoire-backup — operator wrapper for Grimoire's backup maintenance modes on vinhedo1.
+#
+#   grimoire-backup now                     take an encrypted backup now (all enabled targets)
+#   grimoire-backup verify [file|latest]    restore test into a throwaway copy (default: latest)
+#   grimoire-backup restore <file|latest>   stop the service, replace the database, start, health-check
+#
+# Runs Grimoire.Api.dll with exactly the user, working directory and environment of the
+# grimoire-api systemd unit (read with `systemctl show`), so it always sees the same
+# connection string, master key and Backup__* settings as the service itself.
+# Run as root (sudo). Installed by setup-server.sh; also used by grimoire-backup-verify.service.
+set -euo pipefail
+
+SERVICE=grimoire-api
+APP=/opt/grimoire/app
+HEALTH_URL=http://127.0.0.1:5080/health
+DOTNET=$(command -v dotnet || echo /usr/bin/dotnet)
+
+usage() { sed -n '4,6p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+[ "$(id -u)" -eq 0 ] || { echo "run as root (sudo)" >&2; exit 1; }
+
+unit_prop() { systemctl show "$SERVICE" -p "$1" --value; }
+
+run_app() {
+  local props=() user workdir env path flag
+  user=$(unit_prop User)
+  workdir=$(unit_prop WorkingDirectory)
+  env=$(unit_prop Environment)
+  [ -n "$user" ] && props+=(--uid="$user" --gid="$(id -gn "$user")")
+  [ -n "$workdir" ] && props+=(-p "WorkingDirectory=$workdir")
+  [ -n "$env" ] && props+=(-p "Environment=$env")
+  while read -r path flag; do
+    [ -n "$path" ] || continue
+    if [ "$flag" = "(ignore_errors=yes)" ]; then props+=(-p "EnvironmentFile=-$path"); else props+=(-p "EnvironmentFile=$path"); fi
+  done < <(unit_prop EnvironmentFiles)
+
+  systemd-run --quiet --wait --pipe --collect "${props[@]}" "$DOTNET" "$APP/Grimoire.Api.dll" "$@"
+}
+
+# A file argument must be readable by the service user: stage it in a private temp dir.
+stage_source() {
+  local source="$1" user staged
+  if [ "$source" = latest ]; then echo latest; return; fi
+  [ -f "$source" ] || { echo "❌ no such file: $source" >&2; exit 1; }
+  user=$(unit_prop User); user=${user:-root}
+  staged=$(mktemp -d /tmp/grimoire-restore.XXXXXX)
+  chown "$user" "$staged"; chmod 700 "$staged"
+  install -o "$user" -m 600 "$source" "$staged/$(basename "$source")"
+  echo "$staged/$(basename "$source")"
+}
+
+wait_healthy() {
+  for _ in $(seq 1 30); do
+    if curl -s --max-time 3 "$HEALTH_URL" | grep -q '"status":"ok"'; then echo "✅ $SERVICE is healthy"; return 0; fi
+    sleep 2
+  done
+  echo "⚠️  $SERVICE did not report healthy — check: journalctl -u $SERVICE -n 50" >&2
+  return 1
+}
+
+case "${1:-}" in
+  now)
+    run_app --backup ;;
+  verify)
+    src=$(stage_source "${2:-latest}")
+    run_app --verify-backup "$src" ;;
+  restore)
+    [ -n "${2:-}" ] || usage
+    src=$(stage_source "$2")
+    echo "⚠️  This replaces the live Grimoire database with $2."
+    read -r -p "Type 'restore' to continue: " answer
+    [ "$answer" = restore ] || { echo "aborted"; exit 1; }
+    echo "⏸️  Stopping $SERVICE"
+    systemctl stop "$SERVICE"
+    if run_app --restore "$src" --force; then
+      systemctl start "$SERVICE"
+      wait_healthy
+    else
+      echo "❌ restore failed — the database was not replaced; starting $SERVICE again" >&2
+      systemctl start "$SERVICE"
+      exit 1
+    fi
+    ;;
+  *) usage ;;
+esac
