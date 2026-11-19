@@ -324,6 +324,21 @@ public sealed class BackupSchedulerTests
             Task.FromResult<IReadOnlyList<BackupInfo>>([]);
     }
 
+    private static async Task AdvanceUntil(
+        FakeTimeProvider time,
+        TimeSpan step,
+        Func<bool> condition
+    )
+    {
+        for (var i = 0; i < 100 && !condition(); i++)
+        {
+            time.Advance(step);
+            for (var spin = 0; spin < 50 && !condition(); spin++)
+                await Task.Delay(2);
+        }
+        Assert.True(condition());
+    }
+
     private static async Task WaitUntil(Func<bool> condition)
     {
         for (var i = 0; i < 200 && !condition(); i++)
@@ -349,11 +364,13 @@ public sealed class BackupSchedulerTests
         await Task.Delay(50);
         Assert.Equal(0, backups.Calls);
 
-        time.Advance(TimeSpan.FromSeconds(30));
-        await WaitUntil(() => backups.Calls == 1);
+        // Advance in small steps: the scheduler computes its next occurrence asynchronously, so a
+        // single big jump can land before it starts waiting and skip that occurrence.
+        await AdvanceUntil(time, TimeSpan.FromSeconds(10), () => backups.Calls == 1);
+        Assert.Equal(new DateTimeOffset(2026, 11, 19, 3, 0, 0, TimeSpan.Zero), time.GetUtcNow());
 
-        time.Advance(TimeSpan.FromDays(1));
-        await WaitUntil(() => backups.Calls == 2);
+        await AdvanceUntil(time, TimeSpan.FromHours(1), () => backups.Calls == 2);
+        Assert.Equal(new DateTimeOffset(2026, 11, 20, 3, 0, 0, TimeSpan.Zero), time.GetUtcNow());
 
         await scheduler.StopAsync(CancellationToken.None);
     }
