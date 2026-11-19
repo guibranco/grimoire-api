@@ -279,6 +279,20 @@ public class LocalDirectoryBackupTargetTests : IDisposable
     }
 
     [Fact]
+    public async Task CancelledWrite_LeavesNoTemporaryFiles()
+    {
+        var target = new LocalDirectoryBackupTarget(_dir);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            target.WriteAsync(BackupNaming.For(DateTimeOffset.UtcNow), new byte[1024], cts.Token)
+        );
+
+        Assert.Empty(Directory.GetFiles(_dir));
+    }
+
+    [Fact]
     public async Task RejectsNonBackupNames()
     {
         var target = new LocalDirectoryBackupTarget(_dir);

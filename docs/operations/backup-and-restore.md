@@ -180,9 +180,10 @@ The wrapper asks for confirmation, stops `grimoire-api`, restores (keeping the o
    sudo grimoire-backup restore latest
    ```
 
-4. Check that applications and secrets are there, in the UI or with `sudo grimoire-backup verify`.
-5. Point DNS (`api.grimoire.straccini.com`) at the new host.
-6. Consumers keep their API keys: the key hashes are in the restored database.
+4. Re-run `setup-server.sh` now that `backup.env` exists, so it enables the daily restore test (or run `sudo systemctl enable --now grimoire-backup-verify.timer`).
+5. Check that applications and secrets are there, in the UI or with `sudo grimoire-backup verify`.
+6. Point DNS (`api.grimoire.straccini.com`) at the new host.
+7. Consumers keep their API keys: the key hashes are in the restored database.
 
 ### C. No Grimoire binary at hand
 

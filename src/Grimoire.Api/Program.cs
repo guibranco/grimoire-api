@@ -117,6 +117,23 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
+var backupOptions = app.Services.GetRequiredService<BackupOptions>();
+var backupErrors = backupOptions.Validate().ToList();
+if (backupOptions.Enabled && backupOptions.Key == app.Configuration["Encryption:MasterKey"])
+    backupErrors.Add("'Backup:Key' must differ from 'Encryption:MasterKey'.");
+if (backupErrors.Count > 0)
+{
+    var message = "Invalid backup configuration: " + string.Join(" ", backupErrors);
+    if (backupCommand is null)
+        throw new InvalidOperationException(message);
+
+    // Maintenance modes obey the same rules (key separation included), but fail with a message.
+    Console.Error.WriteLine($"❌ {message}");
+    Environment.ExitCode = 2;
+    Log.CloseAndFlush();
+    return;
+}
+
 // Backup maintenance modes run before migrations: a restore must find the database untouched.
 if (backupCommand is not null)
 {
@@ -136,15 +153,6 @@ if (app.Environment.IsProduction())
     EnsureStrongSecret(app.Configuration, "Management:AdminApiKey", 32);
     EnsureStrongSecret(app.Configuration, "Encryption:MasterKey", 32);
 }
-
-var backupOptions = app.Services.GetRequiredService<BackupOptions>();
-var backupErrors = backupOptions.Validate().ToList();
-if (backupOptions.Enabled && backupOptions.Key == app.Configuration["Encryption:MasterKey"])
-    backupErrors.Add("'Backup:Key' must differ from 'Encryption:MasterKey'.");
-if (backupErrors.Count > 0)
-    throw new InvalidOperationException(
-        "Invalid backup configuration: " + string.Join(" ", backupErrors)
-    );
 
 using (var scope = app.Services.CreateScope())
 {

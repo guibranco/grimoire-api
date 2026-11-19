@@ -94,7 +94,7 @@ public sealed class BackupService(
             {
                 await target.WriteAsync(name, encrypted, ct);
                 written.Add(target.Name);
-                await ApplyRetentionAsync(target, ct);
+                await ApplyRetentionAsync(target, name, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -156,12 +156,19 @@ public sealed class BackupService(
         }
     }
 
-    private async Task ApplyRetentionAsync(IBackupTarget target, CancellationToken ct)
+    private async Task ApplyRetentionAsync(
+        IBackupTarget target,
+        string justWritten,
+        CancellationToken ct
+    )
     {
+        // The backup just written always survives, even if a backward clock step gave it an older
+        // name than an existing one; it counts towards the retention total.
         var expired = (await target.ListAsync(ct))
             .Select(o => o.Name)
+            .Where(n => n != justWritten)
             .OrderByDescending(n => n, StringComparer.Ordinal)
-            .Skip(options.RetentionCount);
+            .Skip(options.RetentionCount - 1);
 
         foreach (var name in expired)
         {

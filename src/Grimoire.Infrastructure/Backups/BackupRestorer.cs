@@ -92,14 +92,29 @@ public sealed class BackupRestorer(
             ValidateDatabase(staging);
 
             var stamp = DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmss");
-            foreach (var suffix in new[] { "", "-wal", "-shm" })
+            var movedAside = new List<(string From, string To)>();
+            try
             {
-                var existing = databasePath + suffix;
-                if (File.Exists(existing))
-                    File.Move(existing, $"{databasePath}.pre-restore-{stamp}{suffix}");
+                foreach (var suffix in new[] { "", "-wal", "-shm" })
+                {
+                    var existing = databasePath + suffix;
+                    if (!File.Exists(existing))
+                        continue;
+                    var aside = $"{databasePath}.pre-restore-{stamp}{suffix}";
+                    File.Move(existing, aside);
+                    movedAside.Add((existing, aside));
+                }
+
+                File.Move(staging, databasePath);
+            }
+            catch
+            {
+                // Put the live database back exactly as it was, so a failed restore changes nothing.
+                foreach (var (from, aside) in Enumerable.Reverse(movedAside))
+                    File.Move(aside, from, overwrite: true);
+                throw;
             }
 
-            File.Move(staging, databasePath);
             return resolved;
         }
         finally
@@ -175,9 +190,14 @@ public sealed class BackupRestorer(
                 ex
             );
         }
-        await File.WriteAllBytesAsync(path, plaintext, ct);
-        if (!OperatingSystem.IsWindows())
-            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        try
+        {
+            await PrivateFile.WriteAllBytesAsync(path, plaintext, ct);
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(plaintext);
+        }
     }
 
     private static void ValidateDatabase(string path)

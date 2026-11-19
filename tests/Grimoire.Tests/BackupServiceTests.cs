@@ -61,6 +61,14 @@ internal sealed class MemoryTarget(string name, bool failWrites = false) : IBack
     }
 }
 
+/// <summary>A wall clock that can step backwards (FakeTimeProvider refuses to).</summary>
+internal sealed class SettableClock : TimeProvider
+{
+    public DateTimeOffset Now { get; set; }
+
+    public override DateTimeOffset GetUtcNow() => Now;
+}
+
 public sealed class HealthcheckPingerTests
 {
     [Fact]
@@ -91,6 +99,20 @@ public sealed class HealthcheckPingerTests
         await pinger.FailureAsync(" ", CancellationToken.None);
 
         Assert.Empty(handler.Urls);
+    }
+
+    [Theory]
+    [InlineData("relative/path")]
+    [InlineData("http://")]
+    public async Task InvalidUrl_IsSwallowed(string url)
+    {
+        var pinger = new HealthcheckPinger(
+            new HttpClient(),
+            NullLogger<HealthcheckPinger>.Instance
+        );
+
+        await pinger.SuccessAsync(url, CancellationToken.None);
+        await pinger.FailureAsync(url, CancellationToken.None);
     }
 
     [Fact]
@@ -210,6 +232,23 @@ public sealed class BackupServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Retention_NeverDeletesTheBackupJustWritten_AfterClockStepsBack()
+    {
+        var time = new SettableClock
+        {
+            Now = new DateTimeOffset(2026, 11, 19, 3, 0, 0, TimeSpan.Zero),
+        };
+        var target = new MemoryTarget("local");
+        using var service = Create([target], time, retention: 1);
+
+        await service.CreateBackupAsync(CancellationToken.None);
+        time.Now = time.Now.AddMinutes(-1); // NTP correction backwards
+        var newest = await service.CreateBackupAsync(CancellationToken.None);
+
+        Assert.Equal([newest.Name], target.Files.Keys);
+    }
+
+    [Fact]
     public async Task NotConfigured_Throws()
     {
         using var service = Create([new MemoryTarget("local")], enabled: false);
@@ -302,6 +341,33 @@ public sealed class BackupSchedulerTests
         time.Advance(TimeSpan.FromDays(1));
         await WaitUntil(() => backups.Calls == 2);
 
+        await scheduler.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task WaitsBeyondTaskDelayLimit_ForYearlySchedules()
+    {
+        // 2 Jan → next 1 Jan is ~364 days away, far past Task.Delay's ~49.7-day maximum.
+        var time = new FakeTimeProvider(new DateTimeOffset(2027, 1, 2, 0, 0, 0, TimeSpan.Zero));
+        var backups = new CountingBackupService();
+        using var scheduler = new BackupScheduler(
+            new BackupOptions { Schedule = "0 3 1 1 *" },
+            backups,
+            time,
+            NullLogger<BackupScheduler>.Instance
+        );
+
+        await scheduler.StartAsync(CancellationToken.None);
+        for (var day = 0; day < 363; day++)
+        {
+            await Task.Delay(1);
+            time.Advance(BackupScheduler.MaxStep);
+        }
+        Assert.Equal(0, backups.Calls);
+        Assert.Null(scheduler.ExecuteTask!.Exception);
+
+        time.Advance(TimeSpan.FromDays(2));
+        await WaitUntil(() => backups.Calls == 1);
         await scheduler.StopAsync(CancellationToken.None);
     }
 

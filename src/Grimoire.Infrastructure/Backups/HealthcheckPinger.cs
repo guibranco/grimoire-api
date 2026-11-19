@@ -27,7 +27,13 @@ public sealed class HealthcheckPinger(HttpClient http, ILogger<HealthcheckPinger
                     (int)response.StatusCode
                 );
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex)
+            when (ex
+                    is HttpRequestException
+                        or TaskCanceledException
+                        or InvalidOperationException // relative URL
+                        or UriFormatException
+            )
         {
             logger.LogWarning(ex, "Healthcheck ping failed");
         }

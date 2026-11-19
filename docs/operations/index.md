@@ -9,4 +9,4 @@ permalink: /operations/
 
 Running Grimoire in production: backups, restores and what to do when the server is lost.
 
-- [Backup and restore](backup-and-restore.md): encrypted snapshots, retention, restore test and the disaster-recovery runbook
+- [Backup and restore](backup-and-restore/): encrypted snapshots, retention, restore test and the disaster-recovery runbook

@@ -10,12 +10,18 @@ public sealed class LocalDirectoryBackupTarget(string directory) : IBackupTarget
     {
         EnsureDirectory();
         var path = PathFor(name);
-        var temp = path + ".tmp";
-        await File.WriteAllBytesAsync(temp, content, ct);
-        if (!OperatingSystem.IsWindows())
-            File.SetUnixFileMode(temp, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-        // Atomic rename: a crash mid-write never leaves a truncated file with a backup name.
-        File.Move(temp, path, overwrite: true);
+        var temp = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await PrivateFile.WriteAllBytesAsync(temp, content, ct);
+            // Atomic rename: a crash mid-write never leaves a truncated file with a backup name.
+            File.Move(temp, path, overwrite: true);
+        }
+        catch
+        {
+            File.Delete(temp); // a failed or cancelled write must not leave orphans behind
+            throw;
+        }
     }
 
     public Task<IReadOnlyList<BackupObject>> ListAsync(CancellationToken ct)

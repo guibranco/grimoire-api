@@ -12,6 +12,19 @@ public sealed class BackupScheduler(
     ILogger<BackupScheduler> logger
 ) : BackgroundService
 {
+    /// <summary>Task.Delay caps at ~49.7 days; a yearly cron can be further away, so wait in steps.</summary>
+    internal static readonly TimeSpan MaxStep = TimeSpan.FromDays(1);
+
+    private async Task WaitUntilAsync(DateTimeOffset due, CancellationToken ct)
+    {
+        for (
+            var remaining = due - time.GetUtcNow();
+            remaining > TimeSpan.Zero;
+            remaining = due - time.GetUtcNow()
+        )
+            await Task.Delay(remaining < MaxStep ? remaining : MaxStep, time, ct);
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!backups.IsConfigured || string.IsNullOrWhiteSpace(options.Schedule))
@@ -36,7 +49,7 @@ public sealed class BackupScheduler(
             if (next is null)
                 return;
 
-            await Task.Delay(next.Value - now, time, stoppingToken);
+            await WaitUntilAsync(next.Value, stoppingToken);
 
             try
             {
