@@ -152,6 +152,7 @@ All **consumer** endpoints require an `X-Api-Key` header with a valid applicatio
 | `GET` | `/management/global/secrets/{name}/versions/{env}` | 🌐 List global secret versions |
 | `DELETE` | `/management/global/secrets/{name}` | 🌐 Delete global secret |
 | `GET` | `/management/global/environments` | 🌐 Environment slugs in use across applications |
+| `GET` | `/management/dashboard` | 📊 Dashboard summary: counts, last changed/seen, attention items (metadata only) |
 
 Global values apply to every application with `inheritGlobals: true` (the default). Precedence, highest first: the application's value, a global for the environment slug, a global for `*`. See the [data model docs](docs/architecture/data-model.md#global-values-and-precedence).
 
@@ -211,6 +212,7 @@ Settings can be provided via `appsettings.json`, environment variables (use `__`
 | `Management:AdminApiKey` | ✅ | *(none)* | Bearer token for Management API |
 | `Encryption:MasterKey` | ✅ | *(none)* | Master key for HKDF derivation (≥ 32 chars) |
 | `Cors:AllowedOrigins` | ➖ | `[]` | Allowed CORS origins |
+| `Dashboard:ExpiringWithinDays` / `StaleAfterDays` / `CacheSeconds` | ➖ | `14` / `7` / `15` | Dashboard attention thresholds and summary cache duration |
 | `Serilog:MinimumLevel:Default` | ➖ | `Information` | Log level |
 | `LogStream:Server` / `ApiKey` / `ApiToken` | ➖ | *(none)* | Ship logs to a [LogStream](https://github.com/guibranco/logstream-server) server; disabled unless all three are set |
 
