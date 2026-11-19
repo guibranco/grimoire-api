@@ -14,128 +14,74 @@ public static class DashboardBuilder
         int staleAfterDays
     )
     {
-        var expiringBefore = now.AddDays(expiringWithinDays);
-        var staleBefore = now.AddDays(-staleAfterDays);
-        var attention = new List<AttentionItem>();
-
-        var envsByApp = snapshot.Environments.ToLookup(e => e.ApplicationId);
-        var secretsByApp = snapshot.Secrets.ToLookup(s => s.ApplicationId);
-        var configsByApp = snapshot.Configurations.ToLookup(c => c.ApplicationId);
-        var versionsBySecretEnv = snapshot.SecretVersions.ToLookup(v =>
-            (v.SecretId, v.EnvironmentId)
+        var context = new BuildContext(
+            snapshot,
+            now,
+            now.AddDays(expiringWithinDays),
+            now.AddDays(-staleAfterDays)
         );
-        var versionsByEnv = snapshot.SecretVersions.ToLookup(v => v.EnvironmentId);
-        var secretsWithVersions = snapshot.SecretVersions.Select(v => v.SecretId).ToHashSet();
 
-        var applications = new List<DashboardApplication>();
-        foreach (
-            var app in snapshot.Applications.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
-        )
+        var applications = snapshot
+            .Applications.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(context.BuildApplication)
+            .ToList();
+
+        var global = BuildGlobal(snapshot, now, context.ExpiringBefore, context.Attention);
+
+        var totals = new DashboardTotals(
+            applications.Count,
+            applications.Sum(a => a.Environments.Count),
+            applications.Sum(a => a.SecretCount),
+            applications.Sum(a => a.ConfigurationCount)
+        );
+
+        return new DashboardSummary(now, totals, applications, global, Order(context.Attention));
+    }
+
+    /// <summary>Lookups over the snapshot plus the attention items collected so far.</summary>
+    private sealed class BuildContext(
+        DashboardSnapshot snapshot,
+        DateTimeOffset now,
+        DateTimeOffset expiringBefore,
+        DateTimeOffset staleBefore
+    )
+    {
+        private readonly ILookup<Guid, EnvironmentRow> _envsByApp = snapshot.Environments.ToLookup(
+            e => e.ApplicationId
+        );
+        private readonly ILookup<Guid, SecretRow> _secretsByApp = snapshot.Secrets.ToLookup(s =>
+            s.ApplicationId
+        );
+        private readonly ILookup<Guid, ConfigurationRow> _configsByApp =
+            snapshot.Configurations.ToLookup(c => c.ApplicationId);
+        private readonly ILookup<(Guid, Guid), SecretVersionRow> _versionsBySecretEnv =
+            snapshot.SecretVersions.ToLookup(v => (v.SecretId, v.EnvironmentId));
+        private readonly ILookup<Guid, SecretVersionRow> _versionsByEnv =
+            snapshot.SecretVersions.ToLookup(v => v.EnvironmentId);
+        private readonly HashSet<Guid> _secretsWithVersions = snapshot
+            .SecretVersions.Select(v => v.SecretId)
+            .ToHashSet();
+
+        public DateTimeOffset ExpiringBefore => expiringBefore;
+
+        public List<AttentionItem> Attention { get; } = [];
+
+        public DashboardApplication BuildApplication(ApplicationRow app)
         {
-            var appSecrets = secretsByApp[app.Id].ToList();
-            var appConfigs = configsByApp[app.Id].ToList();
+            var appSecrets = _secretsByApp[app.Id].ToList();
+            var appConfigs = _configsByApp[app.Id].ToList();
             var configsByEnv = appConfigs.ToLookup(c => c.EnvironmentId);
 
-            var environments = new List<DashboardEnvironment>();
-            foreach (
-                var env in envsByApp[app.Id].OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-            )
-            {
-                var envVersions = versionsByEnv[env.Id].ToList();
-                var envConfigs = configsByEnv[env.Id].ToList();
-                var secretCount = envVersions.Select(v => v.SecretId).Distinct().Count();
-                var lastChanged = Max(
-                    env.UpdatedAt,
-                    envVersions.Select(v => v.CreatedAt).Concat(envConfigs.Select(c => c.UpdatedAt))
-                );
+            var environments = _envsByApp[app.Id]
+                .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(env =>
+                    BuildEnvironment(app, env, appSecrets, configsByEnv[env.Id].ToList())
+                )
+                .ToList();
 
-                DateTimeOffset? lastSeen = null;
-                if (snapshot.LastSeen is { } lastSeenMap)
-                {
-                    if (lastSeenMap.TryGetValue((app.Id, env.Id), out var seen))
-                    {
-                        lastSeen = seen;
-                        if (seen < staleBefore)
-                            attention.Add(
-                                new AttentionItem(
-                                    AttentionKinds.ConsumerStale,
-                                    AttentionSeverity.Warning,
-                                    app.Slug,
-                                    env.Slug,
-                                    null,
-                                    LastSeenAt: seen
-                                )
-                            );
-                    }
-                    else if (secretCount + envConfigs.Count > 0)
-                    {
-                        attention.Add(
-                            new AttentionItem(
-                                AttentionKinds.ConsumerNeverSeen,
-                                AttentionSeverity.Info,
-                                app.Slug,
-                                env.Slug,
-                                null
-                            )
-                        );
-                    }
-                }
-
-                // Only environments the secret has been given a value in are evaluated: every
-                // application gets a "local" environment that often never receives values.
-                foreach (var secret in appSecrets)
-                {
-                    var versions = versionsBySecretEnv[(secret.Id, env.Id)]
-                        .Select(v => new VersionInfo(
-                            v.IsEnabled,
-                            v.ExpiresAt,
-                            v.NotBefore,
-                            v.Version
-                        ))
-                        .ToList();
-                    if (versions.Count == 0)
-                        continue;
-
-                    if (EvaluateSecret(versions, now, expiringBefore) is { } found)
-                        attention.Add(
-                            new AttentionItem(
-                                found.Kind,
-                                found.Severity,
-                                app.Slug,
-                                env.Slug,
-                                secret.Name,
-                                found.DueAt
-                            )
-                        );
-                }
-
-                attention.AddRange(
-                    envConfigs
-                        .Where(c => c.IsBlank)
-                        .Select(c => new AttentionItem(
-                            AttentionKinds.ConfigEmptyValue,
-                            AttentionSeverity.Info,
-                            app.Slug,
-                            env.Slug,
-                            c.Key
-                        ))
-                );
-
-                environments.Add(
-                    new DashboardEnvironment(
-                        env.Slug,
-                        env.Name,
-                        secretCount,
-                        envConfigs.Count,
-                        lastChanged,
-                        lastSeen
-                    )
-                );
-            }
-
-            attention.AddRange(
+            Attention.AddRange(
                 appSecrets
-                    .Where(secret => !secretsWithVersions.Contains(secret.Id))
+                    .Where(secret => !_secretsWithVersions.Contains(secret.Id))
                     .Select(secret => new AttentionItem(
                         AttentionKinds.SecretNoValidVersion,
                         AttentionSeverity.Error,
@@ -145,35 +91,132 @@ public static class DashboardBuilder
                     ))
             );
 
-            applications.Add(
-                new DashboardApplication(
-                    app.Slug,
-                    app.Name,
-                    app.InheritGlobals,
-                    environments,
-                    appSecrets.Count,
-                    appConfigs.Count,
-                    Max(
-                        app.UpdatedAt,
-                        environments
-                            .Select(e => e.LastChangedAt)
-                            .Concat(appSecrets.Select(s => s.UpdatedAt))
-                    ),
-                    environments.Select(e => e.LastSeenAt).Max()
-                )
+            return new DashboardApplication(
+                app.Slug,
+                app.Name,
+                app.InheritGlobals,
+                environments,
+                appSecrets.Count,
+                appConfigs.Count,
+                Max(
+                    app.UpdatedAt,
+                    environments
+                        .Select(e => e.LastChangedAt)
+                        .Concat(appSecrets.Select(s => s.UpdatedAt))
+                ),
+                environments.Select(e => e.LastSeenAt).Max()
             );
         }
 
-        var global = BuildGlobal(snapshot, now, expiringBefore, attention);
+        private DashboardEnvironment BuildEnvironment(
+            ApplicationRow app,
+            EnvironmentRow env,
+            List<SecretRow> appSecrets,
+            List<ConfigurationRow> envConfigs
+        )
+        {
+            var envVersions = _versionsByEnv[env.Id].ToList();
+            var secretCount = envVersions.Select(v => v.SecretId).Distinct().Count();
+            var lastChanged = Max(
+                env.UpdatedAt,
+                envVersions.Select(v => v.CreatedAt).Concat(envConfigs.Select(c => c.UpdatedAt))
+            );
 
-        var totals = new DashboardTotals(
-            applications.Count,
-            applications.Sum(a => a.Environments.Count),
-            applications.Sum(a => a.SecretCount),
-            applications.Sum(a => a.ConfigurationCount)
-        );
+            var lastSeen = AddConsumerAttention(app, env, secretCount + envConfigs.Count > 0);
+            AddSecretAttention(app, env, appSecrets);
+            Attention.AddRange(
+                envConfigs
+                    .Where(c => c.IsBlank)
+                    .Select(c => new AttentionItem(
+                        AttentionKinds.ConfigEmptyValue,
+                        AttentionSeverity.Info,
+                        app.Slug,
+                        env.Slug,
+                        c.Key
+                    ))
+            );
 
-        return new DashboardSummary(now, totals, applications, global, Order(attention));
+            return new DashboardEnvironment(
+                env.Slug,
+                env.Name,
+                secretCount,
+                envConfigs.Count,
+                lastChanged,
+                lastSeen
+            );
+        }
+
+        /// <returns>The environment's last-seen time, or <c>null</c> if never seen or not tracked.</returns>
+        private DateTimeOffset? AddConsumerAttention(
+            ApplicationRow app,
+            EnvironmentRow env,
+            bool hasValues
+        )
+        {
+            if (snapshot.LastSeen is not { } lastSeenMap)
+                return null;
+
+            if (!lastSeenMap.TryGetValue((app.Id, env.Id), out var seen))
+            {
+                if (hasValues)
+                    Attention.Add(
+                        new AttentionItem(
+                            AttentionKinds.ConsumerNeverSeen,
+                            AttentionSeverity.Info,
+                            app.Slug,
+                            env.Slug,
+                            null
+                        )
+                    );
+                return null;
+            }
+
+            if (seen < staleBefore)
+                Attention.Add(
+                    new AttentionItem(
+                        AttentionKinds.ConsumerStale,
+                        AttentionSeverity.Warning,
+                        app.Slug,
+                        env.Slug,
+                        null,
+                        LastSeenAt: seen
+                    )
+                );
+            return seen;
+        }
+
+        /// <summary>
+        /// Only environments the secret has been given a value in are evaluated: every
+        /// application gets a "local" environment that often never receives values.
+        /// </summary>
+        private void AddSecretAttention(
+            ApplicationRow app,
+            EnvironmentRow env,
+            List<SecretRow> appSecrets
+        )
+        {
+            foreach (var secret in appSecrets)
+            {
+                var versions = _versionsBySecretEnv[(secret.Id, env.Id)]
+                    .Select(v => new VersionInfo(v.IsEnabled, v.ExpiresAt, v.NotBefore, v.Version))
+                    .ToList();
+
+                if (
+                    versions.Count > 0
+                    && EvaluateSecret(versions, now, expiringBefore) is { } found
+                )
+                    Attention.Add(
+                        new AttentionItem(
+                            found.Kind,
+                            found.Severity,
+                            app.Slug,
+                            env.Slug,
+                            secret.Name,
+                            found.DueAt
+                        )
+                    );
+            }
+        }
     }
 
     private static DashboardGlobal BuildGlobal(
