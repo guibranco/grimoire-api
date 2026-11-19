@@ -19,7 +19,14 @@ public sealed class BackupService(
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public bool IsConfigured => options.Enabled && options.Validate().Count == 0;
+    public bool IsConfigured =>
+        options.Enabled
+        && options.Validate().Count == 0
+        && !string.Equals(
+            options.Key,
+            configuration["Encryption:MasterKey"],
+            StringComparison.Ordinal
+        );
 
     public async Task<BackupInfo> CreateBackupAsync(CancellationToken ct)
     {

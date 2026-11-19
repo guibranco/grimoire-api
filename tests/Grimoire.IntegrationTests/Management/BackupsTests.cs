@@ -314,6 +314,68 @@ public sealed class BackupsTests(GrimoireWebApplicationFactory factory)
         );
     }
 
+    /// <summary>Runs the real entry point (Grimoire.Api.dll) with the given args and environment.</summary>
+    private static async Task<(int ExitCode, string Output)> RunApiAsync(
+        IDictionary<string, string> environment,
+        params string[] args
+    )
+    {
+        var dll = typeof(Program).Assembly.Location;
+        var start = new System.Diagnostics.ProcessStartInfo("dotnet")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = Path.GetDirectoryName(dll)!,
+        };
+        start.ArgumentList.Add(dll);
+        foreach (var arg in args)
+            start.ArgumentList.Add(arg);
+        start.Environment["ASPNETCORE_ENVIRONMENT"] = "Testing";
+        start.Environment["LogStream__Enabled"] = "false";
+        foreach (var (key, value) in environment)
+            start.Environment[key] = value;
+
+        using var process = System.Diagnostics.Process.Start(start)!;
+        var stdout = process.StandardOutput.ReadToEndAsync();
+        var stderr = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync().WaitAsync(TimeSpan.FromMinutes(2));
+        return (process.ExitCode, await stdout + await stderr);
+    }
+
+    [Fact]
+    public async Task EntryPoint_BackupRefusesSharedKey_ButVerifyStillWorks()
+    {
+        using var app = WithBackups();
+        var client = Management(app);
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(client);
+        await TestHelpers.CreateSecretWithValueAsync(client, slug, "Pwd", "local", "x");
+        (await client.PostAsync("/management/backups", null)).EnsureSuccessStatusCode();
+        var backupFile = Directory.GetFiles(_backupDir, "*.gbak").Single();
+
+        var environment = new Dictionary<string, string>
+        {
+            ["ConnectionStrings__Default"] = $"Data Source={Path.Combine(_backupDir, "cli.db")}",
+            ["Management__AdminApiKey"] = GrimoireWebApplicationFactory.AdminKey,
+            ["Encryption__MasterKey"] = GrimoireWebApplicationFactory.MasterKey,
+            ["Backup__Enabled"] = "true",
+            ["Backup__Key"] = BackupKey,
+            ["Backup__Local__Enabled"] = "true",
+            ["Backup__Local__Directory"] = _backupDir,
+            // An invalid creation setting must not block reading existing backups.
+            ["Backup__RetentionCount"] = "0",
+        };
+
+        var verify = await RunApiAsync(environment, "--verify-backup", backupFile);
+        Assert.True(verify.ExitCode == 0, verify.Output);
+        Assert.Contains("Restore test passed", verify.Output);
+
+        environment["Backup__RetentionCount"] = "5";
+        environment["Backup__Key"] = GrimoireWebApplicationFactory.MasterKey;
+        var backup = await RunApiAsync(environment, "--backup");
+        Assert.Equal(2, backup.ExitCode);
+        Assert.Contains("must differ from 'Encryption:MasterKey'", backup.Output);
+    }
+
     private static long CountApplications(string dbPath, string slug)
     {
         using var connection = new SqliteConnection($"Data Source={dbPath};Pooling=False");

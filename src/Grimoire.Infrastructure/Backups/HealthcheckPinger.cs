@@ -18,22 +18,25 @@ public sealed class HealthcheckPinger(HttpClient http, ILogger<HealthcheckPinger
             return;
 
         var target = suffix is null ? url : $"{url.TrimEnd('/')}/{suffix}";
+        if (
+            !Uri.TryCreate(target, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+        )
+        {
+            logger.LogWarning("Healthcheck URL is not an absolute http(s) URL; ping skipped");
+            return;
+        }
+
         try
         {
-            using var response = await http.GetAsync(target, ct);
+            using var response = await http.GetAsync(uri, ct);
             if (!response.IsSuccessStatusCode)
                 logger.LogWarning(
                     "Healthcheck ping answered {StatusCode}",
                     (int)response.StatusCode
                 );
         }
-        catch (Exception ex)
-            when (ex
-                    is HttpRequestException
-                        or TaskCanceledException
-                        or InvalidOperationException // relative URL
-                        or UriFormatException
-            )
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             logger.LogWarning(ex, "Healthcheck ping failed");
         }

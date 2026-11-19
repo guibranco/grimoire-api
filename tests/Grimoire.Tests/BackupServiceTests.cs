@@ -104,6 +104,7 @@ public sealed class HealthcheckPingerTests
     [Theory]
     [InlineData("relative/path")]
     [InlineData("http://")]
+    [InlineData("ftp://example.com/check")]
     public async Task InvalidUrl_IsSwallowed(string url)
     {
         var pinger = new HealthcheckPinger(
@@ -154,7 +155,8 @@ public sealed class BackupServiceTests : IDisposable
         IReadOnlyList<IBackupTarget> targets,
         TimeProvider? time = null,
         int retention = 14,
-        bool enabled = true
+        bool enabled = true,
+        string masterKey = "a-master-key-that-differs-from-the-backup-key"
     ) =>
         new(
             new BackupOptions
@@ -171,6 +173,7 @@ public sealed class BackupServiceTests : IDisposable
                     new Dictionary<string, string?>
                     {
                         ["ConnectionStrings:Default"] = $"Data Source={_dbPath};Pooling=False",
+                        ["Encryption:MasterKey"] = masterKey,
                     }
                 )
                 .Build(),
@@ -246,6 +249,17 @@ public sealed class BackupServiceTests : IDisposable
         var newest = await service.CreateBackupAsync(CancellationToken.None);
 
         Assert.Equal([newest.Name], target.Files.Keys);
+    }
+
+    [Fact]
+    public async Task BackupKeyEqualToMasterKey_RefusesToCreateBackups()
+    {
+        using var service = Create([new MemoryTarget("local")], masterKey: Key);
+
+        Assert.False(service.IsConfigured);
+        await Assert.ThrowsAsync<BackupNotConfiguredException>(() =>
+            service.CreateBackupAsync(CancellationToken.None)
+        );
     }
 
     [Fact]

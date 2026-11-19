@@ -117,9 +117,16 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
+// The server and --backup create backups, so they must have a valid backup configuration.
+// --restore and --verify-backup only read existing files and stay available regardless.
+var createsBackups = backupCommand is null or { Kind: BackupCommandKind.Backup };
 var backupOptions = app.Services.GetRequiredService<BackupOptions>();
-var backupErrors = backupOptions.Validate().ToList();
-if (backupOptions.Enabled && backupOptions.Key == app.Configuration["Encryption:MasterKey"])
+var backupErrors = createsBackups ? backupOptions.Validate().ToList() : [];
+if (
+    createsBackups
+    && backupOptions.Enabled
+    && backupOptions.Key == app.Configuration["Encryption:MasterKey"]
+)
     backupErrors.Add("'Backup:Key' must differ from 'Encryption:MasterKey'.");
 if (backupErrors.Count > 0)
 {

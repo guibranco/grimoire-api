@@ -19,7 +19,16 @@ public sealed class LocalDirectoryBackupTarget(string directory) : IBackupTarget
         }
         catch
         {
-            File.Delete(temp); // a failed or cancelled write must not leave orphans behind
+            // A failed or cancelled write must not leave orphans behind, and a failing cleanup
+            // must not replace the original exception.
+            try
+            {
+                File.Delete(temp);
+            }
+            catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException)
+            {
+                // best effort
+            }
             throw;
         }
     }
