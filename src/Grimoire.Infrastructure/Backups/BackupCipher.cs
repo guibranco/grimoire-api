@@ -63,7 +63,10 @@ public sealed class BackupCipher
     /// <exception cref="AuthenticationTagMismatchException">Wrong key, or the file was modified.</exception>
     public byte[] Decrypt(ReadOnlySpan<byte> backup)
     {
-        if (backup.Length < HeaderSize + NonceSize + TagSize || !backup[..Magic.Length].SequenceEqual(Magic))
+        if (
+            backup.Length < HeaderSize + NonceSize + TagSize
+            || !backup[..Magic.Length].SequenceEqual(Magic)
+        )
             throw new InvalidDataException("Not a Grimoire backup file.");
 
         var header = backup[..HeaderSize];

@@ -55,6 +55,9 @@ public sealed class LocalDirectoryBackupTarget(string directory) : IBackupTarget
         if (OperatingSystem.IsWindows())
             Directory.CreateDirectory(_directory);
         else
-            Directory.CreateDirectory(_directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            Directory.CreateDirectory(
+                _directory,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+            );
     }
 }

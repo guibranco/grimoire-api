@@ -189,6 +189,131 @@ public sealed class BackupsTests(GrimoireWebApplicationFactory factory)
         );
     }
 
+    [Fact]
+    public async Task CommandLine_Backup_Then_VerifyLatest_Succeed()
+    {
+        using var app = WithBackups();
+        var client = Management(app);
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(client);
+        await TestHelpers.CreateSecretWithValueAsync(client, slug, "Token", "local", "abc");
+
+        Assert.Equal(
+            0,
+            await Grimoire.Api.Backups.BackupCommandLine.RunAsync(
+                new(Grimoire.Api.Backups.BackupCommandKind.Backup, null, false),
+                app.Services
+            )
+        );
+        Assert.Equal(
+            0,
+            await Grimoire.Api.Backups.BackupCommandLine.RunAsync(
+                new(Grimoire.Api.Backups.BackupCommandKind.Verify, BackupRestorer.Latest, false),
+                app.Services
+            )
+        );
+    }
+
+    [Fact]
+    public async Task CommandLine_Failures_ReturnOne()
+    {
+        // Not configured → --backup fails cleanly.
+        Assert.Equal(
+            1,
+            await Grimoire.Api.Backups.BackupCommandLine.RunAsync(
+                new(Grimoire.Api.Backups.BackupCommandKind.Backup, null, false),
+                factory.Services
+            )
+        );
+
+        using var app = WithBackups();
+        // Missing file → verify and restore fail without touching the live database.
+        var missing = Path.Combine(_backupDir, "missing.gbak");
+        Assert.Equal(
+            1,
+            await Grimoire.Api.Backups.BackupCommandLine.RunAsync(
+                new(Grimoire.Api.Backups.BackupCommandKind.Verify, missing, false),
+                app.Services
+            )
+        );
+        Assert.Equal(
+            1,
+            await Grimoire.Api.Backups.BackupCommandLine.RunAsync(
+                new(Grimoire.Api.Backups.BackupCommandKind.Restore, missing, true),
+                app.Services
+            )
+        );
+    }
+
+    [Fact]
+    public async Task CommandLine_VerifyEmptyDatabaseBackup_FailsSmokeTest()
+    {
+        // A fresh database has no applications or secrets: the restore test must not pass.
+        var emptyDb = Path.Combine(_backupDir, "empty.db");
+        Directory.CreateDirectory(_backupDir);
+        using (var connection = new SqliteConnection($"Data Source={emptyDb};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE __EFMigrationsHistory (MigrationId TEXT);
+                CREATE TABLE Applications (Id TEXT, IsDeleted INTEGER);
+                CREATE TABLE SecretVersions (EncryptedValue TEXT);
+                CREATE TABLE GlobalSecretVersions (EncryptedValue TEXT);
+                CREATE TABLE ConfigurationEntries (Id TEXT);
+                """;
+            command.ExecuteNonQuery();
+        }
+        var file = Path.Combine(_backupDir, "empty.gbak");
+        await File.WriteAllBytesAsync(
+            file,
+            new BackupCipher(BackupKey).Encrypt(await File.ReadAllBytesAsync(emptyDb))
+        );
+
+        using var app = WithBackups();
+        Assert.Equal(
+            1,
+            await Grimoire.Api.Backups.BackupCommandLine.RunAsync(
+                new(Grimoire.Api.Backups.BackupCommandKind.Verify, file, false),
+                app.Services
+            )
+        );
+    }
+
+    [Fact]
+    public async Task Restore_RejectsFileThatIsNotAGrimoireDatabase()
+    {
+        var plain = Path.Combine(_backupDir, "plain.db");
+        Directory.CreateDirectory(_backupDir);
+        using (var connection = new SqliteConnection($"Data Source={plain};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "CREATE TABLE Something (Id TEXT);";
+            command.ExecuteNonQuery();
+        }
+        var file = Path.Combine(_backupDir, "plain.gbak");
+        await File.WriteAllBytesAsync(
+            file,
+            new BackupCipher(BackupKey).Encrypt(await File.ReadAllBytesAsync(plain))
+        );
+
+        var target = Path.Combine(_backupDir, "target", "grimoire.db");
+        var restorer = new BackupRestorer(
+            new BackupOptions { Key = BackupKey },
+            [],
+            factory.Services.GetRequiredService<IEncryptionService>(),
+            $"Data Source={target}"
+        );
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            restorer.RestoreAsync(file, force: false, CancellationToken.None)
+        );
+        Assert.False(File.Exists(target));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            restorer.LoadAsync(BackupRestorer.Latest, CancellationToken.None)
+        );
+    }
+
     private static long CountApplications(string dbPath, string slug)
     {
         using var connection = new SqliteConnection($"Data Source={dbPath};Pooling=False");

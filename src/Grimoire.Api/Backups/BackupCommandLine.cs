@@ -41,10 +41,18 @@ public static class BackupCommandLine
                     command = new BackupCommand(BackupCommandKind.Backup, null, false);
                     break;
                 case "--restore":
-                    command = new BackupCommand(BackupCommandKind.Restore, RequireValue(args, ref i), false);
+                    command = new BackupCommand(
+                        BackupCommandKind.Restore,
+                        RequireValue(args, ref i),
+                        false
+                    );
                     break;
                 case "--verify-backup":
-                    command = new BackupCommand(BackupCommandKind.Verify, RequireValue(args, ref i), false);
+                    command = new BackupCommand(
+                        BackupCommandKind.Verify,
+                        RequireValue(args, ref i),
+                        false
+                    );
                     break;
                 case "--force":
                     force = true;
@@ -70,7 +78,9 @@ public static class BackupCommandLine
             {
                 case BackupCommandKind.Backup:
                 {
-                    var backup = await services.GetRequiredService<IBackupService>().CreateBackupAsync(ct);
+                    var backup = await services
+                        .GetRequiredService<IBackupService>()
+                        .CreateBackupAsync(ct);
                     Console.WriteLine(
                         $"✅ Backup {backup.Name} ({backup.SizeBytes} bytes) written to {string.Join(", ", backup.Targets)}"
                     );
@@ -80,7 +90,9 @@ public static class BackupCommandLine
                 {
                     var restorer = services.GetRequiredService<BackupRestorer>();
                     var source = await restorer.RestoreAsync(command.Source!, command.Force, ct);
-                    Console.WriteLine($"✅ Database restored from {source}. Start the service to apply pending migrations.");
+                    Console.WriteLine(
+                        $"✅ Database restored from {source}. Start the service to apply pending migrations."
+                    );
                     return 0;
                 }
                 case BackupCommandKind.Verify:
@@ -95,12 +107,19 @@ public static class BackupCommandLine
             if (command.Kind == BackupCommandKind.Verify)
                 await services
                     .GetRequiredService<HealthcheckPinger>()
-                    .FailureAsync(services.GetRequiredService<BackupOptions>().VerifyHealthcheckUrl, ct);
+                    .FailureAsync(
+                        services.GetRequiredService<BackupOptions>().VerifyHealthcheckUrl,
+                        ct
+                    );
             return 1;
         }
     }
 
-    private static async Task<int> VerifyAsync(string source, IServiceProvider services, CancellationToken ct)
+    private static async Task<int> VerifyAsync(
+        string source,
+        IServiceProvider services,
+        CancellationToken ct
+    )
     {
         var options = services.GetRequiredService<BackupOptions>();
         var pinger = services.GetRequiredService<HealthcheckPinger>();

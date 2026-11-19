@@ -46,7 +46,9 @@ public sealed class BackupService(
     public async Task<IReadOnlyList<BackupInfo>> ListBackupsAsync(CancellationToken ct)
     {
         EnsureConfigured();
-        var byName = new Dictionary<string, (long Size, List<string> Targets)>(StringComparer.Ordinal);
+        var byName = new Dictionary<string, (long Size, List<string> Targets)>(
+            StringComparer.Ordinal
+        );
         foreach (var target in targets)
         {
             foreach (var obj in await target.ListAsync(ct))
@@ -96,7 +98,12 @@ public sealed class BackupService(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogError(ex, "Writing backup {Name} to target {Target} failed", name, target.Name);
+                logger.LogError(
+                    ex,
+                    "Writing backup {Name} to target {Target} failed",
+                    name,
+                    target.Name
+                );
                 failures.Add(ex);
             }
         }
@@ -104,7 +111,10 @@ public sealed class BackupService(
         // A backup only counts when every target has it: a silently missing off-site copy is
         // exactly the failure this feature exists to catch, so it must reach the healthcheck.
         if (failures.Count > 0)
-            throw new AggregateException($"Backup {name} failed on {failures.Count} target(s).", failures);
+            throw new AggregateException(
+                $"Backup {name} failed on {failures.Count} target(s).",
+                failures
+            );
 
         logger.LogInformation(
             "Backup {Name} ({Size} bytes) written to {Targets} in {ElapsedMs} ms",
@@ -156,7 +166,11 @@ public sealed class BackupService(
         foreach (var name in expired)
         {
             await target.DeleteAsync(name, ct);
-            logger.LogInformation("Retention: deleted backup {Name} from {Target}", name, target.Name);
+            logger.LogInformation(
+                "Retention: deleted backup {Name} from {Target}",
+                name,
+                target.Name
+            );
         }
     }
 

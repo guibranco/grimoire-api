@@ -13,7 +13,8 @@ public sealed record BackupVerification(
     bool SecretDecrypted
 )
 {
-    public bool Passed => Applications > 0 && SecretVersions + GlobalSecretVersions > 0 && SecretDecrypted;
+    public bool Passed =>
+        Applications > 0 && SecretVersions + GlobalSecretVersions > 0 && SecretDecrypted;
 }
 
 /// <summary>
@@ -33,13 +34,18 @@ public sealed class BackupRestorer(
     /// Reads a backup: a file path, or <c>latest</c> for the newest backup across enabled targets
     /// (local first, as it is the fastest to read).
     /// </summary>
-    public async Task<(string Source, byte[] Content)> LoadAsync(string source, CancellationToken ct)
+    public async Task<(string Source, byte[] Content)> LoadAsync(
+        string source,
+        CancellationToken ct
+    )
     {
         if (!string.Equals(source, Latest, StringComparison.OrdinalIgnoreCase))
             return (Path.GetFullPath(source), await File.ReadAllBytesAsync(source, ct));
 
         if (targets.Count == 0)
-            throw new InvalidOperationException("'latest' needs at least one enabled backup target.");
+            throw new InvalidOperationException(
+                "'latest' needs at least one enabled backup target."
+            );
 
         (IBackupTarget Target, string Name)? newest = null;
         foreach (var target in targets)
@@ -48,7 +54,10 @@ public sealed class BackupRestorer(
                 .Select(o => o.Name)
                 .OrderByDescending(n => n, StringComparer.Ordinal)
                 .FirstOrDefault();
-            if (name is not null && (newest is null || string.CompareOrdinal(name, newest.Value.Name) > 0))
+            if (
+                name is not null
+                && (newest is null || string.CompareOrdinal(name, newest.Value.Name) > 0)
+            )
                 newest = (target, name);
         }
 
@@ -126,10 +135,19 @@ public sealed class BackupRestorer(
 
             return new BackupVerification(
                 resolved,
-                Applications: Count(connection, "SELECT COUNT(*) FROM Applications WHERE IsDeleted = 0"),
+                Applications: Count(
+                    connection,
+                    "SELECT COUNT(*) FROM Applications WHERE IsDeleted = 0"
+                ),
                 SecretVersions: Count(connection, "SELECT COUNT(*) FROM SecretVersions"),
-                GlobalSecretVersions: Count(connection, "SELECT COUNT(*) FROM GlobalSecretVersions"),
-                ConfigurationEntries: Count(connection, "SELECT COUNT(*) FROM ConfigurationEntries"),
+                GlobalSecretVersions: Count(
+                    connection,
+                    "SELECT COUNT(*) FROM GlobalSecretVersions"
+                ),
+                ConfigurationEntries: Count(
+                    connection,
+                    "SELECT COUNT(*) FROM ConfigurationEntries"
+                ),
                 SecretDecrypted: encryptedValue is not null && CanDecrypt(encryptedValue)
             );
         }
@@ -167,14 +185,18 @@ public sealed class BackupRestorer(
         using var connection = Open(path);
         var integrity = Scalar<string>(connection, "PRAGMA integrity_check");
         if (!string.Equals(integrity, "ok", StringComparison.Ordinal))
-            throw new InvalidDataException($"Backup failed the SQLite integrity check: {integrity}");
+            throw new InvalidDataException(
+                $"Backup failed the SQLite integrity check: {integrity}"
+            );
 
         var migrations = Count(
             connection,
             "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '__EFMigrationsHistory'"
         );
         if (migrations == 0)
-            throw new InvalidDataException("Backup is not a Grimoire database (no migrations table).");
+            throw new InvalidDataException(
+                "Backup is not a Grimoire database (no migrations table)."
+            );
     }
 
     private bool CanDecrypt(string encryptedValue)
@@ -198,7 +220,9 @@ public sealed class BackupRestorer(
     {
         var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
         if (string.IsNullOrWhiteSpace(dataSource) || dataSource == ":memory:")
-            throw new InvalidOperationException("ConnectionStrings:Default must point to a database file.");
+            throw new InvalidOperationException(
+                "ConnectionStrings:Default must point to a database file."
+            );
         return Path.GetFullPath(dataSource);
     }
 
