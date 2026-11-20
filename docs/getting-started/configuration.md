@@ -74,6 +74,14 @@ Cors__AllowedOrigins__0=https://app.example.com
 Cors__AllowedOrigins__1=https://admin.example.com
 ```
 
+### Dashboard
+
+| Setting | Env var | Default | Description |
+| :------ | :------ | :------ | :---------- |
+| `Dashboard:ExpiringWithinDays` | `Dashboard__ExpiringWithinDays` | `14` | Active secret versions expiring within this many days are flagged `secret-expiring`. Overridable per request with `?expiringWithinDays=`. |
+| `Dashboard:StaleAfterDays` | `Dashboard__StaleAfterDays` | `7` | Consumers not seen for more than this many days are flagged `consumer-stale`. Overridable per request with `?staleAfterDays=`. |
+| `Dashboard:CacheSeconds` | `Dashboard__CacheSeconds` | `15` | How long a computed summary is reused in memory. `0` disables caching. |
+
 ### Serilog (logging)
 
 | Setting | Default | Description |
