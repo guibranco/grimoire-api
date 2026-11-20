@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Grimoire restore test
+
+[Timer]
+# Two hours after the default backup schedule (03:00 UTC).
+OnCalendar=*-*-* 05:00:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

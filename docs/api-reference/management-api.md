@@ -818,3 +818,47 @@ One aggregate, read-only call for the UI home page. Returns **metadata only, nev
 Environments a secret was never given a value in (such as the auto-created `local`) are not flagged. A global secret for an environment slug is only flagged when the `*` value cannot cover it either.
 
 **Response `400`:** Threshold out of range.
+
+---
+
+## Backups
+
+Encrypted snapshots of the database. Both endpoints answer `409` until backups are configured (`Backup:Enabled`, `Backup:Key` and at least one target); see [Backup and restore](../operations/backup-and-restore.md).
+
+### List backups
+
+```
+GET /management/backups
+```
+
+Backups found in every enabled target, newest first. A backup stored in both targets appears once, with both target names.
+
+**Response `200`:**
+
+```json
+[
+  {
+    "name": "grimoire-20261119T030000001Z.gbak",
+    "sizeBytes": 18432,
+    "createdAt": "2026-11-19T03:00:00.001+00:00",
+    "targets": ["local", "s3"]
+  }
+]
+```
+
+**Response `409`:** Backups are not configured.
+
+---
+
+### Create backup
+
+```
+POST /management/backups
+```
+
+Takes a backup now, writes it to every enabled target, applies retention and pings `Backup:HealthcheckUrl`. Concurrent requests run one at a time.
+
+**Response `201`:** The new backup (same shape as a list item).  
+**Response `409`:** Backups are not configured.  
+**Response `500`:** At least one target failed. Details are in the server log.
+

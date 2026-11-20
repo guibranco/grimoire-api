@@ -1,15 +1,29 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Grimoire.Api;
+using Grimoire.Api.Backups;
 using Grimoire.Api.Logging;
 using Grimoire.Api.Middleware;
 using Grimoire.Api.Swagger;
 using Grimoire.Core.Entities;
 using Grimoire.Infrastructure;
+using Grimoire.Infrastructure.Backups;
 using Grimoire.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+
+BackupCommand? backupCommand;
+try
+{
+    (backupCommand, args) = BackupCommandLine.Parse(args);
+}
+catch (ArgumentException ex)
+{
+    Console.Error.WriteLine($"❌ {ex.Message}");
+    Environment.ExitCode = 2;
+    return;
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +61,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddScoped<IPasswordHasher<Application>, PasswordHasher<Application>>();
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHostedService<BackupScheduler>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -101,6 +116,44 @@ builder.Services.AddCors(options =>
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+// The server and --backup create backups, so they must have a valid backup configuration.
+// --restore and --verify-backup only read existing files and stay available regardless.
+var createsBackups = backupCommand is null or { Kind: BackupCommandKind.Backup };
+var backupOptions = app.Services.GetRequiredService<BackupOptions>();
+var backupErrors = createsBackups ? backupOptions.Validate().ToList() : [];
+if (
+    createsBackups
+    && backupOptions.Enabled
+    && backupOptions.Key == app.Configuration["Encryption:MasterKey"]
+)
+    backupErrors.Add("'Backup:Key' must differ from 'Encryption:MasterKey'.");
+if (backupErrors.Count > 0)
+{
+    var message = "Invalid backup configuration: " + string.Join(" ", backupErrors);
+    if (backupCommand is null)
+        throw new InvalidOperationException(message);
+
+    // Maintenance modes obey the same rules (key separation included), but fail with a message.
+    Console.Error.WriteLine($"❌ {message}");
+    Environment.ExitCode = 2;
+    Log.CloseAndFlush();
+    return;
+}
+
+// Backup maintenance modes run before migrations: a restore must find the database untouched.
+if (backupCommand is not null)
+{
+    try
+    {
+        Environment.ExitCode = await BackupCommandLine.RunAsync(backupCommand, app.Services);
+    }
+    finally
+    {
+        Log.CloseAndFlush();
+    }
+    return;
+}
 
 if (app.Environment.IsProduction())
 {
