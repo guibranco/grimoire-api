@@ -104,8 +104,13 @@ Logs can also be shipped to a [logstream-server](https://github.com/guibranco/lo
 | `LogStream:ApiToken` | — | The client's token, sent as `X-Api-Token` |
 | `LogStream:AppId` | running version | Stored as `app_id` |
 | `LogStream:MinimumLevel` | `Information` | Lowest level shipped (console/file logs are unaffected) |
+| `LogStream:Transport` | `Udp` | `Udp`: one HMAC-signed, fire-and-forget datagram per event (events too large for a datagram go over HTTPS). `Http`: batched POSTs with retries |
+| `LogStream:UdpHost` | host of `Server` | Host receiving the datagrams — use `127.0.0.1` when Grimoire runs on the LogStream host |
+| `LogStream:UdpPort` | `8082` | The server's `UDP_PORT` |
 
-Every Serilog event is sent in background batches (up to 100 events every 2 s) with its rendered message, message template, source context as `category`, properties as `context`, the exception (type, message, stack trace, inner exceptions) in `context.exception`, and the request's W3C trace id (32 hex characters) as `trace_id`, so all entries of one request can be found together. A slow or unreachable LogStream server never blocks requests: at most 10,000 events wait in memory, transient failures (network errors, timeouts, HTTP 408, 429 and 5xx) are retried with backoff for up to 5 minutes, then dropped, and other rejections are dropped at once. The sink reports its own problems through Serilog's `SelfLog`.
+Over UDP, delivery is fire-and-forget: the server never answers, so rejected packets (bad signature, clock skew, a source IP not allowed on the UDP port) are only visible in `udp.rejected` on the server's `GET /api/health`. Keep the clock NTP-synced. Set `LogStream:Transport=Http` to go back to HTTPS with retries.
+
+With `Http`, every Serilog event is sent in background batches (up to 100 events every 2 s) with its rendered message, message template, source context as `category`, properties as `context`, the exception (type, message, stack trace, inner exceptions) in `context.exception`, and the request's W3C trace id (32 hex characters) as `trace_id`, so all entries of one request can be found together. A slow or unreachable LogStream server never blocks requests: at most 10,000 events wait in memory, transient failures (network errors, timeouts, HTTP 408, 429 and 5xx) are retried with backoff for up to 5 minutes, then dropped, and other rejections are dropped at once. The sink reports its own problems through Serilog's `SelfLog`.
 
 ```bash
 LogStream__Server=https://logs.example.com

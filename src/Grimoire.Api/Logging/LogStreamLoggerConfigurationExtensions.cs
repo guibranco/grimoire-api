@@ -39,6 +39,10 @@ public static class LogStreamLoggerConfigurationExtensions
                 sink.UserAgent = $"Grimoire.Api/{AppVersion.Current}";
                 sink.RequestTimeout = TimeSpan.FromSeconds(10);
                 sink.MessageHandler = messageHandler;
+                sink.Transport = options.Transport;
+                sink.UdpPort = options.UdpPort;
+                if (!string.IsNullOrWhiteSpace(options.UdpHost))
+                    sink.UdpHost = options.UdpHost.Trim();
             },
             batching =>
             {
