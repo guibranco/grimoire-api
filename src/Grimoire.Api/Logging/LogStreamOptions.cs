@@ -1,4 +1,5 @@
 using Serilog.Events;
+using Serilog.Sinks.LogStream;
 
 namespace Grimoire.Api.Logging;
 
@@ -28,6 +29,22 @@ public sealed class LogStreamOptions
 
     /// <summary>Lowest level shipped to LogStream (console/file logging is unaffected).</summary>
     public LogEventLevel MinimumLevel { get; set; } = LogEventLevel.Information;
+
+    /// <summary>
+    /// <c>Udp</c> (default): one HMAC-signed, fire-and-forget datagram per event, signed with
+    /// <see cref="ApiToken"/>; events too large for one datagram go over HTTPS.
+    /// <c>Http</c>: batched POSTs to <c>/api/logs</c> with retries.
+    /// </summary>
+    public LogStreamTransport Transport { get; set; } = LogStreamTransport.Udp;
+
+    /// <summary>
+    /// Host receiving the UDP datagrams. Defaults to the host of <see cref="Server"/>;
+    /// set <c>127.0.0.1</c> when Grimoire runs on the same machine as the logstream-server.
+    /// </summary>
+    public string? UdpHost { get; set; }
+
+    /// <summary>The logstream-server's <c>UDP_PORT</c>.</summary>
+    public int UdpPort { get; set; } = 8082;
 
     public bool IsConfigured =>
         Enabled

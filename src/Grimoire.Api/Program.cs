@@ -42,7 +42,8 @@ Log.Logger = new LoggerConfiguration()
 
 Log.Information(
     "LogStream shipping is {LogStreamState}",
-    logStreamOptions.IsConfigured ? "enabled"
+    logStreamOptions.IsConfigured
+            ? $"enabled ({logStreamOptions.Transport.ToString().ToUpperInvariant()})"
         : logStreamOptions.Enabled ? "not configured"
         : "disabled"
 );

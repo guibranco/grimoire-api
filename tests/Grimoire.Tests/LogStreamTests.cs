@@ -1,10 +1,13 @@
 using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Grimoire.Api;
 using Grimoire.Api.Logging;
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.LogStream;
 
 namespace Grimoire.Tests;
 
@@ -16,6 +19,7 @@ public class LogStreamTests
             Server = "https://logs.example.test",
             ApiKey = "grimoire-api",
             ApiToken = "secret-token",
+            Transport = LogStreamTransport.Http,
         };
 
     // ── Options ───────────────────────────────────────────────────────────────
@@ -58,6 +62,15 @@ public class LogStreamTests
     {
         var options = new LogStreamOptions { Server = server };
         Assert.Equal(new Uri(expected), options.ServerUri);
+    }
+
+    [Fact]
+    public void Options_DefaultToUdpOnPort8082()
+    {
+        var options = new LogStreamOptions();
+        Assert.Equal(LogStreamTransport.Udp, options.Transport);
+        Assert.Equal(8082, options.UdpPort);
+        Assert.Null(options.UdpHost);
     }
 
     // ── Sink ──────────────────────────────────────────────────────────────────
@@ -185,5 +198,27 @@ public class LogStreamTests
             exception["type"]!.GetValue<string>()
         );
         Assert.Equal("boom", exception["message"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Sink_Udp_SendsSignedDatagramToUdpHost()
+    {
+        using var receiver = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        var options = ValidOptions();
+        options.Transport = LogStreamTransport.Udp;
+        options.UdpHost = "127.0.0.1";
+        options.UdpPort = ((IPEndPoint)receiver.Client.LocalEndPoint!).Port;
+
+        var handler = LogAndFlush(options, logger => logger.Information("Hello {Who}", "udp"));
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var datagram = await receiver.ReceiveAsync(timeout.Token);
+        Assert.Empty(handler.Requests);
+
+        using var packet = JsonDocument.Parse(datagram.Buffer);
+        var root = packet.RootElement;
+        Assert.Equal("grimoire-api", root.GetProperty("key").GetString());
+        Assert.False(string.IsNullOrEmpty(root.GetProperty("sig").GetString()));
+        Assert.Equal("Hello \"udp\"", root.GetProperty("log").GetProperty("message").GetString());
     }
 }

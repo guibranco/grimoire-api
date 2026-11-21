@@ -219,6 +219,7 @@ Settings can be provided via `appsettings.json`, environment variables (use `__`
 | `Serilog:MinimumLevel:Default` | ➖ | `Information` | Log level |
 | `Backup:Enabled` / `Key` / `Schedule` / `RetentionCount` | ➖ | off / *(none)* / `0 3 * * *` / `14` | Encrypted backups; targets under `Backup:Local:*` and `Backup:S3:*` ([details](docs/operations/backup-and-restore.md#configuration)) |
 | `LogStream:Server` / `ApiKey` / `ApiToken` | ➖ | *(none)* | Ship logs to a [LogStream](https://github.com/guibranco/logstream-server) server; disabled unless all three are set |
+| `LogStream:Transport` / `UdpHost` / `UdpPort` | ➖ | `Udp` / host of `Server` / `8082` | Signed UDP datagrams by default; `Http` for batched HTTPS with retries |
 
 > ⚠️ **Security note:** Never commit real values for `AdminApiKey` or `MasterKey`.  
 > Use environment variables, Docker secrets, or a secrets manager in production.
