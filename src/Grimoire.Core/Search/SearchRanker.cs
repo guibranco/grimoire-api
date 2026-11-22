@@ -40,14 +40,23 @@ public static class SearchRanker
             : null;
     }
 
-    private static int? Rate(string term, string value) =>
-        value.Equals(term, StringComparison.OrdinalIgnoreCase) ? 0
-        : value.StartsWith(term, StringComparison.OrdinalIgnoreCase) ? 1
-        : value.Contains(term, StringComparison.OrdinalIgnoreCase) ? 2
-        : null;
+    private static int? Rate(string term, string value)
+    {
+        if (value.Equals(term, StringComparison.OrdinalIgnoreCase))
+            return 0;
+        if (value.StartsWith(term, StringComparison.OrdinalIgnoreCase))
+            return 1;
+        if (value.Contains(term, StringComparison.OrdinalIgnoreCase))
+            return 2;
+        return null;
+    }
 
-    private static int? Min(int? a, int? b) =>
-        a is null ? b
-        : b is null ? a
-        : Math.Min(a.Value, b.Value);
+    private static int? Min(int? a, int? b)
+    {
+        if (a is null)
+            return b;
+        if (b is null)
+            return a;
+        return Math.Min(a.Value, b.Value);
+    }
 }

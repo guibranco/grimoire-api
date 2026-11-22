@@ -104,6 +104,48 @@ public class ConsumerActivityTests
     }
 
     [Fact]
+    public void DrainedEntries_StayVisibleUntilCompleted()
+    {
+        var tracker = new ConsumerActivityTracker(new FakeTimeProvider(Start));
+        var (app, env) = (Guid.NewGuid(), Guid.NewGuid());
+        tracker.Record(app, env, null, null);
+
+        var drained = tracker.Drain();
+
+        Assert.Equal(Start, tracker.PendingLastSeen()[(app, env)]);
+        tracker.Complete(drained);
+        Assert.Empty(tracker.PendingLastSeen());
+    }
+
+    [Fact]
+    public void Requeue_ClearsInFlight_AndBuffersAgain()
+    {
+        var tracker = new ConsumerActivityTracker(new FakeTimeProvider(Start));
+        var (app, env) = (Guid.NewGuid(), Guid.NewGuid());
+        tracker.Record(app, env, null, null);
+
+        tracker.Requeue(tracker.Drain());
+
+        Assert.Single(tracker.PendingLastSeen());
+        var again = Assert.Single(tracker.Drain());
+        Assert.Equal(1, again.RequestCount);
+    }
+
+    [Fact]
+    public void PendingLastSeen_PrefersTheLatestOfBufferedAndInFlight()
+    {
+        var time = new FakeTimeProvider(Start);
+        var tracker = new ConsumerActivityTracker(time);
+        var (app, env) = (Guid.NewGuid(), Guid.NewGuid());
+        tracker.Record(app, env, null, null);
+        tracker.Drain();
+        time.Advance(TimeSpan.FromMinutes(3));
+        tracker.Record(app, env, null, null);
+
+        Assert.Equal(Start.AddMinutes(3), tracker.PendingLastSeen()[(app, env)]);
+    }
+
+    [Fact]
     public async Task Store_InsertsThenUpdates_AccumulatingRequestCount()
     {
         await using var db = CreateDb();

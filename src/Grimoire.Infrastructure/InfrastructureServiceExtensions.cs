@@ -49,7 +49,7 @@ public static class InfrastructureServiceExtensions
         return services;
     }
 
-    private static IServiceCollection AddConsumerActivity(this IServiceCollection services)
+    private static void AddConsumerActivity(this IServiceCollection services)
     {
         services.AddSingleton(sp =>
         {
@@ -69,7 +69,6 @@ public static class InfrastructureServiceExtensions
         );
         services.AddScoped<ConsumerActivityStore>();
         services.TryAddScoped<IConsumerActivityReader, ConsumerActivityReader>();
-        return services;
     }
 
     private static DashboardOptions ReadDashboardOptions(IConfiguration configuration)

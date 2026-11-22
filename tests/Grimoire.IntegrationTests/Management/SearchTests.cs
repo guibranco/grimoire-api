@@ -56,14 +56,14 @@ public class SearchTests(GrimoireWebApplicationFactory factory)
             slug,
             $"{token}_PASSWORD",
             prod,
-            "hunter2-secret"
+            "VALUE-MARKER-secret"
         );
         await TestHelpers.CreateConfigurationAsync(
             Client,
             slug,
             prod,
             $"{token}_HOST",
-            "smtp.example"
+            "VALUE-MARKER-host"
         );
         await TestHelpers.CreateConfigurationAsync(
             Client,
@@ -75,7 +75,7 @@ public class SearchTests(GrimoireWebApplicationFactory factory)
         (
             await Client.PostAsJsonAsync(
                 "/management/global/configurations",
-                new { key = $"{token}_PORT", value = "587" }
+                new { key = $"{token}_PORT", value = "VALUE-MARKER-port" }
             )
         ).EnsureSuccessStatusCode();
         (
@@ -112,8 +112,8 @@ public class SearchTests(GrimoireWebApplicationFactory factory)
         Assert.Contains(results, r => r!["type"]!.GetValue<string>() == "global-secret");
 
         var raw = json.ToJsonString();
-        Assert.DoesNotContain("hunter2-secret", raw);
-        Assert.DoesNotContain("smtp.example", raw);
+        Assert.DoesNotContain("VALUE-MARKER-secret", raw);
+        Assert.DoesNotContain("VALUE-MARKER-host", raw);
         Assert.DoesNotContain("587", raw);
     }
 

@@ -50,8 +50,15 @@ public sealed class ConsumerActivityFlusher(
             await using var scope = scopes.CreateAsyncScope();
             var store = scope.ServiceProvider.GetRequiredService<ConsumerActivityStore>();
             await store.SaveAsync(entries, ct);
+            tracker.Complete(entries);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (OperationCanceledException)
+        {
+            // Cancelled (e.g. on shutdown) before the write finished: keep the entries.
+            tracker.Requeue(entries);
+            throw;
+        }
+        catch (Exception ex)
         {
             tracker.Requeue(entries);
             logger.LogWarning(

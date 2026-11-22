@@ -7,7 +7,7 @@ namespace Grimoire.Api.ConsumerTracking;
 
 /// <summary>
 /// Records a successful (2xx) Consumer API read for the authenticated application and the
-/// environment the action resolved. Failed and unauthorised calls are not recorded here.
+/// environment the action resolved. Failed, aborted and unauthorised calls are not recorded here.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public sealed class TrackConsumerActivityAttribute : Attribute, IResultFilter
@@ -16,6 +16,10 @@ public sealed class TrackConsumerActivityAttribute : Attribute, IResultFilter
 
     public void OnResultExecuted(ResultExecutedContext context)
     {
+        // A 2xx status alone isn't success: writing the result can still throw or be aborted.
+        if (context.Exception is not null || context.Canceled)
+            return;
+
         var http = context.HttpContext;
         if (http.Response.StatusCode is < 200 or >= 300)
             return;

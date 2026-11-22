@@ -9,15 +9,13 @@ namespace Grimoire.Infrastructure.Services;
 
 /// <summary>
 /// <c>LIKE</c> queries (case-insensitive for ASCII in SQLite) on names, keys and descriptions,
-/// grouped per secret / key, then ranked by <see cref="SearchRanker"/>. Value columns are never
-/// part of a predicate or a projection.
+/// grouped per secret / key, then ranked by <see cref="SearchRanker"/>. Every match is ranked
+/// before the limit is applied, so an exact match is never cut off and environment groups are
+/// complete. Value columns are never part of a predicate or a projection.
 /// </summary>
 public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearchService
 {
     private const string Escape = "\\";
-
-    /// <summary>Upper bound per table before ranking; plenty for a self-hosted estate.</summary>
-    private const int MaxCandidatesPerTable = 500;
 
     public async Task<SearchResult> SearchAsync(
         string query,
@@ -56,7 +54,6 @@ public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearc
                 a.Slug,
                 a.Description,
             })
-            .Take(MaxCandidatesPerTable)
             .ToListAsync(ct);
 
         return apps.Select(a => new SearchHit(
@@ -84,7 +81,6 @@ public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearc
                 s.Description,
                 AppSlug = s.Application.Slug,
             })
-            .Take(MaxCandidatesPerTable)
             .ToListAsync(ct);
 
         var ids = secrets.Select(s => s.Id).ToList();
@@ -126,7 +122,6 @@ public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearc
                 AppSlug = c.Application.Slug,
                 EnvSlug = c.Environment.Slug,
             })
-            .Take(MaxCandidatesPerTable)
             .ToListAsync(ct);
 
         return rows.GroupBy(r => (r.AppSlug, r.Key))
@@ -157,7 +152,6 @@ public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearc
                 s.Name,
                 s.Description,
             })
-            .Take(MaxCandidatesPerTable)
             .ToListAsync(ct);
 
         var ids = secrets.Select(s => s.Id).ToList();
@@ -197,7 +191,6 @@ public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearc
                 c.ValueType,
                 c.EnvironmentSlug,
             })
-            .Take(MaxCandidatesPerTable)
             .ToListAsync(ct);
 
         return rows.GroupBy(r => r.Key)
