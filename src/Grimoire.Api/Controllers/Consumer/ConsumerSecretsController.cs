@@ -1,6 +1,8 @@
+using Grimoire.Api.Audit;
 using Grimoire.Api.ConsumerTracking;
 using Grimoire.Api.DTOs.Consumer;
 using Grimoire.Api.Middleware;
+using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
@@ -18,6 +20,7 @@ public class ConsumerSecretsController(
     IEncryptionService encryption
 ) : ControllerBase
 {
+    [Audited(AuditActions.SecretRead)]
     [HttpGet("{name}")]
     public async Task<IActionResult> GetSecret(
         string name,

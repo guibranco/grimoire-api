@@ -1,6 +1,8 @@
+using Grimoire.Api.Audit;
 using Grimoire.Api.ConsumerTracking;
 using Grimoire.Api.DTOs.Consumer;
 using Grimoire.Api.Middleware;
+using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
@@ -18,6 +20,7 @@ public class ConsumerConfigurationsController(
     IEffectiveConfigurationService effective
 ) : ControllerBase
 {
+    [Audited(AuditActions.ConfigurationRead)]
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] string environment, CancellationToken ct)
     {
@@ -42,6 +45,7 @@ public class ConsumerConfigurationsController(
         return Ok(new ConfigurationListResponse(items));
     }
 
+    [Audited(AuditActions.ConfigurationRead)]
     [HttpGet("{key}")]
     public async Task<IActionResult> GetByKey(
         string key,

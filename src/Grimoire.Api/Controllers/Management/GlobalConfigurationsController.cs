@@ -1,4 +1,6 @@
+using Grimoire.Api.Audit;
 using Grimoire.Api.DTOs.Management;
+using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces.Repositories;
 using Grimoire.Core.Services;
@@ -19,6 +21,7 @@ public class GlobalConfigurationsController(IGlobalConfigurationRepository globa
         return Ok(entries.Select(ToResponse));
     }
 
+    [Audited(AuditActions.GlobalConfigurationCreate)]
     [HttpPost]
     public async Task<IActionResult> Create(
         [FromBody] CreateGlobalConfigurationRequest req,
@@ -58,6 +61,7 @@ public class GlobalConfigurationsController(IGlobalConfigurationRepository globa
         return CreatedAtAction(nameof(List), null, ToResponse(entry));
     }
 
+    [Audited(AuditActions.GlobalConfigurationUpdate)]
     [HttpPut("{environmentSlug}/{key}")]
     public async Task<IActionResult> Update(
         string environmentSlug,
@@ -90,6 +94,7 @@ public class GlobalConfigurationsController(IGlobalConfigurationRepository globa
         return Ok(ToResponse(entry));
     }
 
+    [Audited(AuditActions.GlobalConfigurationDelete)]
     [HttpDelete("{environmentSlug}/{key}")]
     public async Task<IActionResult> Delete(
         string environmentSlug,

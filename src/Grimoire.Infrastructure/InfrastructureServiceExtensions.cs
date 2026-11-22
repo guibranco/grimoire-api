@@ -2,6 +2,7 @@ using Grimoire.Core.Dashboard;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
 using Grimoire.Core.Services;
+using Grimoire.Infrastructure.Audit;
 using Grimoire.Infrastructure.Backups;
 using Grimoire.Infrastructure.ConsumerTracking;
 using Grimoire.Infrastructure.Persistence;
@@ -43,6 +44,7 @@ public static class InfrastructureServiceExtensions
             Options.Create(ReadDashboardOptions(sp.GetRequiredService<IConfiguration>()))
         );
         services.AddConsumerActivity();
+        services.AddAuditLog();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IMetadataSearchService, MetadataSearchService>();
 
@@ -69,6 +71,30 @@ public static class InfrastructureServiceExtensions
         );
         services.AddScoped<ConsumerActivityStore>();
         services.TryAddScoped<IConsumerActivityReader, ConsumerActivityReader>();
+    }
+
+    private static void AddAuditLog(this IServiceCollection services)
+    {
+        services.AddSingleton(sp =>
+        {
+            var section = sp.GetRequiredService<IConfiguration>()
+                .GetSection(AuditOptions.SectionName);
+            var defaults = new AuditOptions();
+            return new AuditOptions
+            {
+                Enabled = bool.TryParse(section[nameof(AuditOptions.Enabled)], out var enabled)
+                    ? enabled
+                    : defaults.Enabled,
+                RetentionDays = ReadInt(section, nameof(AuditOptions.RetentionDays))
+                    ?? defaults.RetentionDays,
+                QueueCapacity = ReadInt(section, nameof(AuditOptions.QueueCapacity))
+                    ?? defaults.QueueCapacity,
+            };
+        });
+        services.AddSingleton<AuditLog>();
+        services.AddSingleton<IAuditLog>(sp => sp.GetRequiredService<AuditLog>());
+        services.AddScoped<AuditStore>();
+        services.AddScoped<IAuditQueryService, AuditQueryService>();
     }
 
     private static DashboardOptions ReadDashboardOptions(IConfiguration configuration)

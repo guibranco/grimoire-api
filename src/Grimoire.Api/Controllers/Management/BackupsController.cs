@@ -1,4 +1,6 @@
+using Grimoire.Api.Audit;
 using Grimoire.Api.DTOs.Management;
+using Grimoire.Core.Audit;
 using Grimoire.Core.Backups;
 using Grimoire.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +27,7 @@ public class BackupsController(IBackupService backups, ILogger<BackupsController
     }
 
     /// <summary>Takes a backup now and writes it to every enabled target.</summary>
+    [Audited(AuditActions.BackupCreate)]
     [HttpPost]
     [ProducesResponseType<BackupResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]

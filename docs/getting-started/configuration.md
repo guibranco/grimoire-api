@@ -88,6 +88,14 @@ Cors__AllowedOrigins__1=https://admin.example.com
 | :------ | :------ | :------ | :---------- |
 | `ConsumerActivity:FlushIntervalSeconds` | `ConsumerActivity__FlushIntervalSeconds` | `60` | How often buffered consumer reads (last seen, client, request count) are written to the database. Reads are also flushed on shutdown. |
 
+### Audit log
+
+| Setting | Env var | Default | Description |
+| :------ | :------ | :------ | :---------- |
+| `Audit:Enabled` | `Audit__Enabled` | `true` | Record audit events for management changes, consumer reads and rejected requests. |
+| `Audit:RetentionDays` | `Audit__RetentionDays` | `180` | Delete events older than this, at startup and daily. `0` keeps them forever. |
+| `Audit:QueueCapacity` | `Audit__QueueCapacity` | `10000` | Events waiting to be written. When full, new events are dropped and a warning logs how many. |
+
 ### Serilog (logging)
 
 | Setting | Default | Description |
