@@ -39,10 +39,13 @@ Returns all non-deleted applications.
     "description": "Payment processing service",
     "inheritGlobals": true,
     "createdAt": "2025-01-01T00:00:00Z",
-    "updatedAt": "2025-01-01T00:00:00Z"
+    "updatedAt": "2025-01-01T00:00:00Z",
+    "lastSeenAt": "2025-01-02T09:30:00Z"
   }
 ]
 ```
+
+`lastSeenAt` is the latest successful Consumer API read across the application's environments, or `null` if no consumer has read it yet.
 
 ---
 
@@ -167,11 +170,13 @@ GET /management/applications/{slug}/environments
 
 ```json
 [
-  { "id": "...", "slug": "local",   "name": "Local",      "createdAt": "..." },
-  { "id": "...", "slug": "staging", "name": "Staging",    "createdAt": "..." },
-  { "id": "...", "slug": "prod",    "name": "Production", "createdAt": "..." }
+  { "id": "...", "slug": "local",   "name": "Local",      "createdAt": "...", "lastSeenAt": null },
+  { "id": "...", "slug": "staging", "name": "Staging",    "createdAt": "...", "lastSeenAt": "..." },
+  { "id": "...", "slug": "prod",    "name": "Production", "createdAt": "...", "lastSeenAt": "..." }
 ]
 ```
+
+`lastSeenAt` is the last successful Consumer API read for the environment, or `null` if never seen. See [Consumer activity](#consumer-activity).
 
 ---
 
@@ -801,7 +806,7 @@ One aggregate, read-only call for the UI home page. Returns **metadata only, nev
 
 - `secretCount` on an application counts its own secrets (globals are reported under `global`); on an environment it counts the application secrets with at least one version there.
 - `lastChangedAt` is the latest `UpdatedAt` / secret-version `CreatedAt` across the application, its environments, secrets and configuration.
-- `lastSeenAt` is the last successful consumer read. It stays `null` (and the consumer rules are skipped) until consumer activity tracking ships.
+- `lastSeenAt` is the last successful consumer read (see [Consumer activity](#consumer-activity)); `null` when no consumer has read that environment yet.
 - `featureFlags` and `recentActivity` are `null` until feature flags and the audit log ship.
 
 **Attention items** are ordered by severity (`error`, `warning`, `info`). `application` is `null` for global secrets and configuration; `target` is a secret name or configuration key.
@@ -818,6 +823,56 @@ One aggregate, read-only call for the UI home page. Returns **metadata only, nev
 Environments a secret was never given a value in (such as the auto-created `local`) are not flagged. A global secret for an environment slug is only flagged when the `*` value cannot cover it either.
 
 **Response `400`:** Threshold out of range.
+
+---
+
+### Consumer activity
+
+Every successful (`2xx`) Consumer API read records, per application and environment, the time, the client's `User-Agent` and IP address, and an approximate request count. Failed and unauthorised calls are not recorded. No keys, values or request bodies are stored.
+
+Reads are buffered in memory and written to the database every `ConsumerActivity:FlushIntervalSeconds` (60 s by default) and on shutdown, so a consumer read never waits on a database write. Management responses include reads that haven't been flushed yet. If the process stops abruptly, the last interval of activity can be lost; this affects `lastSeenAt` only.
+
+Behind a reverse proxy, the recorded IP is the proxy's unless forwarded headers are configured.
+
+---
+
+## Search
+
+### Search names and keys
+
+```
+GET /management/search?q=smtp&limit=20
+```
+
+Finds applications (name, slug, description), secrets (name, description) and configuration keys (key, description), both per application and global. Case-insensitive. Returns **where each one lives, never values**, and never matches on values. Soft-deleted applications are excluded. Sent with `Cache-Control: private, no-store`.
+
+| Query parameter | Default | Description |
+| :-------------- | :------ | :---------- |
+| `q` | — | Required, at least 2 characters after trimming. `%` and `_` match literally. |
+| `limit` | `20` | `1`–`50`. |
+
+**Response `200`:**
+
+```json
+{
+  "query": "smtp",
+  "results": [
+    { "type": "application", "name": "SMTP Relay", "application": "smtp-relay", "environments": [], "description": "Outbound mail", "valueType": null },
+    { "type": "configuration", "name": "SMTP_HOST", "application": "payslip-archiver", "environments": ["local", "production"], "description": null, "valueType": "string" },
+    { "type": "secret", "name": "SMTP_PASSWORD", "application": "payslip-archiver", "environments": ["production"], "description": null, "valueType": null },
+    { "type": "global-configuration", "name": "SMTP_PORT", "application": null, "environments": ["*"], "description": null, "valueType": "string" },
+    { "type": "global-secret", "name": "SMTP_RELAY_KEY", "application": null, "environments": ["*", "production"], "description": "relay", "valueType": null }
+  ],
+  "truncated": false
+}
+```
+
+- `type`: `application`, `secret`, `configuration`, `global-secret` or `global-configuration`.
+- A secret or key appears once per application (or once globally), with `environments` listing where it has a value. `*` means every environment.
+- **Ranking:** exact match, then prefix, then substring on the name/key (or application slug), then description-only matches. Ties go to applications first, then secrets, configuration, global secrets and global configuration, then by name.
+- `truncated` is `true` when more results matched than `limit`.
+
+**Response `400`:** `q` shorter than 2 characters, or `limit` out of range.
 
 ---
 

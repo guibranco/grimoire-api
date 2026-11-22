@@ -154,6 +154,7 @@ All **consumer** endpoints require an `X-Api-Key` header with a valid applicatio
 | `DELETE` | `/management/global/secrets/{name}` | 🌐 Delete global secret |
 | `GET` | `/management/global/environments` | 🌐 Environment slugs in use across applications |
 | `GET` | `/management/dashboard` | 📊 Dashboard summary: counts, last changed/seen, attention items (metadata only) |
+| `GET` | `/management/search?q=` | 🔍 Search application, secret and configuration names/keys (metadata only) |
 | `GET` | `/management/backups` | 💾 List encrypted backups (all targets) |
 | `POST` | `/management/backups` | 💾 Take a backup now |
 
@@ -216,6 +217,7 @@ Settings can be provided via `appsettings.json`, environment variables (use `__`
 | `Encryption:MasterKey` | ✅ | *(none)* | Master key for HKDF derivation (≥ 32 chars) |
 | `Cors:AllowedOrigins` | ➖ | `[]` | Allowed CORS origins |
 | `Dashboard:ExpiringWithinDays` / `StaleAfterDays` / `CacheSeconds` | ➖ | `14` / `7` / `15` | Dashboard attention thresholds and summary cache duration |
+| `ConsumerActivity:FlushIntervalSeconds` | ➖ | `60` | How often consumer last-seen data is written to the database |
 | `Serilog:MinimumLevel:Default` | ➖ | `Information` | Log level |
 | `Backup:Enabled` / `Key` / `Schedule` / `RetentionCount` | ➖ | off / *(none)* / `0 3 * * *` / `14` | Encrypted backups; targets under `Backup:Local:*` and `Backup:S3:*` ([details](docs/operations/backup-and-restore.md#configuration)) |
 | `LogStream:Server` / `ApiKey` / `ApiToken` | ➖ | *(none)* | Ship logs to a [LogStream](https://github.com/guibranco/logstream-server) server; disabled unless all three are set |

@@ -16,6 +16,7 @@ public class SwaggerTests(GrimoireWebApplicationFactory factory)
     [InlineData("/management/applications/{slug}/configurations/effective")]
     [InlineData("/management/applications/{slug}/secrets/effective")]
     [InlineData("/management/dashboard")]
+    [InlineData("/management/search")]
     public async Task ManagementDocument_IncludesGlobalRoutes(string path)
     {
         var response = await factory.CreateClient().GetAsync("/swagger/management/swagger.json");

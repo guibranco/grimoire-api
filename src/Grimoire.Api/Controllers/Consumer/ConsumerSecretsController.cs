@@ -1,3 +1,4 @@
+using Grimoire.Api.ConsumerTracking;
 using Grimoire.Api.DTOs.Consumer;
 using Grimoire.Api.Middleware;
 using Grimoire.Core.Entities;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Grimoire.Api.Controllers.Consumer;
 
 [ApiController]
+[TrackConsumerActivity]
 [Route("consumer/secrets")]
 [Tags("Consumer - Secrets")]
 public class ConsumerSecretsController(
@@ -30,6 +32,7 @@ public class ConsumerSecretsController(
         var env = await envRepo.GetBySlugAsync(app.Id, environment, ct);
         if (env is null)
             return NotFound(Problem("Environment not found.", statusCode: 404));
+        HttpContext.Items[ConsumerApiKeyMiddleware.EnvironmentContextKey] = env;
 
         var resolution = await effective.ResolveSecretAsync(
             app,

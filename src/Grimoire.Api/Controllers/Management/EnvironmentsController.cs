@@ -1,5 +1,6 @@
 using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Entities;
+using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
 using Grimoire.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -9,8 +10,11 @@ namespace Grimoire.Api.Controllers.Management;
 [ApiController]
 [Route("management/applications/{slug}/environments")]
 [Tags("Management - Environments")]
-public class EnvironmentsController(IApplicationRepository appRepo, IEnvironmentRepository envRepo)
-    : ControllerBase
+public class EnvironmentsController(
+    IApplicationRepository appRepo,
+    IEnvironmentRepository envRepo,
+    IConsumerActivityReader consumerActivity
+) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> List(string slug, CancellationToken ct)
@@ -20,7 +24,18 @@ public class EnvironmentsController(IApplicationRepository appRepo, IEnvironment
             return NotFound(NotFoundProblem("Application not found."));
 
         var envs = await envRepo.GetByApplicationAsync(app.Id, ct);
-        return Ok(envs.Select(e => new EnvironmentResponse(e.Id, e.Name, e.Slug, e.CreatedAt)));
+        var lastSeen = await consumerActivity.GetLastSeenAsync(ct);
+        return Ok(
+            envs.Select(e => new EnvironmentResponse(
+                e.Id,
+                e.Name,
+                e.Slug,
+                e.CreatedAt,
+                lastSeen is not null && lastSeen.TryGetValue((app.Id, e.Id), out var seen)
+                    ? seen
+                    : null
+            ))
+        );
     }
 
     [HttpPost]

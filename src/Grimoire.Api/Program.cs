@@ -2,6 +2,7 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using Grimoire.Api;
 using Grimoire.Api.Backups;
+using Grimoire.Api.ConsumerTracking;
 using Grimoire.Api.Logging;
 using Grimoire.Api.Middleware;
 using Grimoire.Api.Swagger;
@@ -63,6 +64,8 @@ builder.Services.AddScoped<IPasswordHasher<Application>, PasswordHasher<Applicat
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<BackupScheduler>();
+builder.Services.AddSingleton<ConsumerActivityFlusher>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<ConsumerActivityFlusher>());
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

@@ -82,6 +82,12 @@ Cors__AllowedOrigins__1=https://admin.example.com
 | `Dashboard:StaleAfterDays` | `Dashboard__StaleAfterDays` | `7` | Consumers not seen for more than this many days are flagged `consumer-stale`. Overridable per request with `?staleAfterDays=`. |
 | `Dashboard:CacheSeconds` | `Dashboard__CacheSeconds` | `15` | How long a computed summary is reused in memory. `0` disables caching. |
 
+### Consumer activity
+
+| Setting | Env var | Default | Description |
+| :------ | :------ | :------ | :---------- |
+| `ConsumerActivity:FlushIntervalSeconds` | `ConsumerActivity__FlushIntervalSeconds` | `60` | How often buffered consumer reads (last seen, client, request count) are written to the database. Reads are also flushed on shutdown. |
+
 ### Serilog (logging)
 
 | Setting | Default | Description |

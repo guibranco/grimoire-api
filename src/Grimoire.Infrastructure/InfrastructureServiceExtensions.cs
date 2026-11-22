@@ -3,6 +3,7 @@ using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
 using Grimoire.Core.Services;
 using Grimoire.Infrastructure.Backups;
+using Grimoire.Infrastructure.ConsumerTracking;
 using Grimoire.Infrastructure.Persistence;
 using Grimoire.Infrastructure.Persistence.Repositories;
 using Grimoire.Infrastructure.Services;
@@ -41,9 +42,33 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IOptions<DashboardOptions>>(sp =>
             Options.Create(ReadDashboardOptions(sp.GetRequiredService<IConfiguration>()))
         );
-        services.TryAddScoped<IConsumerActivityReader, UntrackedConsumerActivityReader>();
+        services.AddConsumerActivity();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IMetadataSearchService, MetadataSearchService>();
 
+        return services;
+    }
+
+    private static IServiceCollection AddConsumerActivity(this IServiceCollection services)
+    {
+        services.AddSingleton(sp =>
+        {
+            var section = sp.GetRequiredService<IConfiguration>()
+                .GetSection(ConsumerActivityOptions.SectionName);
+            return new ConsumerActivityOptions
+            {
+                FlushIntervalSeconds = ReadInt(
+                    section,
+                    nameof(ConsumerActivityOptions.FlushIntervalSeconds)
+                ) ?? new ConsumerActivityOptions().FlushIntervalSeconds,
+            };
+        });
+        services.AddSingleton<ConsumerActivityTracker>();
+        services.AddSingleton<IConsumerActivityTracker>(sp =>
+            sp.GetRequiredService<ConsumerActivityTracker>()
+        );
+        services.AddScoped<ConsumerActivityStore>();
+        services.TryAddScoped<IConsumerActivityReader, ConsumerActivityReader>();
         return services;
     }
 

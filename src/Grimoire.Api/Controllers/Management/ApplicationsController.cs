@@ -1,5 +1,6 @@
 using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Entities;
+using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
 using Grimoire.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
@@ -13,14 +14,16 @@ namespace Grimoire.Api.Controllers.Management;
 public class ApplicationsController(
     IApplicationRepository appRepo,
     IEnvironmentRepository envRepo,
-    IPasswordHasher<Application> hasher
+    IPasswordHasher<Application> hasher,
+    IConsumerActivityReader consumerActivity
 ) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken ct)
     {
         var apps = await appRepo.GetAllAsync(ct);
-        return Ok(apps.Select(ToResponse));
+        var lastSeen = await consumerActivity.GetLastSeenAsync(ct);
+        return Ok(apps.Select(a => ToResponse(a, lastSeen)));
     }
 
     [HttpPost]
@@ -84,7 +87,7 @@ public class ApplicationsController(
         var app = await appRepo.GetBySlugAsync(slug, ct);
         if (app is null)
             return NotFound(ProblemDetailsFor("Application not found."));
-        return Ok(ToResponse(app));
+        return Ok(ToResponse(app, await consumerActivity.GetLastSeenAsync(ct)));
     }
 
     [HttpPut("{slug}")]
@@ -105,7 +108,7 @@ public class ApplicationsController(
         app.UpdatedAt = DateTimeOffset.UtcNow;
         await appRepo.UpdateAsync(app, ct);
 
-        return Ok(ToResponse(app));
+        return Ok(ToResponse(app, await consumerActivity.GetLastSeenAsync(ct)));
     }
 
     [HttpDelete("{slug}")]
@@ -149,7 +152,10 @@ public class ApplicationsController(
         Response.Headers.Pragma = "no-cache";
     }
 
-    private static ApplicationResponse ToResponse(Application app) =>
+    private static ApplicationResponse ToResponse(
+        Application app,
+        IReadOnlyDictionary<(Guid ApplicationId, Guid EnvironmentId), DateTimeOffset>? lastSeen
+    ) =>
         new(
             app.Id,
             app.Name,
@@ -157,8 +163,18 @@ public class ApplicationsController(
             app.Description,
             app.InheritGlobals,
             app.CreatedAt,
-            app.UpdatedAt
+            app.UpdatedAt,
+            LatestFor(app.Id, lastSeen)
         );
+
+    private static DateTimeOffset? LatestFor(
+        Guid applicationId,
+        IReadOnlyDictionary<(Guid ApplicationId, Guid EnvironmentId), DateTimeOffset>? lastSeen
+    ) =>
+        lastSeen
+            ?.Where(p => p.Key.ApplicationId == applicationId)
+            .Select(p => (DateTimeOffset?)p.Value)
+            .Max();
 
     private static string GenerateApiKey()
     {
