@@ -14,6 +14,7 @@ public record UpdateApplicationRequest(
     bool? InheritGlobals = null
 );
 
+/// <param name="LastSeenAt">Latest successful Consumer API read across environments; <c>null</c> when never seen.</param>
 public record ApplicationResponse(
     Guid Id,
     string Name,
@@ -21,7 +22,8 @@ public record ApplicationResponse(
     string? Description,
     bool InheritGlobals,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? LastSeenAt = null
 );
 
 /// <param name="PlainApiKey">The application API key in plain text. Returned only once; it is stored hashed.</param>

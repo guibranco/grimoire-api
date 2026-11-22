@@ -146,6 +146,35 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.ToTable("ConfigurationEntries");
                 });
 
+            modelBuilder.Entity("Grimoire.Core.Entities.ConsumerActivity", b =>
+                {
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EnvironmentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastIpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastUserAgent")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("RequestCount")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ApplicationId", "EnvironmentId");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.ToTable("ConsumerActivities", (string)null);
+                });
+
             modelBuilder.Entity("Grimoire.Core.Entities.GlobalConfigurationEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -353,6 +382,25 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
 
                     b.HasOne("Grimoire.Core.Entities.AppEnvironment", "Environment")
                         .WithMany("ConfigurationEntries")
+                        .HasForeignKey("EnvironmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Application");
+
+                    b.Navigation("Environment");
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.ConsumerActivity", b =>
+                {
+                    b.HasOne("Grimoire.Core.Entities.Application", "Application")
+                        .WithMany()
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Grimoire.Core.Entities.AppEnvironment", "Environment")
+                        .WithMany()
                         .HasForeignKey("EnvironmentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

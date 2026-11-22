@@ -9,6 +9,9 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
     private const string Prefix = "/consumer";
     public const string AppContextKey = "GrimoireApplication";
 
+    /// <summary>Set by consumer actions once the requested environment is resolved.</summary>
+    public const string EnvironmentContextKey = "GrimoireEnvironment";
+
     public async Task InvokeAsync(
         HttpContext context,
         IApplicationRepository appRepo,

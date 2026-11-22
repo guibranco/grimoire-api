@@ -101,7 +101,7 @@ public class DashboardTests(GrimoireWebApplicationFactory factory)
         await TestHelpers.CreateConfigurationAsync(Client, slug, env, "SMTP_PORT", "25");
 
         var json = JsonNode.Parse(await Client.GetStringAsync("/management/dashboard"))!;
-        var items = Attention(json, slug);
+        var items = ValueAttention(json, slug);
 
         Assert.Equal(4, items.Count);
         AssertItem(items, "secret-expiring", "warning", "EXPIRING", env);
@@ -129,8 +129,8 @@ public class DashboardTests(GrimoireWebApplicationFactory factory)
             await Client.GetStringAsync("/management/dashboard?expiringWithinDays=45")
         )!;
 
-        Assert.Empty(Attention(byDefault, slug));
-        AssertItem(Attention(widened, slug), "secret-expiring", "warning", "LATER", env);
+        Assert.Empty(ValueAttention(byDefault, slug));
+        AssertItem(ValueAttention(widened, slug), "secret-expiring", "warning", "LATER", env);
     }
 
     [Fact]
@@ -322,6 +322,15 @@ public class DashboardTests(GrimoireWebApplicationFactory factory)
             .AsArray()
             .Where(i => i!["application"]?.GetValue<string>() == slug)
             .Select(i => i!)
+            .ToList();
+
+    /// <summary>
+    /// Attention items about secrets and configuration only. Consumer tracking is on, so apps that
+    /// no consumer has read yet also get <c>consumer-never-seen</c>, which these tests don't cover.
+    /// </summary>
+    private static List<JsonNode> ValueAttention(JsonNode json, string slug) =>
+        Attention(json, slug)
+            .Where(i => !i["kind"]!.GetValue<string>().StartsWith("consumer-"))
             .ToList();
 
     private static string? Target(JsonNode item) => item["target"]?.GetValue<string>();
