@@ -1,4 +1,5 @@
 using Grimoire.Api.DTOs.Management;
+using Grimoire.Core.Audit;
 using Grimoire.Core.Dashboard;
 using Grimoire.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,11 @@ namespace Grimoire.Api.Controllers.Management;
 [ApiController]
 [Route("management/dashboard")]
 [Tags("Management - Dashboard")]
-public class DashboardController(IDashboardService dashboard) : ControllerBase
+public class DashboardController(
+    IDashboardService dashboard,
+    IAuditQueryService audit,
+    Grimoire.Infrastructure.Audit.AuditOptions auditOptions
+) : ControllerBase
 {
     private const int MaxDays = 3650;
 
@@ -43,10 +48,42 @@ public class DashboardController(IDashboardService dashboard) : ControllerBase
         // No values in here, but it still describes the estate: keep it out of shared caches.
         Response.Headers.CacheControl = "private, no-store";
 
-        return Ok(ToResponse(summary));
+        var recentActivity = auditOptions.Enabled ? await RecentActivityAsync(ct) : null;
+
+        return Ok(ToResponse(summary, recentActivity));
     }
 
-    private static DashboardResponse ToResponse(DashboardSummary s) =>
+    private const int RecentActivityCount = 20;
+
+    private async Task<IReadOnlyList<DashboardActivityResponse>> RecentActivityAsync(
+        CancellationToken ct
+    )
+    {
+        var page = await audit.QueryAsync(
+            new AuditQuery(IncludeReads: false, PageSize: RecentActivityCount),
+            ct
+        );
+        return page
+            .Items.Where(e => e.Action != AuditActions.AuthFailed)
+            .Select(e => new DashboardActivityResponse(
+                e.Id,
+                e.OccurredAt,
+                e.Actor,
+                AuditActions.Label(e.Action),
+                e.Action,
+                e.ApplicationSlug,
+                e.Environment,
+                e.Target,
+                e.TargetType,
+                e.Outcome.ToString().ToLowerInvariant()
+            ))
+            .ToList();
+    }
+
+    private static DashboardResponse ToResponse(
+        DashboardSummary s,
+        IReadOnlyList<DashboardActivityResponse>? recentActivity
+    ) =>
         new(
             s.GeneratedAt,
             new DashboardTotalsResponse(
@@ -80,7 +117,7 @@ public class DashboardController(IDashboardService dashboard) : ControllerBase
                 s.Global.LastChangedAt
             ),
             FeatureFlags: null,
-            RecentActivity: null,
+            RecentActivity: recentActivity,
             s.Attention.Select(i => new AttentionItemResponse(
                     i.Kind,
                     i.Severity.ToString().ToLowerInvariant(),

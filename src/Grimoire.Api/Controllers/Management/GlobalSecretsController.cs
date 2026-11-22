@@ -1,4 +1,6 @@
+using Grimoire.Api.Audit;
 using Grimoire.Api.DTOs.Management;
+using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
@@ -21,6 +23,7 @@ public class GlobalSecretsController(
         return Ok(secrets.Select(ToResponse));
     }
 
+    [Audited(AuditActions.GlobalSecretCreate)]
     [HttpPost]
     public async Task<IActionResult> Create(
         [FromBody] CreateGlobalSecretRequest req,
@@ -54,6 +57,7 @@ public class GlobalSecretsController(
         return Ok(ToResponse(secret));
     }
 
+    [Audited(AuditActions.GlobalSecretWrite)]
     [HttpPost("{name}/values")]
     public async Task<IActionResult> SetValues(
         string name,
@@ -114,6 +118,7 @@ public class GlobalSecretsController(
         );
     }
 
+    [Audited(AuditActions.GlobalSecretDelete)]
     [HttpDelete("{name}")]
     public async Task<IActionResult> Delete(string name, CancellationToken ct)
     {

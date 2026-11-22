@@ -1,4 +1,6 @@
+using Grimoire.Api.Audit;
 using Grimoire.Api.DTOs.Management;
+using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
@@ -61,6 +63,7 @@ public class ConfigurationsController(
         return Ok(entries.Select(e => ToResponse(e, e.Environment.Slug)));
     }
 
+    [Audited(AuditActions.ConfigurationCreate)]
     [HttpPost]
     public async Task<IActionResult> Create(
         string slug,
@@ -108,6 +111,7 @@ public class ConfigurationsController(
         return CreatedAtAction(nameof(List), new { slug }, ToResponse(entry, req.EnvironmentSlug));
     }
 
+    [Audited(AuditActions.ConfigurationUpdate)]
     [HttpPut("{environmentSlug}/{key}")]
     public async Task<IActionResult> Update(
         string slug,
@@ -149,6 +153,7 @@ public class ConfigurationsController(
         return Ok(ToResponse(entry, environmentSlug));
     }
 
+    [Audited(AuditActions.ConfigurationDelete)]
     [HttpDelete("{environmentSlug}/{key}")]
     public async Task<IActionResult> Delete(
         string slug,

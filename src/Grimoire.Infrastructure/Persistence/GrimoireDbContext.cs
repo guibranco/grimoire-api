@@ -16,6 +16,7 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
     public DbSet<GlobalSecret> GlobalSecrets => Set<GlobalSecret>();
     public DbSet<GlobalSecretVersion> GlobalSecretVersions => Set<GlobalSecretVersion>();
     public DbSet<ConsumerActivity> ConsumerActivities => Set<ConsumerActivity>();
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,5 +29,6 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
         modelBuilder.ApplyConfiguration(new GlobalSecretConfiguration());
         modelBuilder.ApplyConfiguration(new GlobalSecretVersionConfiguration());
         modelBuilder.ApplyConfiguration(new ConsumerActivityConfiguration());
+        modelBuilder.ApplyConfiguration(new AuditEventConfiguration());
     }
 }

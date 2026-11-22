@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Grimoire.Api;
+using Grimoire.Api.Audit;
 using Grimoire.Api.Backups;
 using Grimoire.Api.ConsumerTracking;
 using Grimoire.Api.Logging;
@@ -66,6 +67,10 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<BackupScheduler>();
 builder.Services.AddSingleton<ConsumerActivityFlusher>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ConsumerActivityFlusher>());
+builder.Services.AddSingleton<AuditWriter>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<AuditWriter>());
+builder.Services.AddSingleton<AuditRetentionService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<AuditRetentionService>());
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

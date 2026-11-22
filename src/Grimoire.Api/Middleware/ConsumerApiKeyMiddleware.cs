@@ -1,3 +1,4 @@
+using Grimoire.Api.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces.Repositories;
 using Microsoft.AspNetCore.Identity;
@@ -56,6 +57,7 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
 
     private static Task WriteForbidden(HttpContext context)
     {
+        AuthFailureAudit.Record(context);
         context.Response.StatusCode = 401;
         context.Response.ContentType = "application/problem+json";
         return context.Response.WriteAsJsonAsync(

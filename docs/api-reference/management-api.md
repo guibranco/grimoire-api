@@ -807,7 +807,8 @@ One aggregate, read-only call for the UI home page. Returns **metadata only, nev
 - `secretCount` on an application counts its own secrets (globals are reported under `global`); on an environment it counts the application secrets with at least one version there.
 - `lastChangedAt` is the latest `UpdatedAt` / secret-version `CreatedAt` across the application, its environments, secrets and configuration.
 - `lastSeenAt` is the last successful consumer read (see [Consumer activity](#consumer-activity)); `null` when no consumer has read that environment yet.
-- `featureFlags` and `recentActivity` are `null` until feature flags and the audit log ship.
+- `featureFlags` is `null` until feature flags ship.
+- `recentActivity` lists the latest 20 changes from the [audit log](#audit-log) (consumer reads and rejected requests left out), each with `action` as a readable description (e.g. "Added secret version") and `code` as the action code. It is `null` when `Audit:Enabled` is `false`.
 
 **Attention items** are ordered by severity (`error`, `warning`, `info`). `application` is `null` for global secrets and configuration; `target` is a secret name or configuration key.
 
@@ -873,6 +874,76 @@ Finds applications (name, slug, description), secrets (name, description) and co
 - `truncated` is `true` when more results matched than `limit`.
 
 **Response `400`:** `q` shorter than 2 characters, or `limit` out of range.
+
+---
+
+## Audit log
+
+Grimoire records who read or changed what. Every management change (applications, environments, secrets, configuration, Global entries, backups), every Consumer API read, and every request rejected by an API key check produces one event. Events record names, keys and slugs only, **never secret or configuration values**.
+
+Events are queued in memory and written in the background, so requests never wait on the audit write. Each event is also written to the server log as a structured entry (and so reaches LogStream when configured). Events older than `Audit:RetentionDays` (180 by default) are deleted daily.
+
+### List audit events
+
+```
+GET /management/audit?application=payslip-archiver&action=secret.*&includeReads=false&page=1&pageSize=50
+```
+
+Newest first. All filters are optional. Sent with `Cache-Control: private, no-store`.
+
+| Query parameter | Description |
+| :-------------- | :---------- |
+| `application` | Application slug. |
+| `action` | Action code, or a prefix ending in `*` (`secret.*`). |
+| `actor` | `admin`, `app:<slug>` or `anonymous`. |
+| `environment` | Environment slug (also matches events that touched several environments). |
+| `target` | Secret name or configuration key. |
+| `outcome` | `success`, `notfound`, `forbidden`, `invalid`, `conflict` or `error`. |
+| `from`, `to` | ISO 8601 bounds, inclusive. |
+| `includeReads` | `false` leaves out consumer reads (`*.read`). Default `true`. |
+| `page`, `pageSize` | 1-based page; `pageSize` 1–200, default 50. |
+
+**Response `200`:**
+
+```json
+{
+  "items": [
+    {
+      "id": "0193…",
+      "occurredAt": "2026-11-22T23:10:04Z",
+      "actor": "app:payslip-archiver",
+      "action": "secret.read",
+      "description": "Read secret",
+      "application": "payslip-archiver",
+      "environment": "production",
+      "targetType": "secret",
+      "target": "MAILBOX_PASSWORD",
+      "outcome": "success",
+      "statusCode": 200,
+      "ipAddress": "10.0.0.5",
+      "userAgent": "Grimoire.Consumer/1.4.0"
+    }
+  ],
+  "page": 1,
+  "pageSize": 50,
+  "totalCount": 1
+}
+```
+
+| Action | Description |
+| :----- | :---------- |
+| `application.create` / `.update` / `.delete` / `.rotate-key` | Application changes. |
+| `environment.create` / `.delete` | Environment changes (`target` is the name). |
+| `secret.create` / `.write` / `.delete` | Secret changes; `.write` adds a version (`environment` lists the environments set). |
+| `configuration.create` / `.update` / `.delete` | Configuration changes. |
+| `global-secret.*`, `global-configuration.*` | The same for Global entries (`application` is `null`). |
+| `backup.create` | On-demand backup. |
+| `secret.read`, `configuration.read` | Consumer API reads, by `app:<slug>`. Failed reads are recorded with their outcome. |
+| `auth.failed` | Request rejected by the admin or consumer API key check; `target` is the method and path. |
+
+Invalid requests rejected by model validation before the action runs (`400`) are not recorded.
+
+**Response `400`:** Invalid `outcome`, `page`, `pageSize`, or `from` after `to`.
 
 ---
 

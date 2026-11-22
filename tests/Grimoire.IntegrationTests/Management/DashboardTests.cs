@@ -55,7 +55,7 @@ public class DashboardTests(GrimoireWebApplicationFactory factory)
         Assert.NotNull(json["generatedAt"]);
         Assert.True(json["totals"]!["applications"]!.GetValue<int>() >= 1);
         Assert.Null(json["featureFlags"]);
-        Assert.Null(json["recentActivity"]);
+        Assert.IsType<JsonArray>(json["recentActivity"]);
         Assert.NotNull(json["global"]);
 
         var app = App(json, slug);
@@ -81,9 +81,11 @@ public class DashboardTests(GrimoireWebApplicationFactory factory)
         await TestHelpers.CreateConfigurationAsync(Client, slug, env, "BLANK", "");
         (await Client.DeleteAsync($"/management/applications/{slug}")).EnsureSuccessStatusCode();
 
-        var body = await Client.GetStringAsync("/management/dashboard");
+        var json = JsonNode.Parse(await Client.GetStringAsync("/management/dashboard"))!;
 
-        Assert.DoesNotContain(slug, body);
+        // Recent activity keeps the "Deleted application" event; the estate itself excludes it.
+        Assert.DoesNotContain(slug, json["applications"]!.ToJsonString());
+        Assert.DoesNotContain(slug, json["attention"]!.ToJsonString());
     }
 
     [Fact]

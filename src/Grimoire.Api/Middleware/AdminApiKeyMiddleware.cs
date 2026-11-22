@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Grimoire.Api.Audit;
 using Microsoft.AspNetCore.Http;
 
 namespace Grimoire.Api.Middleware;
@@ -24,6 +25,7 @@ public class AdminApiKeyMiddleware(RequestDelegate next, IConfiguration configur
             || !KeysMatch(authHeader.ToString()["Bearer ".Length..].Trim(), adminKey)
         )
         {
+            AuthFailureAudit.Record(context);
             context.Response.StatusCode = 401;
             context.Response.ContentType = "application/problem+json";
             await context.Response.WriteAsJsonAsync(

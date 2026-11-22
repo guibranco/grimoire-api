@@ -1,4 +1,6 @@
+using Grimoire.Api.Audit;
 using Grimoire.Api.DTOs.Management;
+using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
@@ -26,6 +28,7 @@ public class ApplicationsController(
         return Ok(apps.Select(a => ToResponse(a, lastSeen)));
     }
 
+    [Audited(AuditActions.ApplicationCreate)]
     [HttpPost]
     [ProducesResponseType<CreateApplicationResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
@@ -90,6 +93,7 @@ public class ApplicationsController(
         return Ok(ToResponse(app, await consumerActivity.GetLastSeenAsync(ct)));
     }
 
+    [Audited(AuditActions.ApplicationUpdate)]
     [HttpPut("{slug}")]
     public async Task<IActionResult> Update(
         string slug,
@@ -111,6 +115,7 @@ public class ApplicationsController(
         return Ok(ToResponse(app, await consumerActivity.GetLastSeenAsync(ct)));
     }
 
+    [Audited(AuditActions.ApplicationDelete)]
     [HttpDelete("{slug}")]
     public async Task<IActionResult> Delete(string slug, CancellationToken ct)
     {
@@ -125,6 +130,7 @@ public class ApplicationsController(
         return NoContent();
     }
 
+    [Audited(AuditActions.ApplicationRotateKey)]
     [HttpPost("{slug}/rotate-key")]
     [ProducesResponseType<RotateKeyResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
