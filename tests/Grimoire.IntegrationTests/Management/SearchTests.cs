@@ -111,10 +111,75 @@ public class SearchTests(GrimoireWebApplicationFactory factory)
         Assert.Equal(["*"], global["environments"]!.AsArray().Select(e => e!.GetValue<string>()));
         Assert.Contains(results, r => r!["type"]!.GetValue<string>() == "global-secret");
 
-        var raw = json.ToJsonString();
-        Assert.DoesNotContain("VALUE-MARKER-secret", raw);
-        Assert.DoesNotContain("VALUE-MARKER-host", raw);
-        Assert.DoesNotContain("587", raw);
+        // Markers can't appear in the generated metadata (tokens are "zq" + hex).
+        Assert.DoesNotContain("VALUE-MARKER", json.ToJsonString());
+        Assert.All(results, r => Assert.Null(r!["value"]));
+    }
+
+    [Fact]
+    public async Task Search_DescriptionMatchInOneEnvironment_ListsEveryEnvironmentOfTheKey()
+    {
+        var token = Token();
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
+        var prod = await TestHelpers.CreateEnvironmentAsync(Client, slug, "production");
+        (
+            await Client.PostAsJsonAsync(
+                $"/management/applications/{slug}/configurations",
+                new
+                {
+                    environmentSlug = "local",
+                    key = "PLAIN_KEY",
+                    value = "x",
+                    description = $"Used by {token}",
+                }
+            )
+        ).EnsureSuccessStatusCode();
+        await TestHelpers.CreateConfigurationAsync(Client, slug, prod, "PLAIN_KEY", "y");
+
+        var results = Results(await SearchAsync(token));
+
+        var hit = Assert.Single(results)!;
+        Assert.Equal("PLAIN_KEY", hit["name"]!.GetValue<string>());
+        Assert.Equal(
+            ["local", "production"],
+            hit["environments"]!.AsArray().Select(e => e!.GetValue<string>())
+        );
+        Assert.Contains(token, hit["description"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Search_GlobalDescriptionMatchInOneEnvironment_ListsEveryEnvironmentOfTheKey()
+    {
+        var token = Token();
+        var key = $"GKEY_{Guid.NewGuid():N}"[..20];
+        (
+            await Client.PostAsJsonAsync(
+                "/management/global/configurations",
+                new
+                {
+                    key,
+                    value = "a",
+                    description = $"Shared {token}",
+                }
+            )
+        ).EnsureSuccessStatusCode();
+        (
+            await Client.PostAsJsonAsync(
+                "/management/global/configurations",
+                new
+                {
+                    key,
+                    value = "b",
+                    environmentSlug = "production",
+                }
+            )
+        ).EnsureSuccessStatusCode();
+
+        var hit = Assert.Single(Results(await SearchAsync(token)))!;
+        Assert.Equal(
+            ["*", "production"],
+            hit["environments"]!.AsArray().Select(e => e!.GetValue<string>())
+        );
     }
 
     [Fact]

@@ -28,9 +28,9 @@ public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearc
 
         hits.AddRange(await ApplicationsAsync(pattern, ct));
         hits.AddRange(await SecretsAsync(pattern, ct));
-        hits.AddRange(await ConfigurationsAsync(pattern, ct));
+        hits.AddRange(await ConfigurationsAsync(pattern, query.Trim(), ct));
         hits.AddRange(await GlobalSecretsAsync(pattern, ct));
-        hits.AddRange(await GlobalConfigurationsAsync(pattern, ct));
+        hits.AddRange(await GlobalConfigurationsAsync(pattern, query.Trim(), ct));
 
         return SearchRanker.Rank(query, hits, limit);
     }
@@ -102,20 +102,39 @@ public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearc
         ));
     }
 
+    /// <summary>
+    /// Finds matching keys first, then loads every environment holding each key, so a key whose
+    /// description matched in one environment still lists all of its environments.
+    /// </summary>
     private async Task<IEnumerable<SearchHit>> ConfigurationsAsync(
         string pattern,
+        string term,
         CancellationToken ct
     )
     {
-        var rows = await db
+        var matched = await db
             .ConfigurationEntries.AsNoTracking()
             .Where(c => !c.Application.IsDeleted)
             .Where(c =>
                 EF.Functions.Like(c.Key, pattern, Escape)
                 || (c.Description != null && EF.Functions.Like(c.Description, pattern, Escape))
             )
+            .Select(c => new { c.ApplicationId, c.Key })
+            .Distinct()
+            .ToListAsync(ct);
+        if (matched.Count == 0)
+            return [];
+
+        var appIds = matched.Select(m => m.ApplicationId).Distinct().ToList();
+        var keys = matched.Select(m => m.Key).Distinct().ToList();
+        var wanted = matched.Select(m => (m.ApplicationId, m.Key)).ToHashSet();
+
+        var rows = await db
+            .ConfigurationEntries.AsNoTracking()
+            .Where(c => appIds.Contains(c.ApplicationId) && keys.Contains(c.Key))
             .Select(c => new
             {
+                c.ApplicationId,
                 c.Key,
                 c.Description,
                 c.ValueType,
@@ -124,13 +143,14 @@ public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearc
             })
             .ToListAsync(ct);
 
-        return rows.GroupBy(r => (r.AppSlug, r.Key))
+        return rows.Where(r => wanted.Contains((r.ApplicationId, r.Key)))
+            .GroupBy(r => (r.AppSlug, r.Key))
             .Select(g => new SearchHit(
                 SearchResultTypes.Configuration,
                 g.Key.Key,
                 g.Key.AppSlug,
                 Sorted(g.Select(r => r.EnvSlug)),
-                g.Select(r => r.Description).FirstOrDefault(d => !string.IsNullOrEmpty(d)),
+                PickDescription(g.Select(r => r.Description), term),
                 ConfigurationValueNormalizer.ToName(g.First().ValueType)
             ));
     }
@@ -173,17 +193,28 @@ public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearc
         ));
     }
 
+    /// <summary>Like <see cref="ConfigurationsAsync"/>: every environment of each matching key.</summary>
     private async Task<IEnumerable<SearchHit>> GlobalConfigurationsAsync(
         string pattern,
+        string term,
         CancellationToken ct
     )
     {
-        var rows = await db
+        var keys = await db
             .GlobalConfigurationEntries.AsNoTracking()
             .Where(c =>
                 EF.Functions.Like(c.Key, pattern, Escape)
                 || (c.Description != null && EF.Functions.Like(c.Description, pattern, Escape))
             )
+            .Select(c => c.Key)
+            .Distinct()
+            .ToListAsync(ct);
+        if (keys.Count == 0)
+            return [];
+
+        var rows = await db
+            .GlobalConfigurationEntries.AsNoTracking()
+            .Where(c => keys.Contains(c.Key))
             .Select(c => new
             {
                 c.Key,
@@ -199,9 +230,20 @@ public sealed class MetadataSearchService(GrimoireDbContext db) : IMetadataSearc
                 g.Key,
                 null,
                 Sorted(g.Select(r => r.EnvironmentSlug)),
-                g.Select(r => r.Description).FirstOrDefault(d => !string.IsNullOrEmpty(d)),
+                PickDescription(g.Select(r => r.Description), term),
                 ConfigurationValueNormalizer.ToName(g.First().ValueType)
             ));
+    }
+
+    /// <summary>
+    /// The description containing the search term (so a description-only match still ranks),
+    /// otherwise the first non-empty one.
+    /// </summary>
+    internal static string? PickDescription(IEnumerable<string?> descriptions, string term)
+    {
+        var present = descriptions.Where(d => !string.IsNullOrEmpty(d)).ToList();
+        return present.FirstOrDefault(d => d!.Contains(term, StringComparison.OrdinalIgnoreCase))
+            ?? present.FirstOrDefault();
     }
 
     /// <summary>Sorted, with <c>*</c> (all environments) first.</summary>
