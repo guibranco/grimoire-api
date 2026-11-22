@@ -31,6 +31,9 @@ public class AuditEvent
     /// <summary>Secret name, configuration key or other entry name.</summary>
     public string? Target { get; set; }
 
+    /// <summary>Secret version created or changed, when the request touched exactly one.</summary>
+    public int? Version { get; set; }
+
     public AuditOutcome Outcome { get; set; }
 
     /// <summary>HTTP status code of the response.</summary>
