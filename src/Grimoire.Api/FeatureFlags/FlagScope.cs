@@ -44,8 +44,10 @@ public sealed record FlagScope(
         Environments.FirstOrDefault(e => e.Slug == slug)
         ?? (IsGlobal && isValidGlobalSlug(slug) ? new FlagScopeEnvironment(slug, null) : null);
 
-    public FeatureFlagEnvironmentState? StateOf(FeatureFlag flag, FlagScopeEnvironment env) =>
-        flag.Environments.FirstOrDefault(env.Owns);
+    public static FeatureFlagEnvironmentState? StateOf(
+        FeatureFlag flag,
+        FlagScopeEnvironment env
+    ) => flag.Environments.FirstOrDefault(env.Owns);
 
     /// <summary>
     /// The state a consumer in <paramref name="env"/> gets: the exact one, and for globals the

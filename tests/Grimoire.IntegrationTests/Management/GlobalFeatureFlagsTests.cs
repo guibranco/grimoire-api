@@ -13,13 +13,15 @@ public class GlobalFeatureFlagsTests(GrimoireWebApplicationFactory factory)
     private static async Task<JsonNode> JsonOf(HttpResponseMessage response) =>
         JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
 
+    private static readonly string[] SharedTags = ["shared"];
+
     private static JsonNode EnvOf(JsonNode flag, string env) =>
         flag["environments"]!.AsArray().Single(e => e!["environment"]!.GetValue<string>() == env)!;
 
     private async Task<string> CreateGlobalAsync(string? key = null)
     {
         key ??= TestHelpers.UniqueName("gflag");
-        var response = await Mgmt.PostAsJsonAsync(Globals, new { key, tags = new[] { "shared" } });
+        var response = await Mgmt.PostAsJsonAsync(Globals, new { key, tags = SharedTags });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return key;
     }

@@ -79,7 +79,7 @@ public static class FeatureFlagMapper
             flag.Tags,
             flag.CreatedAt,
             flag.UpdatedAt,
-            scope.Environments.Select(e => ToResponse(e.Slug, scope.StateOf(flag, e))).ToList()
+            scope.Environments.Select(e => ToResponse(e.Slug, FlagScope.StateOf(flag, e))).ToList()
         );
 
     public static FeatureFlagHistoryEntryResponse ToResponse(FeatureFlagAuditEntry entry) =>
