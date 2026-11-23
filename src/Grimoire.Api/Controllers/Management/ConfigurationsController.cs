@@ -30,13 +30,9 @@ public class ConfigurationsController(
         CancellationToken ct
     )
     {
-        var app = await appRepo.GetBySlugAsync(slug, ct);
-        if (app is null)
-            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
-
-        var env = await envRepo.GetBySlugAsync(app.Id, environment, ct);
-        if (env is null)
-            return Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404);
+        var (app, env, missing) = await FindAsync(slug, environment, ct);
+        if (missing is not null)
+            return missing;
 
         var entries = await effective.GetConfigurationAsync(app, env, ct);
         return Ok(
@@ -71,13 +67,9 @@ public class ConfigurationsController(
         CancellationToken ct
     )
     {
-        var app = await appRepo.GetBySlugAsync(slug, ct);
-        if (app is null)
-            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
-
-        var env = await envRepo.GetBySlugAsync(app.Id, req.EnvironmentSlug, ct);
-        if (env is null)
-            return Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404);
+        var (app, env, missing) = await FindAsync(slug, req.EnvironmentSlug, ct);
+        if (missing is not null)
+            return missing;
 
         var existing = await configRepo.GetByKeyAsync(app.Id, env.Id, req.Key, ct);
         if (existing is not null)
@@ -121,13 +113,9 @@ public class ConfigurationsController(
         CancellationToken ct
     )
     {
-        var app = await appRepo.GetBySlugAsync(slug, ct);
-        if (app is null)
-            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
-
-        var env = await envRepo.GetBySlugAsync(app.Id, environmentSlug, ct);
-        if (env is null)
-            return Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404);
+        var (app, env, missing) = await FindAsync(slug, environmentSlug, ct);
+        if (missing is not null)
+            return missing;
 
         var entry = await configRepo.GetByKeyAsync(app.Id, env.Id, key, ct);
         if (entry is null)
@@ -162,13 +150,9 @@ public class ConfigurationsController(
         CancellationToken ct
     )
     {
-        var app = await appRepo.GetBySlugAsync(slug, ct);
-        if (app is null)
-            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
-
-        var env = await envRepo.GetBySlugAsync(app.Id, environmentSlug, ct);
-        if (env is null)
-            return Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404);
+        var (app, env, missing) = await FindAsync(slug, environmentSlug, ct);
+        if (missing is not null)
+            return missing;
 
         var entry = await configRepo.GetByKeyAsync(app.Id, env.Id, key, ct);
         if (entry is null)
@@ -176,6 +160,22 @@ public class ConfigurationsController(
 
         await configRepo.DeleteAsync(entry, ct);
         return NoContent();
+    }
+
+    /// <summary>The application and environment, or the 404 to return.</summary>
+    private async Task<(Application App, AppEnvironment Env, IActionResult? Missing)> FindAsync(
+        string slug,
+        string environmentSlug,
+        CancellationToken ct
+    )
+    {
+        var app = await appRepo.GetBySlugAsync(slug, ct);
+        if (app is null)
+            return (null!, null!, Problem(ProblemMessages.ApplicationNotFound, statusCode: 404));
+        var env = await envRepo.GetBySlugAsync(app.Id, environmentSlug, ct);
+        return env is null
+            ? (app, null!, Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404))
+            : (app, env, null);
     }
 
     private static ConfigurationEntryResponse ToResponse(

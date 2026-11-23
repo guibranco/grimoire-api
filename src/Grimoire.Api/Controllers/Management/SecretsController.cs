@@ -101,13 +101,9 @@ public class SecretsController(
     [HttpGet("{name}")]
     public async Task<IActionResult> GetByName(string slug, string name, CancellationToken ct)
     {
-        var app = await appRepo.GetBySlugAsync(slug, ct);
-        if (app is null)
-            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
-
-        var secret = await secretRepo.GetByNameAsync(app.Id, name, ct);
-        if (secret is null)
-            return Problem(ProblemMessages.SecretNotFound, statusCode: 404);
+        var (_, secret, missing) = await FindSecretAsync(slug, name, ct);
+        if (missing is not null)
+            return missing;
 
         return Ok(ToResponse(secret));
     }
@@ -124,13 +120,9 @@ public class SecretsController(
         CancellationToken ct
     )
     {
-        var app = await appRepo.GetBySlugAsync(slug, ct);
-        if (app is null)
-            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
-
-        var secret = await secretRepo.GetByNameAsync(app.Id, name, ct);
-        if (secret is null)
-            return Problem(ProblemMessages.SecretNotFound, statusCode: 404);
+        var (_, secret, missing) = await FindSecretAsync(slug, name, ct);
+        if (missing is not null)
+            return missing;
 
         secret.Description = req.ClearDescription ? null : req.Description ?? secret.Description;
         secret.RotationIntervalDays = req.ClearRotationInterval
@@ -150,13 +142,9 @@ public class SecretsController(
         CancellationToken ct
     )
     {
-        var app = await appRepo.GetBySlugAsync(slug, ct);
-        if (app is null)
-            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
-
-        var secret = await secretRepo.GetByNameAsync(app.Id, name, ct);
-        if (secret is null)
-            return Problem(ProblemMessages.SecretNotFound, statusCode: 404);
+        var (app, secret, missing) = await FindSecretAsync(slug, name, ct);
+        if (missing is not null)
+            return missing;
 
         var now = DateTimeOffset.UtcNow;
         foreach (var item in req)
@@ -198,13 +186,9 @@ public class SecretsController(
         CancellationToken ct
     )
     {
-        var app = await appRepo.GetBySlugAsync(slug, ct);
-        if (app is null)
-            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
-
-        var secret = await secretRepo.GetByNameAsync(app.Id, name, ct);
-        if (secret is null)
-            return Problem(ProblemMessages.SecretNotFound, statusCode: 404);
+        var (app, secret, missing) = await FindSecretAsync(slug, name, ct);
+        if (missing is not null)
+            return missing;
 
         var env = await envRepo.GetBySlugAsync(app.Id, environmentSlug, ct);
         if (env is null)
@@ -235,13 +219,9 @@ public class SecretsController(
         CancellationToken ct
     )
     {
-        var app = await appRepo.GetBySlugAsync(slug, ct);
-        if (app is null)
-            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
-
-        var secret = await secretRepo.GetByNameAsync(app.Id, name, ct);
-        if (secret is null)
-            return Problem(ProblemMessages.SecretNotFound, statusCode: 404);
+        var (app, secret, missing) = await FindSecretAsync(slug, name, ct);
+        if (missing is not null)
+            return missing;
 
         var env = await envRepo.GetBySlugAsync(app.Id, environmentSlug, ct);
         if (env is null)
@@ -267,6 +247,22 @@ public class SecretsController(
     private static SecretResponse ToResponse(Secret s) =>
         new(s.Id, s.Name, s.Description, s.CreatedAt, s.UpdatedAt, s.RotationIntervalDays);
 
+    /// <summary>The application and secret, or the 404 to return.</summary>
+    private async Task<(Application App, Secret Secret, IActionResult? Missing)> FindSecretAsync(
+        string slug,
+        string name,
+        CancellationToken ct
+    )
+    {
+        var app = await appRepo.GetBySlugAsync(slug, ct);
+        if (app is null)
+            return (null!, null!, Problem(ProblemMessages.ApplicationNotFound, statusCode: 404));
+        var secret = await secretRepo.GetByNameAsync(app.Id, name, ct);
+        return secret is null
+            ? (app, null!, Problem(ProblemMessages.SecretNotFound, statusCode: 404))
+            : (app, secret, null);
+    }
+
     internal static DateTimeOffset? GraceExpiry(int? graceDays, DateTimeOffset now) =>
         graceDays is { } days ? now.AddDays(days) : null;
 
@@ -274,13 +270,9 @@ public class SecretsController(
     [HttpDelete("{name}")]
     public async Task<IActionResult> Delete(string slug, string name, CancellationToken ct)
     {
-        var app = await appRepo.GetBySlugAsync(slug, ct);
-        if (app is null)
-            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
-
-        var secret = await secretRepo.GetByNameAsync(app.Id, name, ct);
-        if (secret is null)
-            return Problem(ProblemMessages.SecretNotFound, statusCode: 404);
+        var (_, secret, missing) = await FindSecretAsync(slug, name, ct);
+        if (missing is not null)
+            return missing;
 
         await secretRepo.DeleteAsync(secret, ct);
         return NoContent();

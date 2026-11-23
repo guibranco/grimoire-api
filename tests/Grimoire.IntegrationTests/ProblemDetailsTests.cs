@@ -43,15 +43,57 @@ public class ProblemDetailsTests(GrimoireWebApplicationFactory factory)
             { "GET", "/management/global/secrets/NOPE" },
             { "DELETE", "/management/global/secrets/NOPE" },
             { "GET", "/management/global/secrets/NOPE/versions/*" },
+            { "PATCH", "/management/global/secrets/NOPE" },
+            { "POST", "/management/global/secrets/NOPE/values" },
+            { "PATCH", "/management/global/secrets/NOPE/versions/*/1" },
+            { "POST", "/management/applications/nope/rotate-key" },
+            { "POST", "/management/applications/nope/secrets" },
+            { "GET", "/management/applications/nope/secrets/S" },
+            { "PATCH", "/management/applications/nope/secrets/S" },
+            { "DELETE", "/management/applications/nope/secrets/S" },
+            { "POST", "/management/applications/nope/secrets/S/values" },
+            { "GET", "/management/applications/nope/secrets/S/versions/local" },
+            { "PATCH", "/management/applications/nope/secrets/S/versions/local/1" },
+            { "POST", "/management/applications/nope/configurations" },
+            { "PUT", "/management/applications/nope/configurations/local/K" },
+            { "DELETE", "/management/applications/nope/configurations/local/K" },
+            { "POST", "/management/applications/nope/environments" },
+            { "DELETE", "/management/applications/nope/environments/local" },
         };
+
+    /// <summary>A body each route accepts, so the request reaches the lookup instead of validation.</summary>
+    private static HttpContent? BodyFor(string method, string path)
+    {
+        if (method is "GET" or "DELETE")
+            return null;
+        if (path.EndsWith("/values"))
+            return JsonContent.Create(new[] { new { environmentSlug = "local", value = "v" } });
+        if (path.EndsWith("/configurations"))
+            return JsonContent.Create(
+                new
+                {
+                    environmentSlug = "local",
+                    key = "K",
+                    value = "v",
+                }
+            );
+        if (path.Contains("/configurations/"))
+            return JsonContent.Create(new { value = "v" });
+        if (path.EndsWith("/environments"))
+            return JsonContent.Create(new { name = "qa" });
+        if (path.Contains("/versions/"))
+            return JsonContent.Create(new { isEnabled = true });
+        return JsonContent.Create(new { name = "x", description = "d" });
+    }
 
     [Theory]
     [MemberData(nameof(NotFoundRoutes))]
     public async Task NotFound_IsATopLevelProblem(string method, string path)
     {
-        using var request = new HttpRequestMessage(new HttpMethod(method), path);
-        if (method == "PUT")
-            request.Content = JsonContent.Create(new { name = "x" });
+        using var request = new HttpRequestMessage(new HttpMethod(method), path)
+        {
+            Content = BodyFor(method, path),
+        };
         await AssertProblemAsync(await Client.SendAsync(request), HttpStatusCode.NotFound);
     }
 
@@ -78,6 +120,65 @@ public class ProblemDetailsTests(GrimoireWebApplicationFactory factory)
                 $"/management/applications/{slug}/secrets/S1/values",
                 new[] { new { environmentSlug = "nope", value = "v" } }
             ),
+            HttpStatusCode.NotFound
+        );
+    }
+
+    [Fact]
+    public async Task MissingChildResources_AreTopLevelProblems()
+    {
+        var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(Client);
+        await TestHelpers.CreateSecretWithValueAsync(Client, slug, "S1", "local", "v");
+        var app = $"/management/applications/{slug}";
+
+        foreach (
+            var (method, path) in new[]
+            {
+                ("GET", $"{app}/configurations/effective?environment=nope"),
+                ("POST", $"{app}/configurations"),
+                ("PUT", $"{app}/configurations/nope/K"),
+                ("PUT", $"{app}/configurations/local/MISSING"),
+                ("DELETE", $"{app}/configurations/nope/K"),
+                ("DELETE", $"{app}/configurations/local/MISSING"),
+                ("GET", $"{app}/secrets/S1/versions/nope"),
+                ("PATCH", $"{app}/secrets/S1/versions/nope/1"),
+                ("PATCH", $"{app}/secrets/MISSING/versions/local/1"),
+                ("POST", $"{app}/secrets/MISSING/values"),
+            }
+        )
+        {
+            using var request = new HttpRequestMessage(new HttpMethod(method), path)
+            {
+                Content =
+                    method == "POST" && path.EndsWith("/configurations")
+                        ? JsonContent.Create(
+                            new
+                            {
+                                environmentSlug = "nope",
+                                key = "K",
+                                value = "v",
+                            }
+                        )
+                        : BodyFor(method, path),
+            };
+            await AssertProblemAsync(await Client.SendAsync(request), HttpStatusCode.NotFound);
+        }
+
+        var consumer = factory.CreateConsumerClient(apiKey);
+        await AssertProblemAsync(
+            await consumer.GetAsync("/consumer/configurations?environment=nope"),
+            HttpStatusCode.NotFound
+        );
+        await AssertProblemAsync(
+            await consumer.GetAsync("/consumer/secrets/S1?environment=nope"),
+            HttpStatusCode.NotFound
+        );
+        await AssertProblemAsync(
+            await consumer.GetAsync("/consumer/configurations/K?environment=nope"),
+            HttpStatusCode.NotFound
+        );
+        await AssertProblemAsync(
+            await consumer.GetAsync("/consumer/configurations/MISSING?environment=local"),
             HttpStatusCode.NotFound
         );
     }

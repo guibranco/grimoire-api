@@ -24,6 +24,30 @@ public class LogStreamTests
 
     // ── Options ───────────────────────────────────────────────────────────────
 
+    [Theory]
+    [InlineData(true, "srv", LogStreamTransport.Udp, "enabled (UDP)")]
+    [InlineData(true, "srv", LogStreamTransport.Http, "enabled (HTTP)")]
+    [InlineData(true, "", LogStreamTransport.Udp, "not configured")]
+    [InlineData(false, "srv", LogStreamTransport.Udp, "disabled")]
+    public void State_DescribesShipping(
+        bool enabled,
+        string server,
+        LogStreamTransport transport,
+        string expected
+    )
+    {
+        var options = new LogStreamOptions
+        {
+            Enabled = enabled,
+            Server = server,
+            ApiKey = "k",
+            ApiToken = "t",
+            Transport = transport,
+        };
+
+        Assert.Equal(expected, options.State);
+    }
+
     [Fact]
     public void Options_Complete_IsConfigured()
     {
