@@ -40,7 +40,7 @@ public sealed class AuditedAttribute(string action) : Attribute, IAsyncActionFil
         var auditEvent = new AuditEvent
         {
             OccurredAt = DateTimeOffset.UtcNow,
-            Actor = app is not null ? $"app:{app.Slug}" : "admin",
+            Actor = ConsumerActor.Of(http) ?? "admin",
             Action = Action,
             ApplicationSlug = Route(context, "slug") ?? app?.Slug ?? CreatedSlug(executed),
             Environment = EnvironmentOf(context, bodies),
@@ -83,6 +83,8 @@ public sealed class AuditedAttribute(string action) : Attribute, IAsyncActionFil
 
     private static string? TargetOf(ActionExecutingContext context, List<object?> bodies)
     {
+        if (AuditContext.GetTarget(context.HttpContext) is { } set)
+            return set;
         foreach (var key in TargetRouteKeys)
             if (Route(context, key) is { } fromRoute)
                 return fromRoute;

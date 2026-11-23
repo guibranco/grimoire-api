@@ -24,6 +24,7 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
     public DbSet<FeatureFlagEnvironmentState> FeatureFlagEnvironmentStates =>
         Set<FeatureFlagEnvironmentState>();
     public DbSet<FeatureFlagAuditEntry> FeatureFlagAuditEntries => Set<FeatureFlagAuditEntry>();
+    public DbSet<AccessToken> AccessTokens => Set<AccessToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,5 +44,6 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
         modelBuilder.ApplyConfiguration(new FeatureFlagConfiguration());
         modelBuilder.ApplyConfiguration(new FeatureFlagEnvironmentStateConfiguration());
         modelBuilder.ApplyConfiguration(new FeatureFlagAuditEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new AccessTokenConfiguration());
     }
 }

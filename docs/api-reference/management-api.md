@@ -158,6 +158,88 @@ Generates a new API key and invalidates the old one immediately.
 
 ---
 
+## Access tokens
+
+Consumer API credentials narrower than the application's API key: each token can be limited to some environments and to some kinds of data, can expire, and can be revoked without affecting the API key or other tokens. Consumers send a token in the same `X-Api-Key` header. The API key keeps working and still reads every environment.
+
+Grimoire stores only a PBKDF2 hash of each token. The plain token is returned once, when it is created.
+
+### List access tokens
+
+```
+GET /management/applications/{slug}/access-tokens
+```
+
+**Response `200`** (newest first; revoked and expired tokens are included):
+
+```json
+[
+  {
+    "id": "5f0c…",
+    "name": "github-actions",
+    "prefix": "Ab3dE9xQ",
+    "environments": ["staging"],
+    "scopes": ["secrets", "configurations"],
+    "expiresAt": "2027-02-21T00:00:00+00:00",
+    "lastUsedAt": "2026-11-23T14:51:02+00:00",
+    "revokedAt": null,
+    "createdAt": "2026-11-23T14:50:00+00:00",
+    "status": "active"
+  }
+]
+```
+
+| Field | Notes |
+| :---- | :---- |
+| `prefix` | The 8 characters after `grm_tok_`; identifies the token without revealing it |
+| `environments` | Environment slugs the token may read; `null` means every environment |
+| `scopes` | `secrets`, `configurations` and/or `feature-flags` |
+| `lastUsedAt` | Updated at most once a minute per token |
+| `status` | `active`, `expired` or `revoked` |
+
+### Create access token
+
+```
+POST /management/applications/{slug}/access-tokens
+```
+
+```json
+{
+  "name": "github-actions",
+  "environments": ["staging"],
+  "scopes": ["secrets", "configurations"],
+  "expiresAt": "2027-02-21T00:00:00Z"
+}
+```
+
+| Field | Required | Notes |
+| :---- | :------- | :---- |
+| `name` | Yes | Up to 100 characters; unique within the application |
+| `environments` | No | Existing environment slugs; omit (or `null`) for every environment, including ones added later |
+| `scopes` | Yes | At least one of `secrets`, `configurations`, `feature-flags` |
+| `expiresAt` | No | Must be in the future; omit for a token that never expires |
+
+**Response `201`:**
+
+```json
+{
+  "token": { "id": "5f0c…", "name": "github-actions", "prefix": "Ab3dE9xQ", "status": "active", "…": "…" },
+  "plainToken": "grm_tok_Ab3dE9xQ…"
+}
+```
+
+`400` for an empty name or scope list, an unknown scope or environment, or an expiry in the past; `409` when the name is taken.
+
+### Revoke access token
+
+```
+POST /management/applications/{slug}/access-tokens/{id}/revoke
+```
+
+Stops the token at once and returns it with `status: "revoked"`. Revoking a revoked token changes nothing. Revoked tokens stay listed so their history remains readable.
+
+---
+
 ## Environments
 
 ### List environments
@@ -1511,7 +1593,7 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | :-------------- | :---------- |
 | `application` | Application slug. |
 | `action` | Action code, or a prefix ending in `*` (`secret.*`). |
-| `actor` | `admin`, `app:<slug>` or `anonymous`. |
+| `actor` | `admin`, `app:<slug>` (API key), `app:<slug>/token:<prefix>` (access token) or `anonymous`. |
 | `environment` | Environment slug (also matches events that touched several environments). |
 | `target` | Secret name or configuration key. |
 | `outcome` | `success`, `notfound`, `forbidden`, `invalid`, `conflict` or `error`. |
@@ -1561,7 +1643,9 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | `feature-flag.read` | Consumer read of flag definitions (a read, like `secret.read`). |
 | `global-feature-flag.create`, `.update`, `.delete`, `.environment-update`, `.toggle` | [Global feature flag](#global-feature-flags) changes. |
 | `rotation.remind` | Rotation reminders sent on demand (`POST /management/secrets/expiring/notify`). Scheduled runs are logged, not audited. |
-| `secret.read`, `configuration.read` | Consumer API reads, by `app:<slug>`. Failed reads are recorded with their outcome. |
+| `secret.read`, `configuration.read` | Consumer API reads, by `app:<slug>` or `app:<slug>/token:<prefix>`. Failed reads are recorded with their outcome. |
+| `access-token.create`, `.revoke` | [Access token](#access-tokens) changes; `target` is the token name. |
+| `access-token.denied` | A valid access token used for an environment or scope it doesn't cover (`403`); `target` is the method and path. |
 | `auth.failed` | Request rejected by the admin or consumer API key check; `target` is the method and path. |
 
 Invalid requests rejected by model validation before the action runs (`400`) are not recorded.

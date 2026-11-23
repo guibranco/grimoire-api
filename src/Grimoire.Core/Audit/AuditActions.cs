@@ -17,6 +17,9 @@ public static class AuditActions
     public const string ApplicationUpdate = "application.update";
     public const string ApplicationDelete = "application.delete";
     public const string ApplicationRotateKey = "application.rotate-key";
+    public const string AccessTokenCreate = "access-token.create";
+    public const string AccessTokenRevoke = "access-token.revoke";
+    public const string AccessTokenDenied = "access-token.denied";
     public const string EnvironmentCreate = "environment.create";
     public const string EnvironmentDelete = "environment.delete";
     public const string SecretCreate = "secret.create";
@@ -62,6 +65,7 @@ public static class AuditActions
     private const string SecretTarget = "secret";
     private const string ConfigurationTarget = "configuration";
     private const string FeatureFlagTarget = "feature-flag";
+    private const string AccessTokenTarget = "access-token";
 
     private static readonly Dictionary<string, (string Label, string? TargetType)> Catalogue = new()
     {
@@ -69,6 +73,9 @@ public static class AuditActions
         [ApplicationUpdate] = ("Updated application", ApplicationTarget),
         [ApplicationDelete] = ("Deleted application", ApplicationTarget),
         [ApplicationRotateKey] = ("Rotated API key", ApplicationTarget),
+        [AccessTokenCreate] = ("Created access token", AccessTokenTarget),
+        [AccessTokenRevoke] = ("Revoked access token", AccessTokenTarget),
+        [AccessTokenDenied] = ("Denied access token request", AccessTokenTarget),
         [EnvironmentCreate] = ("Created environment", EnvironmentTarget),
         [EnvironmentDelete] = ("Deleted environment", EnvironmentTarget),
         [SecretCreate] = ("Created secret", SecretTarget),

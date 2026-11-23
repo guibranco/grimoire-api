@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Grimoire.Api;
+using Grimoire.Api.AccessTokens;
 using Grimoire.Api.Audit;
 using Grimoire.Api.Backups;
 using Grimoire.Api.ConsumerTracking;
@@ -57,6 +58,8 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.AddScoped<IPasswordHasher<Application>, PasswordHasher<Application>>();
+builder.Services.AddScoped<IPasswordHasher<AccessToken>, PasswordHasher<AccessToken>>();
+builder.Services.AddSingleton<AccessTokenUsageThrottle>();
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<BackupScheduler>();
