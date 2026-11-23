@@ -46,7 +46,10 @@ public class GlobalConfigurationRepository(GrimoireDbContext db) : IGlobalConfig
 
     public async Task UpdateAsync(GlobalConfigurationEntry entry, CancellationToken ct = default)
     {
-        db.GlobalConfigurationEntries.Update(entry);
+        // Entries loaded through this context are tracked: let change detection decide what
+        // changed (Update() would mark every column modified and record an empty revision).
+        if (db.Entry(entry).State == EntityState.Detached)
+            db.GlobalConfigurationEntries.Update(entry);
         await db.SaveChangesAsync(ct);
     }
 

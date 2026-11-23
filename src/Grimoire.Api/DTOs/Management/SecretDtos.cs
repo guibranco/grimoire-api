@@ -73,3 +73,7 @@ public record SecretVersionMetadata(
     bool IsCurrent = false,
     string Status = ""
 );
+
+/// <summary>Copies an earlier version's value into a new version (the value is never decrypted or returned).</summary>
+/// <param name="PreviousVersionGraceDays">As for <see cref="SetSecretValueRequest.PreviousVersionGraceDays"/>.</param>
+public record RollbackSecretRequest(int? PreviousVersionGraceDays = null);

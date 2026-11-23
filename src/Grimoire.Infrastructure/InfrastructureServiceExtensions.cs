@@ -23,9 +23,15 @@ public static class InfrastructureServiceExtensions
         IConfiguration configuration
     )
     {
-        services.AddDbContext<GrimoireDbContext>(options =>
-            options.UseSqlite(configuration.GetConnectionString("Default"))
+        services.AddScoped<IConfigurationChangeContext, ConfigurationChangeContext>();
+        services.AddScoped<ConfigurationHistoryInterceptor>();
+        services.AddDbContext<GrimoireDbContext>(
+            (sp, options) =>
+                options
+                    .UseSqlite(configuration.GetConnectionString("Default"))
+                    .AddInterceptors(sp.GetRequiredService<ConfigurationHistoryInterceptor>())
         );
+        services.AddScoped<IConfigurationHistoryRepository, ConfigurationHistoryRepository>();
 
         services.AddScoped<IApplicationRepository, ApplicationRepository>();
         services.AddScoped<IEnvironmentRepository, EnvironmentRepository>();

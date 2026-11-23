@@ -48,7 +48,10 @@ public class ConfigurationRepository(GrimoireDbContext db) : IConfigurationRepos
 
     public async Task UpdateAsync(ConfigurationEntry entry, CancellationToken ct = default)
     {
-        db.ConfigurationEntries.Update(entry);
+        // Entries loaded through this context are tracked: let change detection decide what
+        // changed (Update() would mark every column modified and record an empty revision).
+        if (db.Entry(entry).State == EntityState.Detached)
+            db.ConfigurationEntries.Update(entry);
         await db.SaveChangesAsync(ct);
     }
 
