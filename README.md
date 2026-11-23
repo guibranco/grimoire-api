@@ -165,9 +165,11 @@ Global values apply to every application with `inheritGlobals: true` (the defaul
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
+| `GET` | `/consumer/secrets?environment={env}` | List secret names and metadata (no values) |
 | `GET` | `/consumer/secrets/{name}?environment={env}` | 🔓 Get decrypted secret value |
 | `GET` | `/consumer/configurations?environment={env}` | Get all configurations |
 | `GET` | `/consumer/configurations/{key}?environment={env}` | Get single configuration |
+| `GET` | `/consumer/export?environment={env}&format=json\|env\|dotnet` | 🔓 Export every value in one call |
 
 ---
 

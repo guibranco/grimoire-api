@@ -1778,6 +1778,7 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | `global-feature-flag.create`, `.update`, `.delete`, `.environment-update`, `.toggle` | [Global feature flag](#global-feature-flags) changes. |
 | `rotation.remind` | Rotation reminders sent on demand (`POST /management/secrets/expiring/notify`). Scheduled runs are logged, not audited. |
 | `secret.read`, `configuration.read` | Consumer API reads, by `app:<slug>` or `app:<slug>/token:<prefix>`. Failed reads are recorded with their outcome. |
+| `secret.list`, `export.read` | A consumer [listed its secrets](consumer-api.md#list-secrets) (no values) or [exported](consumer-api.md#export) its values (`target` is the format). |
 | `access-token.create`, `.revoke` | [Access token](#access-tokens) changes; `target` is the token name. |
 | `access-token.denied` | A valid access token used for an environment or scope it doesn't cover (`403`); `target` is the method and path. |
 | `access-token.oidc-exchange` | A GitHub OIDC exchange, by `github:<owner/repo>` (or `anonymous` for an invalid token); `target` is the policy used. |

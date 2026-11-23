@@ -84,4 +84,27 @@ public class AccessTokenTests
     [InlineData("/consumer/other", AccessTokenScopes.None)]
     public void RequiredScope_FollowsTheConsumerRoute(string path, AccessTokenScopes expected) =>
         Assert.Equal(expected, AccessTokenScopeNames.RequiredFor(new PathString(path)));
+
+    [Theory]
+    [InlineData(null, AccessTokenScopes.ReadSecrets | AccessTokenScopes.ReadConfigurations)]
+    [InlineData("configurations", AccessTokenScopes.ReadConfigurations)]
+    [InlineData(
+        " Secrets , configurations ",
+        AccessTokenScopes.ReadSecrets | AccessTokenScopes.ReadConfigurations
+    )]
+    [InlineData("flags", AccessTokenScopes.ReadSecrets | AccessTokenScopes.ReadConfigurations)]
+    public void RequiredScope_ForAnExport_FollowsItsInclude(
+        string? include,
+        AccessTokenScopes expected
+    ) =>
+        Assert.Equal(
+            expected,
+            AccessTokenScopeNames.RequiredFor(new PathString("/consumer/export"), include)
+        );
+
+    [Theory]
+    [InlineData("secrets,flags")]
+    [InlineData(",")]
+    public void ExportInclude_RejectsUnknownOrEmptyLists(string include) =>
+        Assert.False(AccessTokenScopeNames.TryParseExportInclude(include, out _));
 }

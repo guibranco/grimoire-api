@@ -33,6 +33,7 @@ public static class AuditActions
     public const string SecretVersionUpdate = "secret.version-update";
     public const string SecretRollback = "secret.rollback";
     public const string SecretRead = "secret.read";
+    public const string SecretList = "secret.list";
     public const string ConfigurationCreate = "configuration.create";
     public const string ConfigurationUpdate = "configuration.update";
     public const string ConfigurationDelete = "configuration.delete";
@@ -61,6 +62,7 @@ public static class AuditActions
         "global-feature-flag.environment-update";
     public const string GlobalFeatureFlagToggle = "global-feature-flag.toggle";
     public const string ImportApply = "import.apply";
+    public const string ExportRead = "export.read";
     public const string BackupCreate = "backup.create";
     public const string RotationRemindersRun = "rotation.remind";
     public const string AuthFailed = "auth.failed";
@@ -95,6 +97,7 @@ public static class AuditActions
         [SecretVersionUpdate] = ("Updated secret version", SecretTarget),
         [SecretRollback] = ("Rolled back secret", SecretTarget),
         [SecretRead] = ("Read secret", SecretTarget),
+        [SecretList] = ("Listed secrets", SecretTarget),
         [ConfigurationCreate] = ("Created configuration", ConfigurationTarget),
         [ConfigurationUpdate] = ("Updated configuration", ConfigurationTarget),
         [ConfigurationDelete] = ("Deleted configuration", ConfigurationTarget),
@@ -125,6 +128,7 @@ public static class AuditActions
         ),
         [GlobalFeatureFlagToggle] = ("Toggled global feature flag", FeatureFlagTarget),
         [ImportApply] = ("Imported values", "import"),
+        [ExportRead] = ("Exported values", "export"),
         [BackupCreate] = ("Created backup", "backup"),
         [RotationRemindersRun] = ("Sent rotation reminders", null),
         [AuthFailed] = ("Rejected unauthenticated request", null),

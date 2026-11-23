@@ -20,6 +20,45 @@ public class ConsumerSecretsController(
     IEncryptionService encryption
 ) : ControllerBase
 {
+    /// <summary>
+    /// The secrets the application can read in <paramref name="environment"/> (its own and inherited
+    /// globals), with the active version's metadata. Never returns values.
+    /// </summary>
+    [Audited(AuditActions.SecretList)]
+    [HttpGet]
+    [ProducesResponseType<SecretListResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> List([FromQuery] string environment, CancellationToken ct)
+    {
+        Response.Headers.CacheControl = "no-store";
+        var app = HttpContext.Items[ConsumerApiKeyMiddleware.AppContextKey] as Application;
+        if (app is null)
+            return Unauthorized();
+
+        var env = await envRepo.GetBySlugAsync(app.Id, environment, ct);
+        if (env is null)
+            return Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404);
+        HttpContext.Items[ConsumerApiKeyMiddleware.EnvironmentContextKey] = env;
+
+        var now = DateTimeOffset.UtcNow;
+        var items = new List<SecretListItem>();
+        foreach (var secret in await effective.GetSecretsAsync(app, ct))
+        {
+            var resolution = await effective.ResolveSecretAsync(app, env, secret.Name, now, ct);
+            var active = resolution.Value;
+            items.Add(
+                new SecretListItem(
+                    secret.Name,
+                    secret.Source == ValueSource.Global ? "global" : "application",
+                    active is not null,
+                    active?.Version,
+                    active?.ExpiresAt
+                )
+            );
+        }
+        return Ok(new SecretListResponse(items));
+    }
+
     [Audited(AuditActions.SecretRead)]
     [HttpGet("{name}")]
     public async Task<IActionResult> GetSecret(
