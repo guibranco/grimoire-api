@@ -69,7 +69,7 @@ public sealed class BackupService(
         return byName
             .Select(kv =>
             {
-                BackupNaming.TryParse(kv.Key, out var createdAt);
+                var createdAt = BackupNaming.TryParse(kv.Key, out var parsed) ? parsed : default;
                 return new BackupInfo(kv.Key, kv.Value.Size, createdAt, kv.Value.Targets);
             })
             .OrderByDescending(b => b.CreatedAt)
@@ -80,7 +80,8 @@ public sealed class BackupService(
     {
         var stopwatch = Stopwatch.StartNew();
         var name = BackupNaming.For(time.GetUtcNow());
-        BackupNaming.TryParse(name, out var createdAt); // same millisecond precision as listings
+        // Same millisecond precision as listings; the name was just built, so it always parses.
+        var createdAt = BackupNaming.TryParse(name, out var parsed) ? parsed : time.GetUtcNow();
 
         var snapshot = await TakeSnapshotAsync(ct);
         byte[] encrypted;
@@ -123,13 +124,14 @@ public sealed class BackupService(
                 failures
             );
 
-        logger.LogInformation(
-            "Backup {Name} ({Size} bytes) written to {Targets} in {ElapsedMs} ms",
-            name,
-            encrypted.Length,
-            string.Join(", ", written),
-            stopwatch.ElapsedMilliseconds
-        );
+        if (logger.IsEnabled(LogLevel.Information))
+            logger.LogInformation(
+                "Backup {Name} ({Size} bytes) written to {Targets} in {ElapsedMs} ms",
+                name,
+                encrypted.Length,
+                string.Join(", ", written),
+                stopwatch.ElapsedMilliseconds
+            );
         return new BackupInfo(name, encrypted.Length, createdAt, written);
     }
 
@@ -180,11 +182,12 @@ public sealed class BackupService(
         foreach (var name in expired)
         {
             await target.DeleteAsync(name, ct);
-            logger.LogInformation(
-                "Retention: deleted backup {Name} from {Target}",
-                name,
-                target.Name
-            );
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation(
+                    "Retention: deleted backup {Name} from {Target}",
+                    name,
+                    target.Name
+                );
         }
     }
 

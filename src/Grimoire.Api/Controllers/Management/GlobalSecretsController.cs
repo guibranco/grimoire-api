@@ -33,7 +33,7 @@ public class GlobalSecretsController(
     {
         var existing = await globalSecretRepo.GetByNameAsync(req.Name, ct);
         if (existing is not null)
-            return Conflict(Problem("Global secret already exists.", statusCode: 409));
+            return Problem("Global secret already exists.", statusCode: 409);
 
         var secret = new GlobalSecret
         {
@@ -54,7 +54,7 @@ public class GlobalSecretsController(
     {
         var secret = await globalSecretRepo.GetByNameAsync(name, ct);
         if (secret is null)
-            return NotFound(Problem("Global secret not found.", statusCode: 404));
+            return Problem(ProblemMessages.GlobalSecretNotFound, statusCode: 404);
 
         return Ok(ToResponse(secret));
     }
@@ -72,7 +72,7 @@ public class GlobalSecretsController(
     {
         var secret = await globalSecretRepo.GetByNameAsync(name, ct);
         if (secret is null)
-            return Problem("Global secret not found.", statusCode: 404);
+            return Problem(ProblemMessages.GlobalSecretNotFound, statusCode: 404);
 
         secret.Description = req.ClearDescription ? null : req.Description ?? secret.Description;
         secret.RotationIntervalDays = req.ClearRotationInterval
@@ -93,7 +93,7 @@ public class GlobalSecretsController(
     {
         var secret = await globalSecretRepo.GetByNameAsync(name, ct);
         if (secret is null)
-            return NotFound(Problem("Global secret not found.", statusCode: 404));
+            return Problem(ProblemMessages.GlobalSecretNotFound, statusCode: 404);
 
         var now = DateTimeOffset.UtcNow;
         foreach (var item in req)
@@ -136,7 +136,7 @@ public class GlobalSecretsController(
     {
         var secret = await globalSecretRepo.GetByNameAsync(name, ct);
         if (secret is null)
-            return NotFound(Problem("Global secret not found.", statusCode: 404));
+            return Problem(ProblemMessages.GlobalSecretNotFound, statusCode: 404);
 
         var versions = await globalSecretRepo.GetVersionsAsync(secret.Id, environmentSlug, ct);
         return Ok(SecretVersionEditor.ToMetadata(versions, DateTimeOffset.UtcNow));
@@ -163,7 +163,7 @@ public class GlobalSecretsController(
     {
         var secret = await globalSecretRepo.GetByNameAsync(name, ct);
         if (secret is null)
-            return Problem("Global secret not found.", statusCode: 404);
+            return Problem(ProblemMessages.GlobalSecretNotFound, statusCode: 404);
 
         // See SecretsController.UpdateVersion: the guard and the save share one write lock.
         return await globalSecretRepo.InWriteTransactionAsync(
@@ -187,7 +187,7 @@ public class GlobalSecretsController(
     {
         var secret = await globalSecretRepo.GetByNameAsync(name, ct);
         if (secret is null)
-            return NotFound(Problem("Global secret not found.", statusCode: 404));
+            return Problem(ProblemMessages.GlobalSecretNotFound, statusCode: 404);
 
         await globalSecretRepo.DeleteAsync(secret, ct);
         return NoContent();

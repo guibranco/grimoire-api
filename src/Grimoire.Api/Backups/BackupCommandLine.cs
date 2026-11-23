@@ -103,7 +103,7 @@ public static class BackupCommandLine
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"❌ {ex.GetType().Name}: {ex.Message}");
+            await Console.Error.WriteLineAsync($"❌ {ex.GetType().Name}: {ex.Message}");
             if (command.Kind == BackupCommandKind.Verify)
                 await services
                     .GetRequiredService<HealthcheckPinger>()
@@ -139,7 +139,7 @@ public static class BackupCommandLine
             return 0;
         }
 
-        Console.Error.WriteLine(
+        await Console.Error.WriteLineAsync(
             "❌ Restore test failed: expected at least one application and one secret version, and a secret that decrypts with the master key"
         );
         await pinger.FailureAsync(options.VerifyHealthcheckUrl, ct);

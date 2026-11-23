@@ -34,7 +34,7 @@ public class ConsumerSecretsController(
 
         var env = await envRepo.GetBySlugAsync(app.Id, environment, ct);
         if (env is null)
-            return NotFound(Problem("Environment not found.", statusCode: 404));
+            return Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404);
         HttpContext.Items[ConsumerApiKeyMiddleware.EnvironmentContextKey] = env;
 
         var resolution = await effective.ResolveSecretAsync(
@@ -48,9 +48,9 @@ public class ConsumerSecretsController(
         switch (resolution.Status)
         {
             case SecretResolutionStatus.SecretNotFound:
-                return NotFound(Problem("Secret not found.", statusCode: 404));
+                return Problem(ProblemMessages.SecretNotFound, statusCode: 404);
             case SecretResolutionStatus.NoActiveVersion:
-                return NotFound(Problem("No active secret version found.", statusCode: 404));
+                return Problem("No active secret version found.", statusCode: 404);
         }
 
         var version = resolution.Value!;

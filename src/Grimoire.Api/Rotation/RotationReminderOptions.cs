@@ -39,7 +39,7 @@ public sealed class RotationReminderOptions
         && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp);
 
     /// <summary>Positive thresholds, largest first, without duplicates; the defaults when none are set.</summary>
-    public IReadOnlyList<int> EffectiveThresholds =>
+    public IReadOnlyList<int> GetEffectiveThresholds() =>
         (Thresholds.Any(d => d > 0) ? Thresholds : DefaultThresholds)
             .Where(d => d > 0)
             .Distinct()

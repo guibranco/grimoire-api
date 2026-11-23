@@ -103,7 +103,7 @@ public class SecretVersionLifecycleTests(GrimoireWebApplicationFactory factory)
 
         var versions = await VersionsAsync(slug, secret);
 
-        Assert.Equal(new[] { 3, 2, 1 }, versions.Select(v => v["version"]!.GetValue<int>()));
+        Assert.Equal<int>([3, 2, 1], versions.Select(v => v["version"]!.GetValue<int>()));
         Assert.Equal("scheduled", Version(versions, 3)["status"]!.GetValue<string>());
         Assert.Equal("current", Version(versions, 2)["status"]!.GetValue<string>());
         Assert.True(Version(versions, 2)["isCurrent"]!.GetValue<bool>());
@@ -375,6 +375,6 @@ public class SecretVersionLifecycleTests(GrimoireWebApplicationFactory factory)
         var writes = items
             .Where(i => i["action"]!.GetValue<string>() == AuditActions.SecretWrite)
             .Select(i => i["version"]!.GetValue<int>());
-        Assert.Equal(new[] { 1, 2 }, writes.OrderBy(v => v));
+        Assert.Equal<int>([1, 2], writes.OrderBy(v => v));
     }
 }

@@ -31,8 +31,7 @@ public sealed class GrimoireApiFixture : IAsyncLifetime
             imageName = _builtImage.FullName;
         }
 
-        _container = new ContainerBuilder()
-            .WithImage(imageName)
+        _container = new ContainerBuilder(imageName)
             .WithPortBinding(8080, true)
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Management__AdminApiKey", AdminKey)

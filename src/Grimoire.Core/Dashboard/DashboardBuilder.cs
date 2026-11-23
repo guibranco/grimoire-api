@@ -66,6 +66,11 @@ public static class DashboardBuilder
 
         public DateTimeOffset ExpiringBefore => expiringBefore;
 
+        private static DateTimeOffset Max(
+            DateTimeOffset seed,
+            IEnumerable<DateTimeOffset> values
+        ) => values.Aggregate(seed, (max, v) => v > max ? v : max);
+
         public List<AttentionItem> Attention { get; } = [];
 
         public DashboardApplication BuildApplication(ApplicationRow app)
@@ -336,23 +341,20 @@ public static class DashboardBuilder
         var due = SecretDueRules.Evaluate(versions, rotationIntervalDays, now);
 
         if (SecretVersionRules.Current(versions, now) is not null)
-            return due is not null && due.DueAt <= expiringBefore
-                ? new SecretFinding(
-                    due.Reason == SecretDueReasons.Rotation
-                        ? AttentionKinds.SecretRotationDue
-                        : AttentionKinds.SecretExpiring,
-                    AttentionSeverity.Warning,
-                    due.DueAt
-                )
-                : null;
+        {
+            if (due is null || due.DueAt > expiringBefore)
+                return null;
+            var kind =
+                due.Reason == SecretDueReasons.Rotation
+                    ? AttentionKinds.SecretRotationDue
+                    : AttentionKinds.SecretExpiring;
+            return new SecretFinding(kind, AttentionSeverity.Warning, due.DueAt);
+        }
 
         return due?.Reason == SecretDueReasons.Expired
             ? new SecretFinding(AttentionKinds.SecretExpired, AttentionSeverity.Error, due.DueAt)
             : new SecretFinding(AttentionKinds.SecretNoValidVersion, AttentionSeverity.Error, null);
     }
-
-    private static DateTimeOffset Max(DateTimeOffset seed, IEnumerable<DateTimeOffset> values) =>
-        values.Aggregate(seed, (max, v) => v > max ? v : max);
 
     private static List<AttentionItem> Order(List<AttentionItem> items) =>
         items
