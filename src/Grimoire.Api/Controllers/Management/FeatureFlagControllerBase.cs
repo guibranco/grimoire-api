@@ -416,7 +416,7 @@ public abstract class FeatureFlagControllerBase(IFeatureFlagRepository flags, Ti
             .Order(StringComparer.Ordinal)
             .ToList();
 
-    private IActionResult UnknownVariant(string property, string variant) =>
+    private ActionResult UnknownVariant(string property, string variant) =>
         Invalid(property, $"Unknown variant '{variant}'.");
 
     private ActionResult Invalid(string property, string message)
