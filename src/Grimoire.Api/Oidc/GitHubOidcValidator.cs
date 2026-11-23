@@ -30,27 +30,14 @@ public sealed class GitHubOidcValidator(
         if (string.IsNullOrWhiteSpace(jwt) || !Handler.CanReadToken(jwt))
             return null;
 
-        var parameters = new TokenValidationParameters
+        var result = await ValidateWithKeysAsync(jwt, ct);
+        if (result?.Exception is SecurityTokenSignatureKeyNotFoundException)
         {
-            ValidIssuer = options.Issuer,
-            ValidAudience = options.Audience,
-            IssuerSigningKeys = await keys.GetKeysAsync(ct),
-            ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
-            ValidateIssuerSigningKey = true,
-            RequireSignedTokens = true,
-            RequireExpirationTime = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
-            LifetimeValidator = (notBefore, expires, _, p) =>
-            {
-                var now = time.GetUtcNow().UtcDateTime;
-                return (notBefore is null || notBefore <= now + p.ClockSkew)
-                    && expires is not null
-                    && expires > now - p.ClockSkew;
-            },
-        };
-
-        var result = await Handler.ValidateTokenAsync(jwt, parameters);
-        if (!result.IsValid)
+            // GitHub may have rotated its keys since they were cached: fetch them again, once.
+            keys.RequestRefresh();
+            result = await ValidateWithKeysAsync(jwt, ct);
+        }
+        if (result is not { IsValid: true })
             return null;
 
         string? Claim(string name) =>
@@ -65,5 +52,43 @@ public sealed class GitHubOidcValidator(
                 Claim("environment"),
                 Claim("run_id")
             );
+    }
+
+    /// <summary>The validation result, or <c>null</c> when GitHub's keys can't be loaded.</summary>
+    private async Task<TokenValidationResult?> ValidateWithKeysAsync(
+        string jwt,
+        CancellationToken ct
+    )
+    {
+        IReadOnlyCollection<SecurityKey> signingKeys;
+        try
+        {
+            signingKeys = await keys.GetKeysAsync(ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+
+        var parameters = new TokenValidationParameters
+        {
+            ValidIssuer = options.Issuer,
+            ValidAudience = options.Audience,
+            IssuerSigningKeys = signingKeys,
+            ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
+            ValidateIssuerSigningKey = true,
+            RequireSignedTokens = true,
+            RequireExpirationTime = true,
+            ClockSkew = TimeSpan.FromMinutes(1),
+            LifetimeValidator = (notBefore, expires, _, p) =>
+            {
+                var now = time.GetUtcNow().UtcDateTime;
+                return (notBefore is null || notBefore <= now + p.ClockSkew)
+                    && expires is not null
+                    && expires > now - p.ClockSkew;
+            },
+        };
+
+        return await Handler.ValidateTokenAsync(jwt, parameters);
     }
 }

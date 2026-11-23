@@ -96,17 +96,19 @@ permissions:
 steps:
   - name: Get a Grimoire token
     run: |
-      oidc=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-        "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=grimoire" | jq -r .value)
+      oidc=$(curl -sSf -G -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+        "$ACTIONS_ID_TOKEN_REQUEST_URL" --data-urlencode "audience=$GRIMOIRE_OIDC_AUDIENCE" | jq -r .value)
       token=$(curl -sSf https://grimoire.example.com/consumer/oidc/github \
         -H "Content-Type: application/json" \
         -d "{\"application\":\"my-app\",\"token\":\"$oidc\"}" | jq -r .token)
       echo "::add-mask::$token"
       echo "GRIMOIRE_TOKEN=$token" >> "$GITHUB_ENV"
+    env:
+      GRIMOIRE_OIDC_AUDIENCE: grimoire   # must match Oidc:GitHub:Audience on your instance
   - run: curl -sSf -H "X-Api-Key: $GRIMOIRE_TOKEN" "https://grimoire.example.com/consumer/secrets/DB_PASSWORD?environment=staging"
 ```
 
-The `audience` must match `Oidc:GitHub:Audience` (see [configuration]({{ site.baseurl }}/getting-started/configuration/#github-oidc)).
+`GRIMOIRE_OIDC_AUDIENCE` must match the instance's `Oidc:GitHub:Audience` (default `grimoire`) (see [configuration]({{ site.baseurl }}/getting-started/configuration/#github-oidc)).
 
 ---
 

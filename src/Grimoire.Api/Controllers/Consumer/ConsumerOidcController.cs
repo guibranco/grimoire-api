@@ -24,6 +24,7 @@ public class ConsumerOidcController(
     ITrustPolicyRepository policies,
     IAccessTokenRepository tokens,
     AccessTokenFactory factory,
+    IssuedTokenCleanup cleanup,
     IAuditLog auditLog,
     TimeProvider time
 ) : ControllerBase
@@ -55,7 +56,7 @@ public class ConsumerOidcController(
             return Reject(claims, app.Slug);
 
         var now = time.GetUtcNow();
-        await tokens.DeleteExpiredIssuedAsync(now.AddDays(-1), ct);
+        await cleanup.RunAsync(tokens, ct);
         var expiresAt = now.AddMinutes(policy.TokenLifetimeMinutes);
         var (token, plain) = factory.Create(
             app.Id,
@@ -66,8 +67,7 @@ public class ConsumerOidcController(
             policy.Id
         );
         await tokens.AddAsync(token, ct);
-        policy.LastUsedAt = now;
-        await policies.UpdateAsync(policy, ct);
+        await policies.TouchAsync(policy.Id, now, ct);
 
         Record(claims, app.Slug, policy.Name, 200, AuditOutcome.Success);
         return Ok(

@@ -18,6 +18,8 @@ public static class TestOidc
     {
         public Task<IReadOnlyCollection<SecurityKey>> GetKeysAsync(CancellationToken ct) =>
             Task.FromResult<IReadOnlyCollection<SecurityKey>>([Key]);
+
+        public void RequestRefresh() { }
     }
 
     public static string Token(

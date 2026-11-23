@@ -61,6 +61,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddScoped<IPasswordHasher<Application>, PasswordHasher<Application>>();
 builder.Services.AddScoped<IPasswordHasher<AccessToken>, PasswordHasher<AccessToken>>();
 builder.Services.AddSingleton<AccessTokenUsageThrottle>();
+builder.Services.AddSingleton<IssuedTokenCleanup>();
 builder.Services.AddScoped<AccessTokenFactory>();
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IConfiguration>()

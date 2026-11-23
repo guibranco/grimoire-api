@@ -22,6 +22,14 @@ public class TrustPolicyRepository(GrimoireDbContext db) : ITrustPolicyRepositor
             ct
         );
 
+    public Task<bool> ExistsAsync(Guid applicationId, Guid id, CancellationToken ct = default) =>
+        db.TrustPolicies.AnyAsync(p => p.ApplicationId == applicationId && p.Id == id, ct);
+
+    public Task TouchAsync(Guid id, DateTimeOffset usedAt, CancellationToken ct = default) =>
+        db
+            .TrustPolicies.Where(p => p.Id == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.LastUsedAt, usedAt), ct);
+
     public Task<bool> NameExistsAsync(
         Guid applicationId,
         string name,

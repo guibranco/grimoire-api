@@ -9,6 +9,11 @@ public interface ITrustPolicyRepository
 
     Task<TrustPolicy?> GetAsync(Guid applicationId, Guid id, CancellationToken ct = default);
 
+    Task<bool> ExistsAsync(Guid applicationId, Guid id, CancellationToken ct = default);
+
+    /// <summary>Records a use, touching only <c>LastUsedAt</c>.</summary>
+    Task TouchAsync(Guid id, DateTimeOffset usedAt, CancellationToken ct = default);
+
     Task<bool> NameExistsAsync(
         Guid applicationId,
         string name,

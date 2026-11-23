@@ -8,6 +8,12 @@ namespace Grimoire.Api.Oidc;
 public interface IGitHubOidcKeyProvider
 {
     Task<IReadOnlyCollection<SecurityKey>> GetKeysAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Asks for the keys to be fetched again on the next <see cref="GetKeysAsync"/>, as when GitHub
+    /// rotates them. Rate-limited, so unknown key IDs can't force a fetch on every request.
+    /// </summary>
+    void RequestRefresh();
 }
 
 /// <summary>
@@ -24,4 +30,6 @@ public sealed class GitHubOidcKeyProvider(GitHubOidcOptions options) : IGitHubOi
 
     public async Task<IReadOnlyCollection<SecurityKey>> GetKeysAsync(CancellationToken ct) =>
         (await _configuration.GetConfigurationAsync(ct)).SigningKeys.ToList();
+
+    public void RequestRefresh() => _configuration.RequestRefresh();
 }

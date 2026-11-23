@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using Grimoire.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Grimoire.IntegrationTests.Consumer;
 
@@ -272,6 +275,62 @@ public class GitHubOidcTests(GrimoireWebApplicationFactory factory)
             HttpStatusCode.Unauthorized,
             (await ExchangeAsync(slug, TestOidc.Token())).StatusCode
         );
+    }
+
+    [Fact]
+    public async Task ATokenWhosePolicyIsGone_IsRejected_EvenIfNotRevoked()
+    {
+        // An exchange racing the policy's deletion can insert its token after the revoke.
+        var slug = await AppAsync();
+        await PolicyAsync(
+            slug,
+            new
+            {
+                name = "racing",
+                repository = "guibranco/demo",
+                scopes = SecretsOnly,
+            }
+        );
+        var token = JsonNode.Parse(
+            await (await ExchangeAsync(slug, TestOidc.Token())).Content.ReadAsStringAsync()
+        )!["token"]!.GetValue<string>();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<GrimoireDbContext>();
+            var appId = (await db.Applications.SingleAsync(a => a.Slug == slug)).Id;
+            await db.TrustPolicies.Where(p => p.ApplicationId == appId).ExecuteDeleteAsync();
+        }
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            (
+                await factory
+                    .CreateConsumerClient(token)
+                    .GetAsync("/consumer/secrets/DB_PASSWORD?environment=staging")
+            ).StatusCode
+        );
+    }
+
+    [Fact]
+    public async Task Exchange_RecordsLastUsed_WithoutOverwritingThePolicy()
+    {
+        var slug = await AppAsync();
+        await PolicyAsync(
+            slug,
+            new
+            {
+                name = "used",
+                repository = "guibranco/demo",
+                scopes = SecretsOnly,
+            }
+        );
+        Assert.Equal(HttpStatusCode.OK, (await ExchangeAsync(slug, TestOidc.Token())).StatusCode);
+
+        var list = JsonNode
+            .Parse(await Mgmt.GetStringAsync($"/management/applications/{slug}/trust-policies"))!
+            .AsArray();
+        Assert.NotNull(list.Single()!["lastUsedAt"]);
     }
 
     [Fact]
