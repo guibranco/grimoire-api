@@ -6,11 +6,12 @@ using Microsoft.Extensions.Logging;
 namespace Grimoire.Api.ConsumerTracking;
 
 /// <summary>
-/// Writes buffered consumer reads to the database every
+/// Writes buffered consumer reads and secret reads to the database every
 /// <see cref="ConsumerActivityOptions.FlushIntervalSeconds"/>, and once more on shutdown.
 /// </summary>
 public sealed class ConsumerActivityFlusher(
     ConsumerActivityTracker tracker,
+    SecretReadTracker secretReads,
     IServiceScopeFactory scopes,
     ConsumerActivityOptions options,
     TimeProvider time,
@@ -38,33 +39,58 @@ public sealed class ConsumerActivityFlusher(
         await FlushAsync(cancellationToken);
     }
 
-    /// <summary>Drains the buffer into the database; on failure the entries are requeued.</summary>
+    /// <summary>
+    /// Drains both buffers (last-seen and secret reads) into the database; on failure the
+    /// entries are requeued.
+    /// </summary>
     public async Task FlushAsync(CancellationToken ct)
     {
-        var entries = tracker.Drain();
+        await FlushBufferAsync<PendingConsumerActivity, ConsumerActivityStore>(
+            tracker,
+            (store, entries, token) => store.SaveAsync(entries, token),
+            "consumer activity",
+            ct
+        );
+        await FlushBufferAsync<PendingSecretRead, SecretReadStore>(
+            secretReads,
+            (store, entries, token) => store.SaveAsync(entries, token),
+            "secret read",
+            ct
+        );
+    }
+
+    private async Task FlushBufferAsync<TEntry, TStore>(
+        IFlushBuffer<TEntry> buffer,
+        Func<TStore, IReadOnlyList<TEntry>, CancellationToken, Task> save,
+        string label,
+        CancellationToken ct
+    )
+        where TStore : notnull
+    {
+        var entries = buffer.Drain();
         if (entries.Count == 0)
             return;
 
         try
         {
             await using var scope = scopes.CreateAsyncScope();
-            var store = scope.ServiceProvider.GetRequiredService<ConsumerActivityStore>();
-            await store.SaveAsync(entries, ct);
-            tracker.Complete(entries);
+            await save(scope.ServiceProvider.GetRequiredService<TStore>(), entries, ct);
+            buffer.Complete(entries);
         }
         catch (OperationCanceledException)
         {
             // Cancelled (e.g. on shutdown) before the write finished: keep the entries.
-            tracker.Requeue(entries);
+            buffer.Requeue(entries);
             throw;
         }
         catch (Exception ex)
         {
-            tracker.Requeue(entries);
+            buffer.Requeue(entries);
             logger.LogWarning(
                 ex,
-                "Failed to flush {Count} consumer activity entries; they will be retried",
-                entries.Count
+                "Failed to flush {Count} {Kind} entries; they will be retried",
+                entries.Count,
+                label
             );
         }
     }

@@ -54,6 +54,7 @@ public class ConsumerSecretsController(
         }
 
         var version = resolution.Value!;
+        HttpContext.Items[TrackConsumerActivityAttribute.SecretReadContextKey] = version;
         var plainValue = encryption.Decrypt(version.EncryptedValue);
 
         return Ok(

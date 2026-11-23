@@ -56,6 +56,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IExpiringSecretsService, ExpiringSecretsService>();
         services.AddScoped<IRotationReminderStore, RotationReminderStore>();
         services.AddScoped<IMetadataSearchService, MetadataSearchService>();
+        services.AddScoped<IUsageReportService, UsageReportService>();
 
         return services;
     }
@@ -79,6 +80,9 @@ public static class InfrastructureServiceExtensions
             sp.GetRequiredService<ConsumerActivityTracker>()
         );
         services.AddScoped<ConsumerActivityStore>();
+        services.AddSingleton<SecretReadTracker>();
+        services.AddSingleton<ISecretReadTracker>(sp => sp.GetRequiredService<SecretReadTracker>());
+        services.AddScoped<SecretReadStore>();
         services.TryAddScoped<IConsumerActivityReader, ConsumerActivityReader>();
     }
 

@@ -42,7 +42,10 @@ public enum SecretResolutionStatus
     NoActiveVersion,
 }
 
-/// <summary>The active secret version picked for a consumer request. The value stays encrypted.</summary>
+/// <summary>
+/// The active secret version picked for a consumer request. The value stays encrypted.
+/// <paramref name="SecretId"/> is the application or global secret it came from (see <paramref name="Source"/>).
+/// </summary>
 public sealed record ResolvedSecretVersion(
     string Name,
     string EncryptedValue,
@@ -51,7 +54,8 @@ public sealed record ResolvedSecretVersion(
     DateTimeOffset? NotBefore,
     int Version,
     DateTimeOffset CreatedAt,
-    ValueSource Source
+    ValueSource Source,
+    Guid SecretId = default
 );
 
 public sealed record SecretResolution(SecretResolutionStatus Status, ResolvedSecretVersion? Value)

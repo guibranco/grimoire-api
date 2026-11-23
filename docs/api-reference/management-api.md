@@ -1043,6 +1043,100 @@ Runs the [rotation reminder](../operations/rotation-reminders.md) job immediatel
 
 ---
 
+## Reports
+
+Built from Consumer API reads. Every successful secret read is recorded per reading application environment and secret (when, roughly how often), buffered in memory and written every `ConsumerActivity:FlushIntervalSeconds`; reports also include reads not written yet. Upgrading seeds the rollup from successful `secret.read` [audit events](#audit-log), so history starts as far back as the audit log goes. Metadata only, never values.
+
+### List unused secrets
+
+```
+GET /management/reports/unused-secrets?days=90
+```
+
+Application and global secrets with no successful read in the last `days` days, including secrets never read. Never-read secrets come first, then the longest unread.
+
+| Query parameter | Default | Description |
+| :-------------- | :------ | :---------- |
+| `days` | `90` | `1`–`3650`. Secrets read within this window are left out. |
+
+**Response `200`:**
+
+```json
+{
+  "generatedAt": "2026-11-23T09:00:00Z",
+  "days": 90,
+  "since": "2026-08-25T09:00:00Z",
+  "items": [
+    {
+      "application": "billing",
+      "applicationName": "Billing",
+      "secret": "LEGACY_FTP_PASSWORD",
+      "isGlobal": false,
+      "createdAt": "2025-03-01T10:00:00Z",
+      "lastReadAt": "2026-05-02T08:15:00Z",
+      "readCount": 1284,
+      "reads": [
+        { "application": "billing", "environment": "production", "lastReadAt": "2026-05-02T08:15:00Z", "readCount": 1200 },
+        { "application": "billing", "environment": "staging", "lastReadAt": "2026-04-30T11:00:00Z", "readCount": 84 }
+      ]
+    }
+  ]
+}
+```
+
+`application` and `applicationName` are `null` for global secrets; their `reads` list every application that read them. `lastReadAt` is `null` (and `reads` empty) for a secret never read. `readCount` is approximate. Secrets of deleted applications are not listed.
+
+**Response `400`:** `days` out of range.
+
+---
+
+### Dependency graph
+
+```
+GET /management/reports/dependencies
+```
+
+Applications, secrets and configuration keys as a graph, for the UI's dependency view or other tooling.
+
+**Response `200`:**
+
+```json
+{
+  "generatedAt": "2026-11-23T09:00:00Z",
+  "nodes": [
+    { "id": "app:billing", "type": "application", "label": "Billing", "application": null, "environments": [] },
+    { "id": "secret:billing/DB_PASSWORD", "type": "secret", "label": "DB_PASSWORD", "application": "billing", "environments": [] },
+    { "id": "global-secret:SMTP_PASSWORD", "type": "global-secret", "label": "SMTP_PASSWORD", "application": null, "environments": [] },
+    { "id": "config:billing/Timeout", "type": "config-key", "label": "Timeout", "application": "billing", "environments": ["production", "staging"] },
+    { "id": "global-config:Region", "type": "global-config-key", "label": "Region", "application": null, "environments": ["*"] }
+  ],
+  "edges": [
+    { "source": "app:billing", "target": "secret:billing/DB_PASSWORD", "kind": "owns", "environments": [], "lastReadAt": null, "readCount": null },
+    { "source": "app:billing", "target": "global-secret:SMTP_PASSWORD", "kind": "reads", "environments": ["production"], "lastReadAt": "2026-11-23T08:59:00Z", "readCount": 512 },
+    { "source": "app:billing", "target": "global-config:Region", "kind": "inherits", "environments": [], "lastReadAt": null, "readCount": null }
+  ]
+}
+```
+
+| Node `type` | `id` |
+| :---------- | :--- |
+| `application` | `app:{slug}` |
+| `secret` | `secret:{slug}/{name}` |
+| `global-secret` | `global-secret:{name}` |
+| `config-key` | `config:{slug}/{key}` (one node per key across environments) |
+| `global-config-key` | `global-config:{key}` (one node per key across `*` and environment slugs) |
+
+| Edge `kind` | From → to |
+| :---------- | :-------- |
+| `owns` | Application → its secret or configuration key. |
+| `reads` | Application → secret or global secret it read through the Consumer API, with the reading environments, last read and approximate count. |
+| `overrides` | Application secret or key → global of the same name, when the application inherits globals. |
+| `inherits` | Application → global configuration key it receives (inherits globals and doesn't override the key). |
+
+Deleted applications are left out. Nodes and edges are sorted by id.
+
+---
+
 ## Dashboard
 
 ### Get dashboard summary

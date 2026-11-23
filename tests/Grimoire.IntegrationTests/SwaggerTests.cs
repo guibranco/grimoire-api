@@ -23,6 +23,8 @@ public class SwaggerTests(GrimoireWebApplicationFactory factory)
     [InlineData("/management/applications/{slug}/configurations/{environmentSlug}/{key}/history")]
     [InlineData("/management/global/configurations/{environmentSlug}/{key}/history")]
     [InlineData("/management/secrets/expiring/notify")]
+    [InlineData("/management/reports/unused-secrets")]
+    [InlineData("/management/reports/dependencies")]
     [InlineData(
         "/management/applications/{slug}/secrets/{name}/versions/{environmentSlug}/{version}"
     )]
