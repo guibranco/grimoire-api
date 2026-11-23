@@ -15,6 +15,8 @@ internal static class ProblemMessages
     public const string FeatureFlagExists = "A feature flag with this key already exists.";
     public const string AccessTokenNotFound = "Access token not found.";
     public const string AccessTokenExists = "An access token with this name already exists.";
+    public const string TrustPolicyNotFound = "Trust policy not found.";
+    public const string TrustPolicyExists = "A trust policy with this name already exists.";
 
     public static string RevisionIsDelete(int revision) =>
         $"Revision {revision} deleted the key, so it has no value to restore.";

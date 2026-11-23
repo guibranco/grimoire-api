@@ -238,6 +238,64 @@ POST /management/applications/{slug}/access-tokens/{id}/revoke
 
 Stops the token at once and returns it with `status: "revoked"`. Revoking a revoked token changes nothing. Revoked tokens stay listed so their history remains readable.
 
+Tokens issued by a [GitHub OIDC exchange](#trust-policies-github-oidc) aren't listed here.
+
+---
+
+## Trust policies (GitHub OIDC)
+
+Which GitHub Actions runs may [exchange their OIDC token](consumer-api.md#github-oidc-exchange) for a short-lived access token, and what that token reads. A run matches a policy when its `repository` claim equals `repository` (case-insensitive), its `ref` matches `refPattern` (if set) and its `environment` equals `gitHubEnvironment` (if set). When several policies match, the most specific wins: one with a GitHub environment, then one with a ref pattern, then the pattern with fewer `*`, then by name.
+
+### List trust policies
+
+```
+GET /management/applications/{slug}/trust-policies
+```
+
+```json
+[
+  {
+    "id": "8c1e…",
+    "name": "deploy main",
+    "repository": "guibranco/my-app",
+    "refPattern": "refs/heads/main",
+    "gitHubEnvironment": "production",
+    "environments": ["production"],
+    "scopes": ["secrets", "configurations"],
+    "tokenLifetimeMinutes": 15,
+    "lastUsedAt": "2026-11-23T16:30:00+00:00",
+    "createdAt": "2026-11-23T16:00:00+00:00"
+  }
+]
+```
+
+### Create / update trust policy
+
+```
+POST /management/applications/{slug}/trust-policies
+PUT  /management/applications/{slug}/trust-policies/{id}
+```
+
+| Field | Required | Notes |
+| :---- | :------- | :---- |
+| `name` | Yes | Unique within the application |
+| `repository` | Yes | `owner/repo` |
+| `refPattern` | No | A full ref (`refs/heads/main`, `refs/tags/v*`); `*` matches anything, slashes included. Omit for any ref |
+| `gitHubEnvironment` | No | The job's GitHub environment, matched exactly. Omit for any (or none) |
+| `environments` | No | Grimoire environment slugs the issued token may read; omit for all |
+| `scopes` | Yes | `secrets`, `configurations` and/or `feature-flags` |
+| `tokenLifetimeMinutes` | No | 1–60, default 15 |
+
+`201` / `200` with the policy; `400` for invalid fields or unknown environments; `409` when the name is taken. Changes apply to the next exchange; tokens already issued keep what they had until they expire.
+
+### Delete trust policy
+
+```
+DELETE /management/applications/{slug}/trust-policies/{id}
+```
+
+`204`. Also revokes the tokens the policy issued that haven't expired yet.
+
 ---
 
 ## Environments
@@ -1593,7 +1651,7 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | :-------------- | :---------- |
 | `application` | Application slug. |
 | `action` | Action code, or a prefix ending in `*` (`secret.*`). |
-| `actor` | `admin`, `app:<slug>` (API key), `app:<slug>/token:<prefix>` (access token) or `anonymous`. |
+| `actor` | `admin`, `app:<slug>` (API key), `app:<slug>/token:<prefix>` (access token), `github:<owner/repo>` (OIDC exchange) or `anonymous`. |
 | `environment` | Environment slug (also matches events that touched several environments). |
 | `target` | Secret name or configuration key. |
 | `outcome` | `success`, `notfound`, `forbidden`, `invalid`, `conflict` or `error`. |
@@ -1646,6 +1704,8 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | `secret.read`, `configuration.read` | Consumer API reads, by `app:<slug>` or `app:<slug>/token:<prefix>`. Failed reads are recorded with their outcome. |
 | `access-token.create`, `.revoke` | [Access token](#access-tokens) changes; `target` is the token name. |
 | `access-token.denied` | A valid access token used for an environment or scope it doesn't cover (`403`); `target` is the method and path. |
+| `access-token.oidc-exchange` | A GitHub OIDC exchange, by `github:<owner/repo>` (or `anonymous` for an invalid token); `target` is the policy used. |
+| `trust-policy.create`, `.update`, `.delete` | [Trust policy](#trust-policies-github-oidc) changes; `target` is the policy name. |
 | `auth.failed` | Request rejected by the admin or consumer API key check; `target` is the method and path. |
 
 Invalid requests rejected by model validation before the action runs (`400`) are not recorded.

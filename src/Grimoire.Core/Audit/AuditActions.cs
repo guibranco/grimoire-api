@@ -20,6 +20,10 @@ public static class AuditActions
     public const string AccessTokenCreate = "access-token.create";
     public const string AccessTokenRevoke = "access-token.revoke";
     public const string AccessTokenDenied = "access-token.denied";
+    public const string AccessTokenOidcExchange = "access-token.oidc-exchange";
+    public const string TrustPolicyCreate = "trust-policy.create";
+    public const string TrustPolicyUpdate = "trust-policy.update";
+    public const string TrustPolicyDelete = "trust-policy.delete";
     public const string EnvironmentCreate = "environment.create";
     public const string EnvironmentDelete = "environment.delete";
     public const string SecretCreate = "secret.create";
@@ -66,6 +70,7 @@ public static class AuditActions
     private const string ConfigurationTarget = "configuration";
     private const string FeatureFlagTarget = "feature-flag";
     private const string AccessTokenTarget = "access-token";
+    private const string TrustPolicyTarget = "trust-policy";
 
     private static readonly Dictionary<string, (string Label, string? TargetType)> Catalogue = new()
     {
@@ -76,6 +81,10 @@ public static class AuditActions
         [AccessTokenCreate] = ("Created access token", AccessTokenTarget),
         [AccessTokenRevoke] = ("Revoked access token", AccessTokenTarget),
         [AccessTokenDenied] = ("Denied access token request", AccessTokenTarget),
+        [AccessTokenOidcExchange] = ("Exchanged GitHub OIDC token", TrustPolicyTarget),
+        [TrustPolicyCreate] = ("Created trust policy", TrustPolicyTarget),
+        [TrustPolicyUpdate] = ("Updated trust policy", TrustPolicyTarget),
+        [TrustPolicyDelete] = ("Deleted trust policy", TrustPolicyTarget),
         [EnvironmentCreate] = ("Created environment", EnvironmentTarget),
         [EnvironmentDelete] = ("Deleted environment", EnvironmentTarget),
         [SecretCreate] = ("Created secret", SecretTarget),

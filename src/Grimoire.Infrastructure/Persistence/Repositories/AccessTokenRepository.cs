@@ -8,7 +8,7 @@ public class AccessTokenRepository(GrimoireDbContext db) : IAccessTokenRepositor
 {
     public Task<List<AccessToken>> ListAsync(Guid applicationId, CancellationToken ct = default) =>
         db
-            .AccessTokens.Where(t => t.ApplicationId == applicationId)
+            .AccessTokens.Where(t => t.ApplicationId == applicationId && t.TrustPolicyId == null)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(ct);
 
@@ -49,4 +49,26 @@ public class AccessTokenRepository(GrimoireDbContext db) : IAccessTokenRepositor
         db
             .AccessTokens.Where(t => t.Id == id)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.LastUsedAt, usedAt), ct);
+
+    public Task<int> RevokeIssuedAsync(
+        Guid trustPolicyId,
+        DateTimeOffset at,
+        CancellationToken ct = default
+    ) =>
+        db
+            .AccessTokens.Where(t => t.TrustPolicyId == trustPolicyId && t.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, at), ct);
+
+    public async Task<int> DeleteExpiredIssuedAsync(
+        DateTimeOffset before,
+        CancellationToken ct = default
+    )
+    {
+        // ExpiresAt is stored as text, so compare in memory (issued tokens are few and short-lived).
+        var issued = await db.AccessTokens.Where(t => t.TrustPolicyId != null).ToListAsync(ct);
+        var expired = issued.Where(t => t.ExpiresAt is { } e && e < before).ToList();
+        db.AccessTokens.RemoveRange(expired);
+        await db.SaveChangesAsync(ct);
+        return expired.Count;
+    }
 }

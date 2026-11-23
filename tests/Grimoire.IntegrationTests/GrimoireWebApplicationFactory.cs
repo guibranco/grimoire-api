@@ -1,9 +1,12 @@
+using Grimoire.Api.Oidc;
 using Grimoire.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Grimoire.IntegrationTests;
 
@@ -37,6 +40,13 @@ public sealed class GrimoireWebApplicationFactory : WebApplicationFactory<Progra
                 );
             }
         );
+
+        // Trust the tests' own signing key instead of fetching GitHub's.
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IGitHubOidcKeyProvider>();
+            services.AddSingleton<IGitHubOidcKeyProvider, TestOidc.KeyProvider>();
+        });
     }
 
     public HttpClient CreateManagementClient()

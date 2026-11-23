@@ -59,6 +59,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IUsageReportService, UsageReportService>();
         services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
         services.AddScoped<IAccessTokenRepository, AccessTokenRepository>();
+        services.AddScoped<ITrustPolicyRepository, TrustPolicyRepository>();
 
         return services;
     }

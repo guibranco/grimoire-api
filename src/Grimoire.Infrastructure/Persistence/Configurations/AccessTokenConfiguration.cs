@@ -18,6 +18,7 @@ public class AccessTokenConfiguration : IEntityTypeConfiguration<AccessToken>
         builder.Property(x => x.CreatedAt).HasConversion(new DateTimeOffsetToBinaryConverter());
 
         builder.HasIndex(x => x.Prefix);
+        builder.HasIndex(x => x.TrustPolicyId);
         builder.HasIndex(x => new { x.ApplicationId, x.Name }).IsUnique();
 
         builder

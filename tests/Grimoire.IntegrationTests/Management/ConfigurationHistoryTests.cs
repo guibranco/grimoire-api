@@ -82,10 +82,10 @@ public class ConfigurationHistoryTests(GrimoireWebApplicationFactory factory)
         );
         Assert.Equal("safe", read!["value"]!.GetValue<string>());
 
-        var audit = await Client.GetFromJsonAsync<JsonObject>(
-            $"/management/audit?application={slug}&action={AuditActions.ConfigurationRollback}"
+        var audit = await Client.WaitForAuditAsync(
+            $"application={slug}&action={AuditActions.ConfigurationRollback}"
         );
-        Assert.Single(audit!["items"]!.AsArray());
+        Assert.Single(audit);
     }
 
     [Fact]

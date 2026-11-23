@@ -19,6 +19,32 @@ The header takes either the application's API key (`grm_…`), which reads every
 
 A token used for another environment or scope gets `403` (and the attempt is audited as `access-token.denied`); a revoked or expired token gets `401`.
 
+### GitHub OIDC exchange
+
+```
+POST /consumer/oidc/github
+```
+
+Needs no `X-Api-Key`: the body carries a GitHub Actions OIDC token, which is validated (GitHub's signature, issuer, the configured audience, expiry) and matched against the application's [trust policies](management-api.md#trust-policies-github-oidc).
+
+```json
+{ "application": "my-app", "token": "<GitHub OIDC JWT>" }
+```
+
+**Response `200`:**
+
+```json
+{
+  "token": "grm_tok_…",
+  "expiresAt": "2026-11-23T16:45:00+00:00",
+  "environments": ["staging"],
+  "scopes": ["secrets"],
+  "policy": "deploy main"
+}
+```
+
+Use `token` in `X-Api-Key` until it expires. Any failure (invalid token, unknown application, no matching policy) is a plain `401`, audited as `access-token.oidc-exchange` by `github:<owner/repo>` (or `anonymous` when the token itself is invalid). See [Authentication](authentication.md#github-actions-oidc) for a workflow example.
+
 <details open markdown="block">
   <summary>Table of contents</summary>
   {: .text-delta }

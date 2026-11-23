@@ -111,6 +111,16 @@ A daily job announces secrets that are due for rotation or expiring. See [Rotati
 | `RotationReminders:TimeoutSeconds` | `RotationReminders__TimeoutSeconds` | `10` | Webhook timeout. |
 | `RotationReminders:KeepSentDays` | `RotationReminders__KeepSentDays` | `400` | How long delivered reminders are remembered for de-duplication. |
 
+### GitHub OIDC
+
+Lets GitHub Actions runs exchange their OIDC token for a short-lived access token, according to each application's [trust policies]({{ site.baseurl }}/api-reference/management-api/#trust-policies-github-oidc).
+
+| Key | Env var | Default | Description |
+| :-- | :------ | :------ | :---------- |
+| `Oidc:GitHub:Enabled` | `Oidc__GitHub__Enabled` | `true` | Accept exchanges at `POST /consumer/oidc/github`. With no trust policies, every exchange is refused anyway. |
+| `Oidc:GitHub:Audience` | `Oidc__GitHub__Audience` | `grimoire` | The `aud` workflows must request. Set something unique to this instance (its URL, say) so a token meant for another Grimoire is refused. |
+| `Oidc:GitHub:Issuer` | `Oidc__GitHub__Issuer` | `https://token.actions.githubusercontent.com` | Change only for GitHub Enterprise Server. Grimoire fetches the issuer's signing keys over HTTPS and caches them. |
+
 ### Serilog (logging)
 
 | Setting | Default | Description |

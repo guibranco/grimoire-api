@@ -15,6 +15,7 @@ namespace Grimoire.Api.Middleware;
 public class ConsumerApiKeyMiddleware(RequestDelegate next)
 {
     private const string Prefix = "/consumer";
+    private const string OidcPrefix = "/consumer/oidc";
     public const string AppContextKey = "GrimoireApplication";
 
     /// <summary>The access token used, when the request was not made with the API key.</summary>
@@ -33,7 +34,11 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
         TimeProvider time
     )
     {
-        if (!context.Request.Path.StartsWithSegments(Prefix))
+        // The OIDC exchange is its own credential (guibranco/grimoire-api#75).
+        if (
+            !context.Request.Path.StartsWithSegments(Prefix)
+            || context.Request.Path.StartsWithSegments(OidcPrefix)
+        )
         {
             await next(context);
             return;
@@ -100,7 +105,12 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
 
         var now = time.GetUtcNow();
         var app = token is null ? null : await appRepo.GetByIdAsync(token.ApplicationId, ct);
-        if (token is null || app is null || !token.IsActive(now))
+        if (
+            token is null
+            || app is null
+            || !token.IsActive(now)
+            || !await IssuingPolicyExistsAsync(context, token, ct)
+        )
         {
             await WriteUnauthorized(context);
             return;
@@ -126,6 +136,20 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
 
         await next(context);
     }
+
+    /// <summary>
+    /// An OIDC-issued token dies with its trust policy, even one issued while the policy was being
+    /// deleted (after its tokens were revoked).
+    /// </summary>
+    private static async Task<bool> IssuingPolicyExistsAsync(
+        HttpContext context,
+        AccessToken token,
+        CancellationToken ct
+    ) =>
+        token.TrustPolicyId is not { } policyId
+        || await context
+            .RequestServices.GetRequiredService<ITrustPolicyRepository>()
+            .ExistsAsync(token.ApplicationId, policyId, ct);
 
     private static Task WriteUnauthorized(HttpContext context)
     {
