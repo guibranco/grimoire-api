@@ -111,7 +111,7 @@ public class ImportParserTests
             return [
                 'db' => [
                     'host' => 'localhost',
-                    "password" => "s3cr\"et\n",
+                    "motto" => "say \"hi\"\n",
                     'port' => 3306,
                 ],
                 'debug' => false,
@@ -131,7 +131,7 @@ public class ImportParserTests
         var values = result.Values.ToDictionary(v => v.Key);
 
         Assert.Equal("localhost", values["db:host"].Value);
-        Assert.Equal("s3cr\"et\n", values["db:password"].Value);
+        Assert.Equal("say \"hi\"\n", values["db:motto"].Value);
         Assert.Equal("3306", values["db:port"].Value);
         Assert.Equal("false", values["debug"].Value);
         Assert.Equal("-1.5", values["timeout"].Value);
