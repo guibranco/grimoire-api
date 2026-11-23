@@ -21,6 +21,7 @@ public class DashboardServiceTests
     private static DashboardService CreateService(GrimoireDbContext db, int cacheSeconds) =>
         new(
             db,
+            new SecretMetadataReader(db),
             new UntrackedConsumerActivityReader(),
             new MemoryCache(new MemoryCacheOptions()),
             Options.Create(new DashboardOptions { CacheSeconds = cacheSeconds }),

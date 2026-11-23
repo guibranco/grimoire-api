@@ -29,7 +29,12 @@ public record GlobalConfigurationEntryResponse(
     string ValueType
 );
 
-public record CreateGlobalSecretRequest(string Name, string? Description);
+/// <param name="RotationIntervalDays">See <see cref="CreateSecretRequest.RotationIntervalDays"/>.</param>
+public record CreateGlobalSecretRequest(
+    string Name,
+    string? Description,
+    int? RotationIntervalDays = null
+);
 
 /// <param name="PreviousVersionGraceDays">See <see cref="SetSecretValueRequest.PreviousVersionGraceDays"/>.</param>
 public record SetGlobalSecretValueRequest(
@@ -46,7 +51,8 @@ public record GlobalSecretResponse(
     string Name,
     string? Description,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt
+    DateTimeOffset UpdatedAt,
+    int? RotationIntervalDays = null
 );
 
 public record GlobalEnvironmentResponse(string Slug, string Name, int ApplicationCount);

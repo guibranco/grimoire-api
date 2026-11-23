@@ -45,7 +45,10 @@ public static class InfrastructureServiceExtensions
         );
         services.AddConsumerActivity();
         services.AddAuditLog();
+        services.AddScoped<SecretMetadataReader>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IExpiringSecretsService, ExpiringSecretsService>();
+        services.AddScoped<IRotationReminderStore, RotationReminderStore>();
         services.AddScoped<IMetadataSearchService, MetadataSearchService>();
 
         return services;

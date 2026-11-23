@@ -1,6 +1,21 @@
 namespace Grimoire.Api.DTOs.Management;
 
-public record CreateSecretRequest(string Name, string? Description);
+/// <param name="RotationIntervalDays">Rotate at least every this many days; <c>null</c> for no schedule.</param>
+public record CreateSecretRequest(
+    string Name,
+    string? Description,
+    int? RotationIntervalDays = null
+);
+
+/// <summary>Changes a secret's metadata (application or Global). Omitted fields keep their value.</summary>
+/// <param name="ClearDescription">Remove the description (overrides <paramref name="Description"/>).</param>
+/// <param name="ClearRotationInterval">Remove the rotation schedule (overrides <paramref name="RotationIntervalDays"/>).</param>
+public record UpdateSecretRequest(
+    string? Description = null,
+    int? RotationIntervalDays = null,
+    bool ClearDescription = false,
+    bool ClearRotationInterval = false
+);
 
 /// <param name="PreviousVersionGraceDays">
 /// When set, every other enabled version in this environment with no expiry (or a later one)
@@ -31,7 +46,8 @@ public record SecretResponse(
     string Name,
     string? Description,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt
+    DateTimeOffset UpdatedAt,
+    int? RotationIntervalDays = null
 );
 
 public record CreateSecretResponse(
@@ -39,7 +55,8 @@ public record CreateSecretResponse(
     string Name,
     string? Description,
     DateTimeOffset CreatedAt,
-    IReadOnlyList<RequiredEnvironment> RequiredEnvironments
+    IReadOnlyList<RequiredEnvironment> RequiredEnvironments,
+    int? RotationIntervalDays = null
 );
 
 public record RequiredEnvironment(string Slug, string Name, bool ValueProvided);

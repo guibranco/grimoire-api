@@ -1,3 +1,5 @@
+using Grimoire.Core.Secrets;
+
 namespace Grimoire.Core.Dashboard;
 
 /// <summary>
@@ -198,12 +200,13 @@ public static class DashboardBuilder
             foreach (var secret in appSecrets)
             {
                 var versions = _versionsBySecretEnv[(secret.Id, env.Id)]
-                    .Select(v => new VersionInfo(v.IsEnabled, v.ExpiresAt, v.NotBefore, v.Version))
+                    .Cast<ISecretVersionRecord>()
                     .ToList();
 
                 if (
                     versions.Count > 0
-                    && EvaluateSecret(versions, now, expiringBefore) is { } found
+                    && EvaluateSecret(versions, secret.RotationIntervalDays, now, expiringBefore)
+                        is { } found
                 )
                     Attention.Add(
                         new AttentionItem(
@@ -234,14 +237,7 @@ public static class DashboardBuilder
                 .GroupBy(v => v.EnvironmentSlug, StringComparer.Ordinal)
                 .ToDictionary(
                     g => g.Key,
-                    g =>
-                        g.Select(v => new VersionInfo(
-                                v.IsEnabled,
-                                v.ExpiresAt,
-                                v.NotBefore,
-                                v.Version
-                            ))
-                            .ToList(),
+                    g => g.Cast<ISecretVersionRecord>().ToList(),
                     StringComparer.Ordinal
                 );
 
@@ -260,7 +256,9 @@ public static class DashboardBuilder
             }
 
             bySlug.TryGetValue(AllEnvironmentsSlug, out var wildcard);
-            var wildcardActive = wildcard is null ? null : Active(wildcard, now);
+            var wildcardActive = wildcard is null
+                ? null
+                : SecretVersionRules.Current(wildcard, now);
 
             foreach (var (slug, versions) in bySlug)
             {
@@ -269,12 +267,15 @@ public static class DashboardBuilder
                 // Problems with the "*" value itself are reported under "*".
                 if (
                     slug != AllEnvironmentsSlug
-                    && Active(versions, now) is null
+                    && SecretVersionRules.Current(versions, now) is null
                     && wildcardActive is not null
                 )
                     continue;
 
-                if (EvaluateSecret(versions, now, expiringBefore) is { } found)
+                if (
+                    EvaluateSecret(versions, secret.RotationIntervalDays, now, expiringBefore) is
+                    { } found
+                )
                     attention.Add(
                         new AttentionItem(
                             found.Kind,
@@ -315,56 +316,38 @@ public static class DashboardBuilder
 
     private const string AllEnvironmentsSlug = Entities.GlobalConfigurationEntry.AllEnvironments;
 
-    private readonly record struct VersionInfo(
-        bool IsEnabled,
-        DateTimeOffset? ExpiresAt,
-        DateTimeOffset? NotBefore,
-        int Version
-    );
-
     private readonly record struct SecretFinding(
         string Kind,
         AttentionSeverity Severity,
         DateTimeOffset? DueAt
     );
 
-    /// <summary>Same rule as the repositories' <c>GetActiveVersionAsync</c>.</summary>
-    private static VersionInfo? Active(IEnumerable<VersionInfo> versions, DateTimeOffset now) =>
-        versions
-            .Where(v =>
-                v.IsEnabled
-                && (v.NotBefore == null || v.NotBefore <= now)
-                && (v.ExpiresAt == null || v.ExpiresAt >= now)
-            )
-            .OrderByDescending(v => v.Version)
-            .Cast<VersionInfo?>()
-            .FirstOrDefault();
-
+    /// <summary>
+    /// Expiry and rotation come from <see cref="SecretDueRules"/>, so the dashboard, the
+    /// expiring-secrets list and the reminders agree on what is due.
+    /// </summary>
     private static SecretFinding? EvaluateSecret(
-        IReadOnlyCollection<VersionInfo> versions,
+        IReadOnlyCollection<ISecretVersionRecord> versions,
+        int? rotationIntervalDays,
         DateTimeOffset now,
         DateTimeOffset expiringBefore
     )
     {
-        if (Active(versions, now) is { } active)
-        {
-            return active.ExpiresAt is { } expiresAt && expiresAt <= expiringBefore
+        var due = SecretDueRules.Evaluate(versions, rotationIntervalDays, now);
+
+        if (SecretVersionRules.Current(versions, now) is not null)
+            return due is not null && due.DueAt <= expiringBefore
                 ? new SecretFinding(
-                    AttentionKinds.SecretExpiring,
+                    due.Reason == SecretDueReasons.Rotation
+                        ? AttentionKinds.SecretRotationDue
+                        : AttentionKinds.SecretExpiring,
                     AttentionSeverity.Warning,
-                    expiresAt
+                    due.DueAt
                 )
                 : null;
-        }
 
-        var latest = versions
-            .Where(v => v.IsEnabled)
-            .OrderByDescending(v => v.Version)
-            .Cast<VersionInfo?>()
-            .FirstOrDefault();
-
-        return latest?.ExpiresAt is { } expiredAt && expiredAt <= now
-            ? new SecretFinding(AttentionKinds.SecretExpired, AttentionSeverity.Error, expiredAt)
+        return due?.Reason == SecretDueReasons.Expired
+            ? new SecretFinding(AttentionKinds.SecretExpired, AttentionSeverity.Error, due.DueAt)
             : new SecretFinding(AttentionKinds.SecretNoValidVersion, AttentionSeverity.Error, null);
     }
 

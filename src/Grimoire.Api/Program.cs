@@ -6,6 +6,7 @@ using Grimoire.Api.Backups;
 using Grimoire.Api.ConsumerTracking;
 using Grimoire.Api.Logging;
 using Grimoire.Api.Middleware;
+using Grimoire.Api.Rotation;
 using Grimoire.Api.Swagger;
 using Grimoire.Core.Entities;
 using Grimoire.Infrastructure;
@@ -71,6 +72,15 @@ builder.Services.AddSingleton<AuditWriter>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AuditWriter>());
 builder.Services.AddSingleton<AuditRetentionService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AuditRetentionService>());
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<IConfiguration>()
+        .GetSection(RotationReminderOptions.SectionName)
+        .Get<RotationReminderOptions>()
+    ?? new RotationReminderOptions()
+);
+builder.Services.AddHttpClient(RotationReminderNotifier.HttpClientName);
+builder.Services.AddScoped<RotationReminderNotifier>();
+builder.Services.AddHostedService<RotationReminderService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

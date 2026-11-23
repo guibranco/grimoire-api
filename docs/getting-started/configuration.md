@@ -96,6 +96,21 @@ Cors__AllowedOrigins__1=https://admin.example.com
 | `Audit:RetentionDays` | `Audit__RetentionDays` | `180` | Delete events older than this, at startup and daily. `0` keeps them forever. |
 | `Audit:QueueCapacity` | `Audit__QueueCapacity` | `10000` | Events waiting to be written. When full, new events are dropped and a warning logs how many. |
 
+### Rotation reminders
+
+A daily job announces secrets that are due for rotation or expiring. See [Rotation reminders](../operations/rotation-reminders.md) for the payload and signature.
+
+| Setting | Env var | Default | Description |
+| :------ | :------ | :------ | :---------- |
+| `RotationReminders:Enabled` | `RotationReminders__Enabled` | `true` | Run the job (first run a minute after startup). With no webhook it only logs what is due. |
+| `RotationReminders:IntervalHours` | `RotationReminders__IntervalHours` | `24` | Hours between runs. |
+| `RotationReminders:Thresholds` | `RotationReminders__Thresholds__0`, `__1`… | `30`, `7`, `1` | Days before the due date at which a reminder goes out. |
+| `RotationReminders:WebhookUrl` | `RotationReminders__WebhookUrl` | *(none)* | JSON `POST` target. Empty: nothing is delivered. |
+| `RotationReminders:WebhookSecret` | `RotationReminders__WebhookSecret` | *(none)* | Signs the body (`X-Grimoire-Signature-256`). |
+| `RotationReminders:HealthcheckUrl` | `RotationReminders__HealthcheckUrl` | *(none)* | healthchecks.io ping after every run (`/fail` when delivery fails). |
+| `RotationReminders:TimeoutSeconds` | `RotationReminders__TimeoutSeconds` | `10` | Webhook timeout. |
+| `RotationReminders:KeepSentDays` | `RotationReminders__KeepSentDays` | `400` | How long delivered reminders are remembered for de-duplication. |
+
 ### Serilog (logging)
 
 | Setting | Default | Description |

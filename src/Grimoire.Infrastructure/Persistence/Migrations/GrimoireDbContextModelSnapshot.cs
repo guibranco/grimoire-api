@@ -301,6 +301,9 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("RotationIntervalDays")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("TEXT");
 
@@ -352,6 +355,30 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.ToTable("GlobalSecretVersions");
                 });
 
+            modelBuilder.Entity("Grimoire.Core.Entities.RotationReminder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("SentAt")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.HasIndex("SentAt");
+
+                    b.ToTable("RotationReminders", (string)null);
+                });
+
             modelBuilder.Entity("Grimoire.Core.Entities.Secret", b =>
                 {
                     b.Property<Guid>("Id")
@@ -372,6 +399,9 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("RotationIntervalDays")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("TEXT");

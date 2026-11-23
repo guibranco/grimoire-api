@@ -76,6 +76,24 @@ public class DashboardBuilderTests
     }
 
     [Fact]
+    public void RotationDueWithinThreshold_IsWarning()
+    {
+        var snapshot = Snapshot(versions: [Version(ProdId, 1)]) with
+        {
+            Secrets =
+            [
+                new SecretRow(SecretId, AppId, "DB_PASSWORD", Now, RotationIntervalDays: 15),
+            ],
+        };
+
+        // Version 1 was created 9 days ago, so rotation is due in 6 days.
+        var item = Assert.Single(Build(snapshot).Attention);
+        Assert.Equal(AttentionKinds.SecretRotationDue, item.Kind);
+        Assert.Equal(AttentionSeverity.Warning, item.Severity);
+        Assert.Equal(Now.AddDays(6), item.DueAt);
+    }
+
+    [Fact]
     public void ActiveVersionExpiringAfterThreshold_RaisesNothing()
     {
         var summary = Build(

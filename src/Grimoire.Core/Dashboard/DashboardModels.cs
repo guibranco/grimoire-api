@@ -1,3 +1,5 @@
+using Grimoire.Core.Secrets;
+
 namespace Grimoire.Core.Dashboard;
 
 /// <summary>
@@ -23,6 +25,7 @@ public static class AttentionKinds
 {
     public const string SecretExpired = "secret-expired";
     public const string SecretExpiring = "secret-expiring";
+    public const string SecretRotationDue = "secret-rotation-due";
     public const string SecretNoValidVersion = "secret-no-valid-version";
     public const string ConsumerStale = "consumer-stale";
     public const string ConsumerNeverSeen = "consumer-never-seen";
@@ -110,7 +113,13 @@ public sealed record EnvironmentRow(
     DateTimeOffset UpdatedAt
 );
 
-public sealed record SecretRow(Guid Id, Guid ApplicationId, string Name, DateTimeOffset UpdatedAt);
+public sealed record SecretRow(
+    Guid Id,
+    Guid ApplicationId,
+    string Name,
+    DateTimeOffset UpdatedAt,
+    int? RotationIntervalDays = null
+);
 
 /// <summary>Version metadata only; the encrypted value is never projected.</summary>
 public sealed record SecretVersionRow(
@@ -121,7 +130,7 @@ public sealed record SecretVersionRow(
     DateTimeOffset? NotBefore,
     int Version,
     DateTimeOffset CreatedAt
-);
+) : ISecretVersionRecord;
 
 /// <summary>Configuration metadata only; the value is reduced to an "is blank" flag in SQL.</summary>
 public sealed record ConfigurationRow(
@@ -132,7 +141,12 @@ public sealed record ConfigurationRow(
     DateTimeOffset UpdatedAt
 );
 
-public sealed record GlobalSecretRow(Guid Id, string Name, DateTimeOffset UpdatedAt);
+public sealed record GlobalSecretRow(
+    Guid Id,
+    string Name,
+    DateTimeOffset UpdatedAt,
+    int? RotationIntervalDays = null
+);
 
 public sealed record GlobalSecretVersionRow(
     Guid GlobalSecretId,
@@ -142,7 +156,7 @@ public sealed record GlobalSecretVersionRow(
     DateTimeOffset? NotBefore,
     int Version,
     DateTimeOffset CreatedAt
-);
+) : ISecretVersionRecord;
 
 public sealed record GlobalConfigurationRow(
     string EnvironmentSlug,

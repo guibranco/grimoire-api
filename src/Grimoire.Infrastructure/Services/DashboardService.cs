@@ -9,12 +9,13 @@ namespace Grimoire.Infrastructure.Services;
 
 /// <summary>
 /// Reads value-free projections of every table the dashboard needs (one query per table, no
-/// entity graphs, no secret or configuration values) and hands them to <see cref="DashboardBuilder"/>.
+/// entity graphs, no secret or configuration values; secrets via <see cref="SecretMetadataReader"/>) and hands them to <see cref="DashboardBuilder"/>.
 /// Aggregation happens in memory because SQLite cannot compare or aggregate
 /// <see cref="DateTimeOffset"/> columns in SQL.
 /// </summary>
 public class DashboardService(
     GrimoireDbContext db,
+    SecretMetadataReader metadata,
     IConsumerActivityReader consumerActivity,
     IMemoryCache cache,
     IOptions<DashboardOptions> options,
@@ -60,38 +61,7 @@ public class DashboardService(
 
     private async Task<DashboardSnapshot> LoadSnapshotAsync(CancellationToken ct)
     {
-        // Applications carry a global query filter on IsDeleted; every other query joins through
-        // the application so rows of soft-deleted applications are excluded too.
-        var applications = await db
-            .Applications.AsNoTracking()
-            .Select(a => new ApplicationRow(a.Id, a.Slug, a.Name, a.InheritGlobals, a.UpdatedAt))
-            .ToListAsync(ct);
-
-        var environments = await db
-            .Environments.AsNoTracking()
-            .Where(e => !e.Application.IsDeleted)
-            .Select(e => new EnvironmentRow(e.Id, e.ApplicationId, e.Slug, e.Name, e.UpdatedAt))
-            .ToListAsync(ct);
-
-        var secrets = await db
-            .Secrets.AsNoTracking()
-            .Where(s => !s.Application.IsDeleted)
-            .Select(s => new SecretRow(s.Id, s.ApplicationId, s.Name, s.UpdatedAt))
-            .ToListAsync(ct);
-
-        var secretVersions = await db
-            .SecretVersions.AsNoTracking()
-            .Where(v => !v.Secret.Application.IsDeleted)
-            .Select(v => new SecretVersionRow(
-                v.SecretId,
-                v.EnvironmentId,
-                v.IsEnabled,
-                v.ExpiresAt,
-                v.NotBefore,
-                v.Version,
-                v.CreatedAt
-            ))
-            .ToListAsync(ct);
+        var secrets = await metadata.LoadAsync(ct);
 
         var configurations = await db
             .ConfigurationEntries.AsNoTracking()
@@ -102,24 +72,6 @@ public class DashboardService(
                 c.Key,
                 string.IsNullOrWhiteSpace(c.Value),
                 c.UpdatedAt
-            ))
-            .ToListAsync(ct);
-
-        var globalSecrets = await db
-            .GlobalSecrets.AsNoTracking()
-            .Select(s => new GlobalSecretRow(s.Id, s.Name, s.UpdatedAt))
-            .ToListAsync(ct);
-
-        var globalSecretVersions = await db
-            .GlobalSecretVersions.AsNoTracking()
-            .Select(v => new GlobalSecretVersionRow(
-                v.GlobalSecretId,
-                v.EnvironmentSlug,
-                v.IsEnabled,
-                v.ExpiresAt,
-                v.NotBefore,
-                v.Version,
-                v.CreatedAt
             ))
             .ToListAsync(ct);
 
@@ -136,13 +88,13 @@ public class DashboardService(
         var lastSeen = await consumerActivity.GetLastSeenAsync(ct);
 
         return new DashboardSnapshot(
-            applications,
-            environments,
-            secrets,
-            secretVersions,
+            secrets.Applications,
+            secrets.Environments,
+            secrets.Secrets,
+            secrets.SecretVersions,
             configurations,
-            globalSecrets,
-            globalSecretVersions,
+            secrets.GlobalSecrets,
+            secrets.GlobalSecretVersions,
             globalConfigurations,
             lastSeen
         );

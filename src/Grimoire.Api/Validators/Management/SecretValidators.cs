@@ -10,6 +10,28 @@ public class CreateSecretRequestValidator : AbstractValidator<CreateSecretReques
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Description).MaximumLength(1000).When(x => x.Description != null);
+        RuleFor(x => x.RotationIntervalDays)
+            .InclusiveBetween(1, SecretDueRules.MaxRotationIntervalDays)
+            .When(x => x.RotationIntervalDays.HasValue);
+    }
+}
+
+public class UpdateSecretRequestValidator : AbstractValidator<UpdateSecretRequest>
+{
+    public UpdateSecretRequestValidator()
+    {
+        RuleFor(x => x.Description).MaximumLength(1000).When(x => x.Description != null);
+        RuleFor(x => x.RotationIntervalDays)
+            .InclusiveBetween(1, SecretDueRules.MaxRotationIntervalDays)
+            .When(x => x.RotationIntervalDays.HasValue);
+        RuleFor(x => x.Description)
+            .Null()
+            .When(x => x.ClearDescription)
+            .WithMessage("Use either 'description' or 'clearDescription', not both.");
+        RuleFor(x => x.RotationIntervalDays)
+            .Null()
+            .When(x => x.ClearRotationInterval)
+            .WithMessage("Use either 'rotationIntervalDays' or 'clearRotationInterval', not both.");
     }
 }
 
