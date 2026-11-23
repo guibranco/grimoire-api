@@ -18,7 +18,9 @@ public class SwaggerTests(GrimoireWebApplicationFactory factory)
     [InlineData("/management/dashboard")]
     [InlineData("/management/search")]
     [InlineData("/management/audit")]
-    [InlineData("/management/applications/{slug}/secrets/{name}/versions/{environmentSlug}/{version}")]
+    [InlineData(
+        "/management/applications/{slug}/secrets/{name}/versions/{environmentSlug}/{version}"
+    )]
     [InlineData("/management/global/secrets/{name}/versions/{environmentSlug}/{version}")]
     public async Task ManagementDocument_IncludesGlobalRoutes(string path)
     {
