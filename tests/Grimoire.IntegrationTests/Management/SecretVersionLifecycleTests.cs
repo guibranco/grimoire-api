@@ -396,10 +396,10 @@ public class SecretVersionLifecycleTests(GrimoireWebApplicationFactory factory)
         Assert.Null(body["value"]);
         Assert.Equal("first", await ConsumerValueAsync(apiKey, secret));
 
-        var audit = await Client.GetFromJsonAsync<JsonObject>(
-            $"/management/audit?application={slug}&action={AuditActions.SecretRollback}"
+        var audit = await Client.WaitForAuditAsync(
+            $"application={slug}&action={AuditActions.SecretRollback}"
         );
-        Assert.Equal(3, audit!["items"]![0]!["version"]!.GetValue<int>());
+        Assert.Equal(3, audit[0]["version"]!.GetValue<int>());
     }
 
     [Fact]
