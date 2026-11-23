@@ -39,7 +39,7 @@ public class ApplicationsController(
     {
         var slug = SlugService.Generate(req.Name);
         if (await appRepo.SlugExistsAsync(slug, ct))
-            return Conflict(ProblemDetailsFor("An application with this name already exists."));
+            return Problem("An application with this name already exists.", statusCode: 409);
 
         var plainKey = GenerateApiKey();
         var app = new Application
@@ -89,7 +89,7 @@ public class ApplicationsController(
     {
         var app = await appRepo.GetBySlugAsync(slug, ct);
         if (app is null)
-            return NotFound(ProblemDetailsFor("Application not found."));
+            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
         return Ok(ToResponse(app, await consumerActivity.GetLastSeenAsync(ct)));
     }
 
@@ -103,7 +103,7 @@ public class ApplicationsController(
     {
         var app = await appRepo.GetBySlugAsync(slug, ct);
         if (app is null)
-            return NotFound(ProblemDetailsFor("Application not found."));
+            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
 
         app.Name = req.Name;
         app.Description = req.Description;
@@ -121,7 +121,7 @@ public class ApplicationsController(
     {
         var app = await appRepo.GetBySlugAsync(slug, ct);
         if (app is null)
-            return NotFound(ProblemDetailsFor("Application not found."));
+            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
 
         app.IsDeleted = true;
         app.UpdatedAt = DateTimeOffset.UtcNow;
@@ -138,7 +138,7 @@ public class ApplicationsController(
     {
         var app = await appRepo.GetBySlugAsync(slug, ct);
         if (app is null)
-            return NotFound(ProblemDetailsFor("Application not found."));
+            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
 
         var plainKey = GenerateApiKey();
         app.ApiKeyHash = hasher.HashPassword(app, plainKey);
@@ -187,12 +187,4 @@ public class ApplicationsController(
         var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
         return $"grm_{Convert.ToHexString(bytes).ToLowerInvariant()[..40]}";
     }
-
-    private static ProblemDetails ProblemDetailsFor(string detail) =>
-        new()
-        {
-            Title = "Error",
-            Detail = detail,
-            Status = 400,
-        };
 }

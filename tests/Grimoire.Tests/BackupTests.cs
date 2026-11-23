@@ -306,5 +306,6 @@ public class LocalDirectoryBackupTargetTests : IDisposable
     {
         if (Directory.Exists(_dir))
             Directory.Delete(_dir, recursive: true);
+        GC.SuppressFinalize(this);
     }
 }

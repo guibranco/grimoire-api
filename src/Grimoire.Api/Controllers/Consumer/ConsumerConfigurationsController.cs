@@ -30,7 +30,7 @@ public class ConsumerConfigurationsController(
 
         var env = await envRepo.GetBySlugAsync(app.Id, environment, ct);
         if (env is null)
-            return NotFound(Problem("Environment not found.", statusCode: 404));
+            return Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404);
         HttpContext.Items[ConsumerApiKeyMiddleware.EnvironmentContextKey] = env;
 
         var entries = await effective.GetConfigurationAsync(app, env, ct);
@@ -59,12 +59,12 @@ public class ConsumerConfigurationsController(
 
         var env = await envRepo.GetBySlugAsync(app.Id, environment, ct);
         if (env is null)
-            return NotFound(Problem("Environment not found.", statusCode: 404));
+            return Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404);
         HttpContext.Items[ConsumerApiKeyMiddleware.EnvironmentContextKey] = env;
 
         var entry = await effective.GetConfigurationValueAsync(app, env, key, ct);
         if (entry is null)
-            return NotFound(Problem("Configuration key not found.", statusCode: 404));
+            return Problem("Configuration key not found.", statusCode: 404);
 
         return Ok(
             new ConfigurationItem(

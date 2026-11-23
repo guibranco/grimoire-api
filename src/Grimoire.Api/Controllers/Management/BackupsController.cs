@@ -55,13 +55,10 @@ public class BackupsController(IBackupService backups, ILogger<BackupsController
     }
 
     private ObjectResult NotConfigured() =>
-        Conflict(
-            new ProblemDetails
-            {
-                Title = "Backups are not configured",
-                Detail = "Set 'Backup:Enabled', 'Backup:Key' and at least one backup target.",
-                Status = StatusCodes.Status409Conflict,
-            }
+        Problem(
+            "Set 'Backup:Enabled', 'Backup:Key' and at least one backup target.",
+            statusCode: StatusCodes.Status409Conflict,
+            title: "Backups are not configured"
         );
 
     private static BackupResponse ToResponse(BackupInfo b) =>

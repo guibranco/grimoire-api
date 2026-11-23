@@ -107,7 +107,7 @@ public class GlobalSecretsTests(GrimoireWebApplicationFactory factory)
                 )
             )!
             .AsArray();
-        Assert.Equal(new[] { 2, 1 }, prod.Select(v => v!["version"]!.GetValue<int>()));
+        Assert.Equal<int>([2, 1], prod.Select(v => v!["version"]!.GetValue<int>()));
 
         var star = JsonNode
             .Parse(await Client.GetStringAsync($"/management/global/secrets/{name}/versions/*"))!

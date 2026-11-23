@@ -24,12 +24,12 @@ PUBLIC_HOST="${2:?$USAGE}"
 PUBKEY_FILE="${3:-}"
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-[ "$(id -u)" -eq 0 ] || { echo "run as root (sudo)" >&2; exit 1; }
+[[ "$(id -u)" -eq 0 ]] || { echo "run as root (sudo)" >&2; exit 1; }
 [[ "$USER_NAME" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || { echo "invalid user name: $USER_NAME" >&2; exit 1; }
 [[ "$PUBLIC_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "invalid host: $PUBLIC_HOST" >&2; exit 1; }
-if [ -n "$PUBKEY_FILE" ]; then
+if [[ -n "$PUBKEY_FILE" ]]; then
   grep -Eq '^ssh-ed25519 [A-Za-z0-9+/=]+( .*)?$' "$PUBKEY_FILE" || { echo "not an ed25519 public key: $PUBKEY_FILE" >&2; exit 1; }
-elif [ ! -s "/home/$USER_NAME/.ssh/authorized_keys" ]; then
+elif [[ ! -s "/home/$USER_NAME/.ssh/authorized_keys" ]]; then
   echo "no deploy key authorized yet for $USER_NAME — pass deploy_key.pub" >&2; exit 1
 fi
 
@@ -40,14 +40,14 @@ for f in grimoire-deploy grimoire-deploy-ssh grimoire-backup; do
 done
 
 echo "→ Backups: environment drop-in and daily restore test"
-[ -d /etc/grimoire ] || install -d -o root -g root -m 755 /etc/grimoire
+[[ -d /etc/grimoire ]] || install -d -o root -g root -m 755 /etc/grimoire
 install -d -m 755 /etc/systemd/system/grimoire-api.service.d
 printf '[Service]\nEnvironmentFile=-/etc/grimoire/backup.env\n' > /etc/systemd/system/grimoire-api.service.d/backup.conf
 for f in grimoire-backup-verify.service grimoire-backup-verify.timer; do
   sed 's/\r$//' "$SRC_DIR/$f" | install -o root -g root -m 644 /dev/stdin "/etc/systemd/system/$f"
 done
 systemctl daemon-reload
-if [ -f /etc/grimoire/backup.env ]; then
+if [[ -f /etc/grimoire/backup.env ]]; then
   systemctl enable --now grimoire-backup-verify.timer
 else
   echo "  /etc/grimoire/backup.env not found — backups stay off; see docs/operations/backup-and-restore.md"
@@ -57,7 +57,7 @@ echo "→ Creating user $USER_NAME"
 id "$USER_NAME" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "$USER_NAME"
 passwd -l "$USER_NAME" >/dev/null
 install -d -o "$USER_NAME" -g "$USER_NAME" -m 700 "/home/$USER_NAME/.ssh"
-if [ -n "$PUBKEY_FILE" ]; then
+if [[ -n "$PUBKEY_FILE" ]]; then
   printf 'restrict %s\n' "$(tr -d '\r' < "$PUBKEY_FILE")" \
     | install -o "$USER_NAME" -g "$USER_NAME" -m 600 /dev/stdin "/home/$USER_NAME/.ssh/authorized_keys"
 else
@@ -81,7 +81,7 @@ Match User $USER_NAME
     X11Forwarding no
 EOF
 HARDENING=/etc/ssh/sshd_config.d/99-hardening.conf
-if [ -f "$HARDENING" ] && grep -q '^AllowUsers ' "$HARDENING" && ! grep -Eq "^AllowUsers .*\b$USER_NAME\b" "$HARDENING"; then
+if [[ -f "$HARDENING" ]] && grep -q '^AllowUsers ' "$HARDENING" && ! grep -Eq "^AllowUsers .*\b$USER_NAME\b" "$HARDENING"; then
   sed -i "s/^AllowUsers .*/& $USER_NAME/" "$HARDENING"
 fi
 sshd -t

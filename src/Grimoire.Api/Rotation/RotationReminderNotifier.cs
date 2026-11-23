@@ -47,7 +47,7 @@ public sealed class RotationReminderNotifier(
     public async Task<RotationReminderRun> RunAsync(CancellationToken ct)
     {
         var now = time.GetUtcNow();
-        var thresholds = options.EffectiveThresholds;
+        var thresholds = options.GetEffectiveThresholds();
         var horizon = thresholds.Count == 0 ? 0 : thresholds[0];
 
         var pending = (await expiring.ListAsync(horizon, ct))
@@ -205,17 +205,14 @@ public sealed class RotationReminderNotifier(
             SecretDueReasons.Expired => "expired",
             _ => "expires",
         };
-        return item.Reason == SecretDueReasons.Expired
-            ? days == 0
-                ? "expired today"
-                : $"expired {-days} day{(days == -1 ? "" : "s")} ago"
-            : days switch
-            {
-                < 0 => $"{what} {-days} day{(days == -1 ? "" : "s")} ago",
-                0 => $"{what} today",
-                _ => $"{what} in {days} day{(days == 1 ? "" : "s")}",
-            };
+        if (days == 0)
+            return $"{what} today";
+        if (days < 0 || item.Reason == SecretDueReasons.Expired)
+            return $"{what} {DayCount(Math.Abs(days))} ago";
+        return $"{what} in {DayCount(days)}";
     }
+
+    private static string DayCount(int days) => days == 1 ? "1 day" : $"{days} days";
 
     private sealed record PendingReminder(ExpiringSecret Item, int Threshold, string Key);
 }

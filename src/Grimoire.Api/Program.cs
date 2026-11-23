@@ -23,7 +23,7 @@ try
 }
 catch (ArgumentException ex)
 {
-    Console.Error.WriteLine($"❌ {ex.Message}");
+    await Console.Error.WriteLineAsync($"❌ {ex.Message}");
     Environment.ExitCode = 2;
     return;
 }
@@ -43,13 +43,7 @@ Log.Logger = new LoggerConfiguration()
     .WriteToLogStream(logStreamOptions)
     .CreateLogger();
 
-Log.Information(
-    "LogStream shipping is {LogStreamState}",
-    logStreamOptions.IsConfigured
-            ? $"enabled ({logStreamOptions.Transport.ToString().ToUpperInvariant()})"
-        : logStreamOptions.Enabled ? "not configured"
-        : "disabled"
-);
+Log.Information("LogStream shipping is {LogStreamState}", logStreamOptions.State);
 
 builder.Host.UseSerilog();
 
@@ -154,9 +148,9 @@ if (backupErrors.Count > 0)
         throw new InvalidOperationException(message);
 
     // Maintenance modes obey the same rules (key separation included), but fail with a message.
-    Console.Error.WriteLine($"❌ {message}");
+    await Console.Error.WriteLineAsync($"❌ {message}");
     Environment.ExitCode = 2;
-    Log.CloseAndFlush();
+    await Log.CloseAndFlushAsync();
     return;
 }
 
@@ -169,7 +163,7 @@ if (backupCommand is not null)
     }
     finally
     {
-        Log.CloseAndFlush();
+        await Log.CloseAndFlushAsync();
     }
     return;
 }
@@ -180,10 +174,10 @@ if (app.Environment.IsProduction())
     EnsureStrongSecret(app.Configuration, "Encryption:MasterKey", 32);
 }
 
-using (var scope = app.Services.CreateScope())
+await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GrimoireDbContext>();
-    db.Database.Migrate();
+    await db.Database.MigrateAsync();
 }
 
 app.UseExceptionHandler();
@@ -209,12 +203,12 @@ app.MapControllers();
 
 try
 {
-    app.Run();
+    await app.RunAsync();
 }
 finally
 {
     // Flushes batched sinks (LogStream) so the last events before shutdown are not lost.
-    Log.CloseAndFlush();
+    await Log.CloseAndFlushAsync();
 }
 
 static void EnsureStrongSecret(IConfiguration configuration, string key, int minLength)
@@ -231,5 +225,3 @@ static void EnsureStrongSecret(IConfiguration configuration, string key, int min
         );
     }
 }
-
-public partial class Program { }

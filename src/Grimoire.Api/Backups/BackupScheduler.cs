@@ -35,12 +35,13 @@ public sealed class BackupScheduler(
 
         var cron = CronExpression.Parse(options.Schedule);
         var zone = TimeZoneInfo.FindSystemTimeZoneById(options.TimeZone);
-        logger.LogInformation(
-            "Scheduled backups enabled: '{Schedule}' ({TimeZone}), keeping {Retention}",
-            options.Schedule,
-            zone.Id,
-            options.RetentionCount
-        );
+        if (logger.IsEnabled(LogLevel.Information))
+            logger.LogInformation(
+                "Scheduled backups enabled: '{Schedule}' ({TimeZone}), keeping {Retention}",
+                options.Schedule,
+                zone.Id,
+                options.RetentionCount
+            );
 
         while (!stoppingToken.IsCancellationRequested)
         {

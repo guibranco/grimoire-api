@@ -46,6 +46,17 @@ public sealed class LogStreamOptions
     /// <summary>The logstream-server's <c>UDP_PORT</c>.</summary>
     public int UdpPort { get; set; } = 8082;
 
+    /// <summary>For the startup log: "enabled (UDP|HTTP)", "not configured" or "disabled".</summary>
+    public string State
+    {
+        get
+        {
+            if (IsConfigured)
+                return $"enabled ({Transport.ToString().ToUpperInvariant()})";
+            return Enabled ? "not configured" : "disabled";
+        }
+    }
+
     public bool IsConfigured =>
         Enabled
         && !string.IsNullOrWhiteSpace(Server)
