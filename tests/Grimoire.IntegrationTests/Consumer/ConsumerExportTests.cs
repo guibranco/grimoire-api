@@ -11,6 +11,8 @@ public class ConsumerExportTests(GrimoireWebApplicationFactory factory)
     private HttpClient Mgmt => factory.CreateManagementClient();
 
     // Fixture values are built at runtime so secret scanners don't take them for credentials.
+    private static readonly string[] ConfigurationsOnly = ["configurations"];
+
     private static readonly string SecretValue = string.Join('-', "not", "a", "real", "value");
 
     /// <summary>An application with a secret that has a value, one without, and two configuration entries in <c>local</c>.</summary>
@@ -169,7 +171,7 @@ public class ConsumerExportTests(GrimoireWebApplicationFactory factory)
         var (slug, _, _, _) = await SeedAsync();
         var created = await Mgmt.PostAsJsonAsync(
             $"/management/applications/{slug}/access-tokens",
-            new { name = "config-reader", scopes = new[] { "configurations" } }
+            new { name = "config-reader", scopes = ConfigurationsOnly }
         );
         created.EnsureSuccessStatusCode();
         var token = JsonNode.Parse(await created.Content.ReadAsStringAsync())![
