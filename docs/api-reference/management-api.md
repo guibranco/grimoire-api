@@ -1260,6 +1260,27 @@ Every change, newest first, kept after the flag is deleted.
 
 ---
 
+## Global feature flags
+
+```
+/management/global/feature-flags
+```
+
+Global flags reach every application that [inherits globals](#create-application), unless the application has a flag with the same key: application flags always win. The endpoints match the [application ones](#feature-flags), without `{slug}`. A global flag and an application flag may share a key.
+
+- **State per environment slug.** `PUT …/{key}/environments/{environmentSlug}` and `POST …/toggle` take `*` (every environment) or any environment slug, including one no application has yet.
+- **Precedence**, the same as [global configuration](#global-configurations):
+  1. The application's own flag.
+  2. The global flag's state for the environment's slug.
+  3. The global flag's `*` state.
+  4. Disabled.
+- **Listing:** `GET` lists each flag's state for `*`, every slug any application uses, and every slug the flag has state for. `?environment=` accepts `*` or a slug.
+- **Dry run:** `POST …/{key}/evaluate` with `{ "environment": "production" }` uses the slug's state, else `*`.
+- **History:** `GET …/{key}/history` keeps global history separate from application flags' history.
+- **Audit codes:** `global-feature-flag.create`, `.update`, `.delete`, `.environment-update` and `.toggle`.
+
+---
+
 ## Reports
 
 Built from Consumer API reads. Every successful secret read is recorded per reading application environment and secret (when, roughly how often), buffered in memory and written every `ConsumerActivity:FlushIntervalSeconds`; reports also include reads not written yet. Upgrading seeds the rollup from successful `secret.read` [audit events](#audit-log), so history starts as far back as the audit log goes. Metadata only, never values.
@@ -1538,6 +1559,7 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | `backup.create` | On-demand backup. |
 | `feature-flag.create`, `.update`, `.delete`, `.environment-update`, `.toggle` | Feature flag changes (also in the [flag history](#flag-history)). |
 | `feature-flag.read` | Consumer read of flag definitions (a read, like `secret.read`). |
+| `global-feature-flag.create`, `.update`, `.delete`, `.environment-update`, `.toggle` | [Global feature flag](#global-feature-flags) changes. |
 | `rotation.remind` | Rotation reminders sent on demand (`POST /management/secrets/expiring/notify`). Scheduled runs are logged, not audited. |
 | `secret.read`, `configuration.read` | Consumer API reads, by `app:<slug>`. Failed reads are recorded with their outcome. |
 | `auth.failed` | Request rejected by the admin or consumer API key check; `target` is the method and path. |

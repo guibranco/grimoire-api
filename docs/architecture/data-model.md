@@ -228,13 +228,13 @@ Unique per (`EnvironmentId`, `SecretId`) and (`EnvironmentId`, `GlobalSecretId`)
 
 ### FeatureFlag
 
-A [feature flag](../feature-flags/) of one application. Variants, tags, rules and fallthrough are JSON text columns.
+A [feature flag](../feature-flags/) of one application, or a global flag (`ApplicationId` null). Variants, tags, rules and fallthrough are JSON text columns.
 
 | Column | Type | Notes |
 | :----- | :--- | :---- |
 | `Id` | `Guid` | Primary key |
-| `ApplicationId` | `Guid` | Owning application (cascade delete) |
-| `Key` | `string` | Unique per application |
+| `ApplicationId` | `Guid?` | Owning application (cascade delete); `null` for a global flag |
+| `Key` | `string` | Unique per application, and among global flags |
 | `Description` | `string?` | — |
 | `Type` | `string` | `boolean` or `multivariate` |
 | `Variants` | JSON | `[{ "key", "value" }]`; `value` is raw JSON text |
@@ -245,13 +245,14 @@ A [feature flag](../feature-flags/) of one application. Variants, tags, rules an
 
 ### FeatureFlagEnvironmentState
 
-A flag's state in one environment; no row means disabled, serving the default variant.
+A flag's state in one environment: an application environment (`EnvironmentId`) for application flags, or an environment slug (`EnvironmentSlug`, `*` for all) for global flags; exactly one is set. No row means disabled, serving the default variant.
 
 | Column | Type | Notes |
 | :----- | :--- | :---- |
 | `Id` | `Guid` | Primary key |
-| `FeatureFlagId` | `Guid` | Cascade delete; unique with `EnvironmentId` |
-| `EnvironmentId` | `Guid` | Cascade delete |
+| `FeatureFlagId` | `Guid` | Cascade delete; unique with `EnvironmentId`, and with `EnvironmentSlug` |
+| `EnvironmentId` | `Guid?` | Application flags (cascade delete) |
+| `EnvironmentSlug` | `string?` | Global flags: an environment slug or `*` |
 | `Enabled` | `bool` | — |
 | `OffVariant` | `string?` | — |
 | `Rules` | JSON | Ordered targeting rules |
@@ -266,7 +267,7 @@ One change to a flag, kept after the flag is deleted (cascade-deleted only with 
 | Column | Type | Notes |
 | :----- | :--- | :---- |
 | `Id` | `Guid` | Primary key |
-| `ApplicationId` | `Guid` | — |
+| `ApplicationId` | `Guid?` | `null` for a global flag |
 | `FlagKey` | `string` | — |
 | `Environment` | `string?` | Environment slug for `environment` and `toggle` changes |
 | `Change` | `string` | `create`, `update`, `environment`, `toggle` or `delete` |

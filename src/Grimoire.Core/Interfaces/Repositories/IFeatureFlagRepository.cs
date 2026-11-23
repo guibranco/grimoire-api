@@ -4,11 +4,11 @@ namespace Grimoire.Core.Interfaces.Repositories;
 
 public interface IFeatureFlagRepository
 {
-    /// <summary>The application's flags with their environment states, by key.</summary>
-    Task<List<FeatureFlag>> ListAsync(Guid applicationId, CancellationToken ct = default);
+    /// <summary>An application's flags (or, with <c>null</c>, the global flags) with their states, by key.</summary>
+    Task<List<FeatureFlag>> ListAsync(Guid? applicationId, CancellationToken ct = default);
 
     /// <summary>One flag with its environment states (tracked).</summary>
-    Task<FeatureFlag?> GetAsync(Guid applicationId, string key, CancellationToken ct = default);
+    Task<FeatureFlag?> GetAsync(Guid? applicationId, string key, CancellationToken ct = default);
 
     /// <summary>
     /// Adds the flag (or saves changes to tracked flags) and appends <paramref name="audit"/> in the
@@ -26,7 +26,7 @@ public interface IFeatureFlagRepository
 
     /// <summary>Change history for a key, newest first (survives delete and re-create).</summary>
     Task<List<FeatureFlagAuditEntry>> HistoryAsync(
-        Guid applicationId,
+        Guid? applicationId,
         string key,
         CancellationToken ct = default
     );

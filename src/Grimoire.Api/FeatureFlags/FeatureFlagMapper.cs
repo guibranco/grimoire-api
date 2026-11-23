@@ -53,13 +53,13 @@ public static class FeatureFlagMapper
         );
 
     public static FlagEnvironmentResponse ToResponse(
-        AppEnvironment env,
+        string environment,
         FeatureFlagEnvironmentState? state
     ) =>
         state is null
-            ? new FlagEnvironmentResponse(env.Slug, false, null, [], null, 0, null)
+            ? new FlagEnvironmentResponse(environment, false, null, [], null, 0, null)
             : new FlagEnvironmentResponse(
-                env.Slug,
+                environment,
                 state.Enabled,
                 state.OffVariant,
                 state.Rules.Select(ToDto).ToList(),
@@ -68,11 +68,8 @@ public static class FeatureFlagMapper
                 state.UpdatedAt
             );
 
-    /// <summary>The flag with one entry per environment, in the given order.</summary>
-    public static FeatureFlagResponse ToResponse(
-        FeatureFlag flag,
-        IEnumerable<AppEnvironment> environments
-    ) =>
+    /// <summary>The flag with one entry per environment of the scope, in order.</summary>
+    public static FeatureFlagResponse ToResponse(FeatureFlag flag, FlagScope scope) =>
         new(
             flag.Key,
             flag.Description,
@@ -82,11 +79,7 @@ public static class FeatureFlagMapper
             flag.Tags,
             flag.CreatedAt,
             flag.UpdatedAt,
-            environments
-                .Select(e =>
-                    ToResponse(e, flag.Environments.FirstOrDefault(s => s.EnvironmentId == e.Id))
-                )
-                .ToList()
+            scope.Environments.Select(e => ToResponse(e.Slug, scope.StateOf(flag, e))).ToList()
         );
 
     public static FeatureFlagHistoryEntryResponse ToResponse(FeatureFlagAuditEntry entry) =>
@@ -99,10 +92,13 @@ public static class FeatureFlagMapper
             entry.After is null ? null : ToJson(entry.After)
         );
 
-    public static ConsumerFeatureFlag ToConsumer(FeatureFlag flag, Guid environmentId)
-    {
-        var state = flag.Environments.FirstOrDefault(s => s.EnvironmentId == environmentId);
-        return new ConsumerFeatureFlag(
+    /// <param name="flag">The flag.</param>
+    /// <param name="state">Its effective state in the consumer's environment, if any.</param>
+    public static ConsumerFeatureFlag ToConsumer(
+        FeatureFlag flag,
+        FeatureFlagEnvironmentState? state
+    ) =>
+        new(
             flag.Key,
             flag.Type,
             flag.Variants.Select(ToDto).ToList(),
@@ -112,9 +108,9 @@ public static class FeatureFlagMapper
             state?.OffVariant,
             state?.Rules.Select(ToDto).ToList() ?? [],
             ToDtoOrNull(state?.Fallthrough),
-            state?.Version ?? 0
+            state?.Version ?? 0,
+            flag.IsGlobal ? "global" : "application"
         );
-    }
 
     /// <summary>The flag itself (no environment states) as stored in the audit trail.</summary>
     public static string Snapshot(FeatureFlag flag) =>

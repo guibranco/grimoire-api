@@ -152,13 +152,16 @@ GET /consumer/feature-flags?environment=production
       "offVariant": "control",
       "rules": [ { "conditions": [ { "attribute": "userId", "operator": "in", "values": ["u-123"] } ], "serve": { "variant": "treatment" } } ],
       "fallthrough": { "rollout": [ { "variant": "control", "weight": 80 }, { "variant": "treatment", "weight": 20 } ], "bucketBy": "userId" },
-      "version": 4
+      "version": 4,
+      "source": "application"
     }
   ]
 }
 ```
 
 A flag never configured in the environment comes back disabled with `version` 0.
+
+[Global flags](management-api.md#global-feature-flags) are included when the application inherits globals, unless the application has a flag with the same key. They come with `"source": "global"` (application flags: `"application"`), and their state is the one for this environment's slug, else the global `*` state. `GET /consumer/feature-flags/{key}` falls back to a global flag the same way.
 
 **Caching:** responses carry a strong `ETag`. Send it back in `If-None-Match` and the answer is `304 Not Modified` with no body until a flag changes. Polling clients should always do this. A `304` still counts as consumer activity.
 

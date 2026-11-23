@@ -307,7 +307,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("ApplicationId")
+                    b.Property<Guid?>("ApplicationId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -350,8 +350,13 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasFilter("\"ApplicationId\" IS NULL");
+
                     b.HasIndex("ApplicationId", "Key")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"ApplicationId\" IS NOT NULL");
 
                     b.ToTable("FeatureFlags", (string)null);
                 });
@@ -370,7 +375,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Property<string>("After")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("ApplicationId")
+                    b.Property<Guid?>("ApplicationId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Before")
@@ -409,7 +414,11 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Property<bool>("Enabled")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("EnvironmentId")
+                    b.Property<Guid?>("EnvironmentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EnvironmentSlug")
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Fallthrough")
@@ -438,9 +447,17 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.HasIndex("EnvironmentId");
 
                     b.HasIndex("FeatureFlagId", "EnvironmentId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"EnvironmentId\" IS NOT NULL");
 
-                    b.ToTable("FeatureFlagEnvironmentStates", (string)null);
+                    b.HasIndex("FeatureFlagId", "EnvironmentSlug")
+                        .IsUnique()
+                        .HasFilter("\"EnvironmentSlug\" IS NOT NULL");
+
+                    b.ToTable("FeatureFlagEnvironmentStates", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_FeatureFlagEnvironmentStates_OneEnvironment", "(\"EnvironmentId\" IS NULL) <> (\"EnvironmentSlug\" IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Grimoire.Core.Entities.GlobalConfigurationEntry", b =>
@@ -759,8 +776,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.HasOne("Grimoire.Core.Entities.Application", "Application")
                         .WithMany()
                         .HasForeignKey("ApplicationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Application");
                 });
@@ -770,8 +786,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.HasOne("Grimoire.Core.Entities.Application", null)
                         .WithMany()
                         .HasForeignKey("ApplicationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Grimoire.Core.Entities.FeatureFlagEnvironmentState", b =>
@@ -779,8 +794,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.HasOne("Grimoire.Core.Entities.AppEnvironment", "Environment")
                         .WithMany()
                         .HasForeignKey("EnvironmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Grimoire.Core.Entities.FeatureFlag", "FeatureFlag")
                         .WithMany("Environments")
