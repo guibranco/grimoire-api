@@ -58,6 +58,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IMetadataSearchService, MetadataSearchService>();
         services.AddScoped<IUsageReportService, UsageReportService>();
         services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
+        services.AddScoped<IAccessTokenRepository, AccessTokenRepository>();
 
         return services;
     }

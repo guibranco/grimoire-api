@@ -23,6 +23,8 @@ Application (1)
   │
   ├── AppEnvironment (N)   ← named scopes: "local", "staging", "production"
   │
+  ├── AccessToken (N)      ← Consumer API tokens, limited to environment slugs and scopes
+  │
   ├── Secret (N)
   │     └── SecretVersion (N)  ← one per (Secret × AppEnvironment × write)
   │           └── EnvironmentId → AppEnvironment
@@ -259,6 +261,24 @@ A flag's state in one environment: an application environment (`EnvironmentId`) 
 | `Fallthrough` | JSON? | `{ "variant" }` or `{ "rollout", "bucketBy" }` |
 | `Version` | `int` | Incremented on every change; concurrency token |
 | `UpdatedAt` | `DateTimeOffset` | — |
+
+### AccessToken
+
+A Consumer API credential for one application, narrower than its API key (cascade-deleted with the application).
+
+| Column | Type | Notes |
+| :----- | :--- | :---- |
+| `Id` | `Guid` | Primary key |
+| `ApplicationId` | `Guid` | FK → `Application` |
+| `Name` | `string` | Unique per application (up to 100 chars) |
+| `TokenHash` | `string` | PBKDF2 hash of the plain token (`grm_tok_` + 40 random characters) |
+| `Prefix` | `string` | The 8 characters after `grm_tok_`; indexed, used to find the token before verifying the hash |
+| `EnvironmentSlugs` | JSON? | Environment slugs the token may read; `null` for all |
+| `Scopes` | `int` | Flags: `1` secrets, `2` configurations, `4` feature flags |
+| `ExpiresAt` | `DateTimeOffset?` | `null` never expires |
+| `LastUsedAt` | `DateTimeOffset?` | Written at most once a minute per token |
+| `RevokedAt` | `DateTimeOffset?` | Set when revoked; the row is kept |
+| `CreatedAt` | `DateTimeOffset` | Stored as an integer |
 
 ### FeatureFlagAuditEntry
 

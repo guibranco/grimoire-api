@@ -9,6 +9,16 @@ nav_order: 3
 
 All consumer endpoints require `X-Api-Key: <key>`. The key is scoped to a single application — it can only access that application's own secrets and configurations, plus any [global values](#global-secrets-and-configuration) the application inherits.
 
+The header takes either the application's API key (`grm_…`), which reads every environment, or an [access token](management-api.md#access-tokens) (`grm_tok_…`), which reads only the environments and kinds of data it was created for:
+
+| Token scope | Endpoints |
+| :---------- | :-------- |
+| `secrets` | `/consumer/secrets/…` |
+| `configurations` | `/consumer/configurations…` |
+| `feature-flags` | `/consumer/feature-flags…` |
+
+A token used for another environment or scope gets `403` (and the attempt is audited as `access-token.denied`); a revoked or expired token gets `401`.
+
 <details open markdown="block">
   <summary>Table of contents</summary>
   {: .text-delta }
@@ -212,7 +222,9 @@ The `label` of a configuration item is always the requested environment slug, wh
 | Scenario | Status |
 | :------- | :----- |
 | Missing `X-Api-Key` header | `401` |
-| Invalid API key | `401` |
+| Invalid API key or access token | `401` |
+| Revoked or expired access token | `401` |
+| Access token used for an environment or scope it doesn't cover | `403` |
 | Secret does not exist | `404` |
 | Environment does not exist | `404` |
 | Secret exists but no active version | `404` |
