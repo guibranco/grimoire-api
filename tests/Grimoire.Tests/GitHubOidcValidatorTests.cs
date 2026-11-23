@@ -12,15 +12,28 @@ public class GitHubOidcValidatorTests
     private static readonly RsaSecurityKey OldKey = new(RSA.Create(2048)) { KeyId = "old" };
     private static readonly RsaSecurityKey NewKey = new(RSA.Create(2048)) { KeyId = "new" };
 
-    /// <summary>Serves <c>OldKey</c> until a refresh is requested, then <c>NewKey</c>.</summary>
-    private sealed class RotatingKeys : IGitHubOidcKeyProvider
+    private static readonly DateTimeOffset Start = new(2026, 11, 23, 12, 0, 0, TimeSpan.Zero);
+
+    /// <summary>
+    /// The real provider over a metadata endpoint that serves <see cref="OldKey"/> until GitHub
+    /// "rotates", then <see cref="NewKey"/>, and answers each fetch only after a delay.
+    /// </summary>
+    private sealed class Metadata
     {
-        public int Refreshes { get; private set; }
+        public bool Rotated { get; set; }
+        public int Fetches { get; private set; }
+        public FakeTimeProvider Time { get; } = new(Start);
 
-        public Task<IReadOnlyCollection<SecurityKey>> GetKeysAsync(CancellationToken ct) =>
-            Task.FromResult<IReadOnlyCollection<SecurityKey>>([Refreshes == 0 ? OldKey : NewKey]);
-
-        public void RequestRefresh() => Refreshes++;
+        public GitHubOidcKeyProvider Provider() =>
+            new(
+                async ct =>
+                {
+                    await Task.Delay(50, ct);
+                    Fetches++;
+                    return [Rotated ? NewKey : OldKey];
+                },
+                Time
+            );
     }
 
     private sealed class FailingKeys : IGitHubOidcKeyProvider
@@ -28,7 +41,8 @@ public class GitHubOidcValidatorTests
         public Task<IReadOnlyCollection<SecurityKey>> GetKeysAsync(CancellationToken ct) =>
             throw new InvalidOperationException("GitHub is down");
 
-        public void RequestRefresh() { }
+        public Task<IReadOnlyCollection<SecurityKey>?> RefreshKeysAsync(CancellationToken ct) =>
+            throw new InvalidOperationException("GitHub is down");
     }
 
     private static string Token(SecurityKey key) =>
@@ -51,19 +65,39 @@ public class GitHubOidcValidatorTests
         new(Options, keys, new FakeTimeProvider(DateTimeOffset.UtcNow));
 
     [Fact]
-    public async Task ATokenSignedWithARotatedKey_RefreshesTheKeysOnce_AndIsAccepted()
+    public async Task AfterGitHubRotatesItsKeys_TheExchangeWaitsForTheNewKeys()
     {
-        var keys = new RotatingKeys();
-        var claims = await Validator(keys).ValidateAsync(Token(NewKey), default);
+        var metadata = new Metadata();
+        var validator = Validator(metadata.Provider());
+        Assert.NotNull(await validator.ValidateAsync(Token(OldKey), default));
+
+        metadata.Rotated = true;
+        metadata.Time.Advance(GitHubOidcKeyProvider.MinimumRefreshInterval);
+        var claims = await validator.ValidateAsync(Token(NewKey), default);
+
         Assert.Equal("guibranco/demo", claims?.Repository);
-        Assert.Equal(1, keys.Refreshes);
+        Assert.Equal(2, metadata.Fetches);
     }
 
     [Fact]
-    public async Task OtherFailures_DoNotRefreshTheKeys()
+    public async Task UnknownKeys_CannotForceAFetchMoreThanEveryFewMinutes()
     {
-        var keys = new RotatingKeys();
-        var expired = new JsonWebTokenHandler().CreateToken(
+        var metadata = new Metadata();
+        var validator = Validator(metadata.Provider());
+        Assert.NotNull(await validator.ValidateAsync(Token(OldKey), default));
+
+        Assert.Null(await validator.ValidateAsync(Token(NewKey), default));
+        Assert.Null(await validator.ValidateAsync(Token(NewKey), default));
+        Assert.Equal(1, metadata.Fetches);
+    }
+
+    [Fact]
+    public async Task OtherFailures_DoNotRefetchTheKeys()
+    {
+        var metadata = new Metadata();
+        var validator = Validator(metadata.Provider());
+        metadata.Time.Advance(GitHubOidcKeyProvider.MinimumRefreshInterval);
+        var wrongIssuer = new JsonWebTokenHandler().CreateToken(
             new SecurityTokenDescriptor
             {
                 Issuer = "https://elsewhere.example",
@@ -73,8 +107,20 @@ public class GitHubOidcValidatorTests
                 SigningCredentials = new SigningCredentials(OldKey, SecurityAlgorithms.RsaSha256),
             }
         );
-        Assert.Null(await Validator(keys).ValidateAsync(expired, default));
-        Assert.Equal(0, keys.Refreshes);
+        Assert.Null(await validator.ValidateAsync(wrongIssuer, default));
+        Assert.Equal(1, metadata.Fetches);
+    }
+
+    [Fact]
+    public async Task TheKeysAreRefetchedOnceTheCacheExpires()
+    {
+        var metadata = new Metadata();
+        var provider = metadata.Provider();
+        await provider.GetKeysAsync(default);
+        await provider.GetKeysAsync(default);
+        metadata.Time.Advance(GitHubOidcKeyProvider.CacheLifetime);
+        await provider.GetKeysAsync(default);
+        Assert.Equal(2, metadata.Fetches);
     }
 
     [Fact]

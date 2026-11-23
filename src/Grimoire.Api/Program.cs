@@ -69,7 +69,10 @@ builder.Services.AddSingleton(sp =>
         .Get<GitHubOidcOptions>()
     ?? new GitHubOidcOptions()
 );
-builder.Services.AddSingleton<IGitHubOidcKeyProvider, GitHubOidcKeyProvider>();
+builder.Services.AddSingleton<IGitHubOidcKeyProvider>(sp => new GitHubOidcKeyProvider(
+    sp.GetRequiredService<GitHubOidcOptions>(),
+    sp.GetRequiredService<TimeProvider>()
+));
 builder.Services.AddScoped<GitHubOidcValidator>();
 
 builder.Services.AddInfrastructure(builder.Configuration);

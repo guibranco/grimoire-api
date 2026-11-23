@@ -30,12 +30,12 @@ public sealed class GitHubOidcValidator(
         if (string.IsNullOrWhiteSpace(jwt) || !Handler.CanReadToken(jwt))
             return null;
 
-        var result = await ValidateWithKeysAsync(jwt, ct);
+        var result = await ValidateAsync(jwt, () => keys.GetKeysAsync(ct));
         if (result?.Exception is SecurityTokenSignatureKeyNotFoundException)
         {
             // GitHub may have rotated its keys since they were cached: fetch them again, once.
-            keys.RequestRefresh();
-            result = await ValidateWithKeysAsync(jwt, ct);
+            // Too soon to refetch: no keys, so the token stays rejected.
+            result = await ValidateAsync(jwt, async () => await keys.RefreshKeysAsync(ct) ?? []);
         }
         if (result is not { IsValid: true })
             return null;
@@ -55,15 +55,15 @@ public sealed class GitHubOidcValidator(
     }
 
     /// <summary>The validation result, or <c>null</c> when GitHub's keys can't be loaded.</summary>
-    private async Task<TokenValidationResult?> ValidateWithKeysAsync(
+    private async Task<TokenValidationResult?> ValidateAsync(
         string jwt,
-        CancellationToken ct
+        Func<Task<IReadOnlyCollection<SecurityKey>>> loadKeys
     )
     {
         IReadOnlyCollection<SecurityKey> signingKeys;
         try
         {
-            signingKeys = await keys.GetKeysAsync(ct);
+            signingKeys = await loadKeys();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
