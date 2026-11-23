@@ -120,7 +120,10 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
         context.Items[TokenContextKey] = token;
 
         var environment = context.Request.Query["environment"].ToString();
-        var scope = AccessTokenScopeNames.RequiredFor(context.Request.Path);
+        var scope = AccessTokenScopeNames.RequiredFor(
+            context.Request.Path,
+            context.Request.Query["include"].ToString()
+        );
         if (
             !token.AllowsScope(scope)
             || (environment.Length > 0 && !token.AllowsEnvironment(environment))

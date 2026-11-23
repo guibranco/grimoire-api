@@ -13,9 +13,11 @@ The header takes either the application's API key (`grm_…`), which reads every
 
 | Token scope | Endpoints |
 | :---------- | :-------- |
-| `secrets` | `/consumer/secrets/…` |
+| `secrets` | `/consumer/secrets…` |
 | `configurations` | `/consumer/configurations…` |
 | `feature-flags` | `/consumer/feature-flags…` |
+
+An [export](#export) needs every scope it includes: `secrets` and `configurations` by default, or only `configurations` with `include=configurations`.
 
 A token used for another environment or scope gets `403` (and the attempt is audited as `access-token.denied`); a revoked or expired token gets `401`.
 
@@ -55,6 +57,30 @@ Use `token` in `X-Api-Key` until it expires. Any failure (invalid token, unknown
 ---
 
 ## Secrets
+
+### List secrets
+
+```
+GET /consumer/secrets?environment={envSlug}
+```
+
+Lists the secrets the application can read in the environment (its own and inherited [global](#global-secrets-and-configuration) secrets) with the active version's metadata. **Values are never returned**; use [Get secret](#get-secret) or [Export](#export) for those.
+
+**Response `200`:**
+
+```json
+{
+  "items": [
+    { "name": "smtp-host", "source": "application", "active": true,  "version": 3,    "expiresOn": null },
+    { "name": "old-key",   "source": "application", "active": false, "version": null, "expiresOn": null },
+    { "name": "shared-id", "source": "global",      "active": true,  "version": 1,    "expiresOn": "2027-01-01T00:00:00+00:00" }
+  ]
+}
+```
+
+`active` is `false` when no version is active right now (never set, disabled, expired or not yet valid); `version` and `expiresOn` are then `null`. Listing is audited as `secret.list` and sent with `Cache-Control: no-store`.
+
+**Response `404`:** Environment not found.
 
 ### Get secret
 
@@ -208,6 +234,64 @@ GET /consumer/feature-flags/{key}?environment=production
 ```
 
 One definition, same shape and `ETag` behaviour. **`404`:** unknown flag or environment.
+
+---
+
+## Export
+
+```
+GET /consumer/export?environment={envSlug}&format=json|env|dotnet&include=secrets,configurations&prefix=
+```
+
+Everything the application can read in one environment, in one call: for the GitHub Action, non-.NET clients, the CLI, or writing a `.env` file. Values are the effective (merged) ones, so globals apply exactly as in single reads.
+
+**Query parameters:**
+
+| Parameter | Required | Description |
+| :-------- | :------: | :---------- |
+| `environment` | ✅ | Environment slug |
+| `format` | | `json` (default), `env` or `dotnet` |
+| `include` | | `secrets`, `configurations` or both, comma-separated (default both) |
+| `prefix` | | Only keys and secret names starting with this, ignoring case |
+
+**`format=json`** (`application/json`):
+
+```json
+{
+  "secrets": { "smtp-host": "mail.example.com" },
+  "configurations": { "Feature:DarkMode": "true", "MaxRetries": "3" },
+  "skipped": ["old-key"]
+}
+```
+
+Secrets with no active version are left out and named in `skipped`.
+
+**`format=env`** (`text/plain`), one line per value, sorted:
+
+```
+FEATURE__DARKMODE='true'
+MAXRETRIES='3'
+SMTP_HOST='mail.example.com'
+```
+
+- Names are upper-cased; `:` becomes `__` (as .NET reads environment variables) and any other character that isn't a letter, digit or `_` becomes `_` (`db-host` → `DB_HOST`). A name starting with a digit gets a leading `_`.
+- Values are single-quoted, which dotenv readers take literally. A value containing `'` or a line break is double-quoted instead, with `\`, `"`, `$` and line breaks escaped.
+
+**`format=dotnet`** (`application/json`): a flat object keyed as `IConfiguration` reads it:
+
+```json
+{ "Feature:DarkMode": "true", "MaxRetries": "3", "smtp-host": "mail.example.com" }
+```
+
+In `env` and `dotnet`, a secret and a configuration entry that end up with the same name produce one value: the secret's.
+
+Every export is sent with `Cache-Control: no-store` and audited as `export.read` (`target` is the format; values are never recorded). Exported secrets count as reads for the secret's last-read time.
+
+**Polling:** a configuration-only export (`include=configurations`) carries an `ETag`; send it back in `If-None-Match` to get `304 Not Modified` when nothing changed. Exports that include secrets have no `ETag`.
+
+**Response `400`:** Unknown `format` or `include`.
+
+**Response `404`:** Environment not found.
 
 ---
 

@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text.Json;
 using Grimoire.Api.Audit;
 using Grimoire.Api.ConsumerTracking;
@@ -9,7 +8,6 @@ using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces.Repositories;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Net.Http.Headers;
 
 namespace Grimoire.Api.Controllers.Consumer;
 
@@ -99,13 +97,12 @@ public class ConsumerFeatureFlagsController(
     /// <summary>Strong ETag over the serialized body; 304 when the client already has it.</summary>
     private IActionResult WithEtag<T>(T body)
     {
-        var hash = SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(body, EtagOptions));
-        var etag = new EntityTagHeaderValue($"\"{Convert.ToHexStringLower(hash)[..32]}\"");
-        Response.Headers.ETag = etag.ToString();
+        var current = ConsumerEtag.IsCurrent(
+            this,
+            JsonSerializer.SerializeToUtf8Bytes(body, EtagOptions)
+        );
         Response.Headers.CacheControl = "private, no-cache";
-
-        var ifNoneMatch = Request.GetTypedHeaders().IfNoneMatch;
-        if (ifNoneMatch.Any(t => t.Tag == etag.Tag || t.Equals(EntityTagHeaderValue.Any)))
+        if (current)
             return StatusCode(StatusCodes.Status304NotModified);
         return Ok(body);
     }

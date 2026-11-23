@@ -16,6 +16,10 @@ public static class AccessTokenScopeNames
         (FeatureFlags, AccessTokenScopes.ReadFeatureFlags),
     ];
 
+    private const string ExportPath = "/consumer/export";
+    private const AccessTokenScopes ExportDefault =
+        AccessTokenScopes.ReadSecrets | AccessTokenScopes.ReadConfigurations;
+
     public static IReadOnlyList<string> All { get; } = Map.Select(m => m.Name).ToArray();
 
     public static bool IsKnown(string name) => Map.Any(m => m.Name == name);
@@ -33,11 +37,51 @@ public static class AccessTokenScopeNames
     /// <see cref="AccessTokenScopes.ReadSecrets"/>), or <see cref="AccessTokenScopes.None"/>
     /// for a path no token may use.
     /// </summary>
-    public static AccessTokenScopes RequiredFor(PathString path)
+    public static AccessTokenScopes RequiredFor(PathString path, string? exportInclude = null)
     {
+        if (path.StartsWithSegments(ExportPath))
+            return TryParseExportInclude(exportInclude, out var included)
+                ? included
+                : ExportDefault;
         foreach (var (name, scope) in Map)
             if (path.StartsWithSegments($"/consumer/{name}"))
                 return scope;
         return AccessTokenScopes.None;
+    }
+
+    /// <summary>
+    /// The scopes an export's <c>include</c> list asks for (<c>secrets</c>, <c>configurations</c>,
+    /// comma-separated; empty means both). An export needs every scope it includes. False for
+    /// an unknown or empty list.
+    /// </summary>
+    public static bool TryParseExportInclude(string? include, out AccessTokenScopes scopes)
+    {
+        scopes = AccessTokenScopes.None;
+        if (string.IsNullOrWhiteSpace(include))
+        {
+            scopes = ExportDefault;
+            return true;
+        }
+        foreach (
+            var part in include.Split(
+                ',',
+                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
+            )
+        )
+        {
+            var scope = part.ToLowerInvariant() switch
+            {
+                Secrets => AccessTokenScopes.ReadSecrets,
+                Configurations => AccessTokenScopes.ReadConfigurations,
+                _ => AccessTokenScopes.None,
+            };
+            if (scope == AccessTokenScopes.None)
+            {
+                scopes = AccessTokenScopes.None;
+                return false;
+            }
+            scopes |= scope;
+        }
+        return scopes != AccessTokenScopes.None;
     }
 }
