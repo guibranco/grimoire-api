@@ -171,3 +171,27 @@ There is no grace period. Schedule rotations during low-traffic windows or use a
 | HTTPS | Place Grimoire behind a TLS-terminating reverse proxy (nginx, Caddy, etc.) |
 | CORS | Restrict `Cors:AllowedOrigins` to known frontend origins |
 | Log files | Do not log request bodies (Serilog config does not enable this by default) |
+
+## Running behind a reverse proxy
+
+Grimoire records the caller's IP in the audit log, authentication-failure entries and consumer activity. Behind a reverse proxy, every request reaches Kestrel from the proxy, so Grimoire reads the real client IP from `X-Forwarded-For` (and the scheme from `X-Forwarded-Proto`) — but only when the request comes from a trusted proxy, so clients can't spoof their address.
+
+| Setting | Default | Description |
+|---|---|---|
+| `ReverseProxy:Enabled` | `true` | Set to `false` when Kestrel is exposed directly |
+| `ReverseProxy:KnownProxies` | `[]` | Extra trusted proxy IPs. Loopback (`127.0.0.1`, `::1`) is always trusted |
+| `ReverseProxy:KnownNetworks` | `[]` | Extra trusted proxy networks in CIDR notation |
+| `ReverseProxy:ForwardLimit` | `1` | Number of proxy hops to unwind from `X-Forwarded-For` |
+
+The proxy must send the headers. For nginx:
+
+```nginx
+location / {
+    proxy_pass         http://127.0.0.1:5080;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+}
+```
+
+**Cloudflare in front of nginx.** nginx then sees Cloudflare's edge IP, not the client's. Either restore the client IP in nginx (`set_real_ip_from <Cloudflare ranges>;` + `real_ip_header CF-Connecting-IP;`, then pass `X-Forwarded-For $remote_addr`), or keep nginx as above and set `ReverseProxy:ForwardLimit` to `2` with [Cloudflare's IP ranges](https://www.cloudflare.com/ips/) in `ReverseProxy:KnownNetworks`.
