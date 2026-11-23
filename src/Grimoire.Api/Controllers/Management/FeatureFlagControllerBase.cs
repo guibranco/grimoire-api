@@ -44,7 +44,7 @@ public abstract class FeatureFlagControllerBase(IFeatureFlagRepository flags, Ti
                     && (
                         env is null
                         || enabled is null
-                        || (scope.StateOf(f, env)?.Enabled ?? false) == enabled
+                        || (FlagScope.StateOf(f, env)?.Enabled ?? false) == enabled
                     )
                 )
                 .Select(f => FeatureFlagMapper.ToResponse(f, scope))
@@ -343,7 +343,7 @@ public abstract class FeatureFlagControllerBase(IFeatureFlagRepository flags, Ti
             key,
             flag =>
             {
-                var state = scope.StateOf(flag, env);
+                var state = FlagScope.StateOf(flag, env);
                 var before = FeatureFlagMapper.Snapshot(state);
                 if (state is null)
                 {
@@ -419,7 +419,7 @@ public abstract class FeatureFlagControllerBase(IFeatureFlagRepository flags, Ti
     private IActionResult UnknownVariant(string property, string variant) =>
         Invalid(property, $"Unknown variant '{variant}'.");
 
-    private IActionResult Invalid(string property, string message)
+    private ActionResult Invalid(string property, string message)
     {
         ModelState.AddModelError(property, message);
         return ValidationProblem(ModelState);
