@@ -112,17 +112,18 @@ public class ConsumerExportController(
         var skipped = new List<string>();
         var read = new List<ResolvedSecretVersion>();
         var now = DateTimeOffset.UtcNow;
-        foreach (var secret in await effective.GetSecretsAsync(app, ct))
+        var names = (await effective.GetSecretsAsync(app, ct))
+            .Select(secret => secret.Name)
+            .Where(name => Matches(name, prefix));
+        foreach (var name in names)
         {
-            if (!Matches(secret.Name, prefix))
-                continue;
-            var resolution = await effective.ResolveSecretAsync(app, env, secret.Name, now, ct);
+            var resolution = await effective.ResolveSecretAsync(app, env, name, now, ct);
             if (resolution.Value is not { } version)
             {
-                skipped.Add(secret.Name);
+                skipped.Add(name);
                 continue;
             }
-            values[secret.Name] = encryption.Decrypt(version.EncryptedValue);
+            values[name] = encryption.Decrypt(version.EncryptedValue);
             read.Add(version);
         }
         return (values, skipped, read);
