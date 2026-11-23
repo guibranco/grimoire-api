@@ -47,6 +47,12 @@ public static class AuditActions
     public const string FeatureFlagEnvironmentUpdate = "feature-flag.environment-update";
     public const string FeatureFlagToggle = "feature-flag.toggle";
     public const string FeatureFlagRead = "feature-flag.read";
+    public const string GlobalFeatureFlagCreate = "global-feature-flag.create";
+    public const string GlobalFeatureFlagUpdate = "global-feature-flag.update";
+    public const string GlobalFeatureFlagDelete = "global-feature-flag.delete";
+    public const string GlobalFeatureFlagEnvironmentUpdate =
+        "global-feature-flag.environment-update";
+    public const string GlobalFeatureFlagToggle = "global-feature-flag.toggle";
     public const string BackupCreate = "backup.create";
     public const string RotationRemindersRun = "rotation.remind";
     public const string AuthFailed = "auth.failed";
@@ -93,6 +99,14 @@ public static class AuditActions
         [FeatureFlagEnvironmentUpdate] = ("Updated feature flag targeting", FeatureFlagTarget),
         [FeatureFlagToggle] = ("Toggled feature flag", FeatureFlagTarget),
         [FeatureFlagRead] = ("Read feature flags", FeatureFlagTarget),
+        [GlobalFeatureFlagCreate] = ("Created global feature flag", FeatureFlagTarget),
+        [GlobalFeatureFlagUpdate] = ("Updated global feature flag", FeatureFlagTarget),
+        [GlobalFeatureFlagDelete] = ("Deleted global feature flag", FeatureFlagTarget),
+        [GlobalFeatureFlagEnvironmentUpdate] = (
+            "Updated global feature flag targeting",
+            FeatureFlagTarget
+        ),
+        [GlobalFeatureFlagToggle] = ("Toggled global feature flag", FeatureFlagTarget),
         [BackupCreate] = ("Created backup", "backup"),
         [RotationRemindersRun] = ("Sent rotation reminders", null),
         [AuthFailed] = ("Rejected unauthenticated request", null),

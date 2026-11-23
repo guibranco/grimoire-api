@@ -29,7 +29,8 @@ public class ConsumerFeatureFlagsController(
     private static readonly JsonSerializerOptions EtagOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
-    /// Every flag of the API key's application in <paramref name="environment"/>. Sends an
+    /// Every flag of the API key's application in <paramref name="environment"/>, plus the global
+    /// flags it inherits (an application flag wins over a global with the same key). Sends an
     /// <c>ETag</c>; with a matching <c>If-None-Match</c> the answer is <c>304</c> and no body.
     /// </summary>
     [Audited(AuditActions.FeatureFlagRead)]
@@ -43,10 +44,14 @@ public class ConsumerFeatureFlagsController(
         if (missing is not null)
             return missing;
 
-        var all = await flags.ListAsync(app.Id, ct);
         var body = new ConsumerFeatureFlagList(
             env.Slug,
-            all.Select(f => FeatureFlagMapper.ToConsumer(f, env.Id)).ToList()
+            EffectiveFeatureFlags.For(
+                app,
+                env,
+                await flags.ListAsync(app.Id, ct),
+                app.InheritGlobals ? await flags.ListAsync(null, ct) : []
+            )
         );
         return WithEtag(body);
     }
@@ -67,10 +72,14 @@ public class ConsumerFeatureFlagsController(
         if (missing is not null)
             return missing;
 
-        var flag = await flags.GetAsync(app.Id, key, ct);
-        if (flag is null)
-            return Problem(ProblemMessages.FeatureFlagNotFound, statusCode: 404);
-        return WithEtag(FeatureFlagMapper.ToConsumer(flag, env.Id));
+        var own = await flags.GetAsync(app.Id, key, ct);
+        var global = own is null && app.InheritGlobals ? await flags.GetAsync(null, key, ct) : null;
+        var flag = EffectiveFeatureFlags
+            .For(app, env, own is null ? [] : [own], global is null ? [] : [global])
+            .SingleOrDefault();
+        return flag is null
+            ? Problem(ProblemMessages.FeatureFlagNotFound, statusCode: 404)
+            : WithEtag(flag);
     }
 
     private async Task<(Application App, AppEnvironment Env, IActionResult? Missing)> ResolveAsync(

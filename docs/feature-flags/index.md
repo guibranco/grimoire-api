@@ -29,6 +29,10 @@ Feature flags sit next to Secrets and Configuration. A flag is switched on or of
 | **Rollout** | `[{ variant, weight }]` with weights summing to 100 (two decimals at most), bucketed by a context attribute (`bucketBy`, default `userId`). Raising a percentage keeps everyone who already had the variant. |
 | **Salt** | Random per flag and served to consumers, so two flags at 10 % don't select the same users. |
 
+## Global flags
+
+Global flags (`/management/global/feature-flags`) reach every application that inherits globals, unless the application has a flag with the same key. Their state is set per environment slug, or `*` for every environment. A consumer gets the application's own flag first, then the global flag's state for its environment's slug, then the global `*` state. This is the same precedence as [global configuration](../api-reference/management-api/#global-configurations). Consumers see `"source": "global"` on inherited flags, and nothing else changes for them.
+
 ## Operators
 
 | Operator | Matches when the attribute… |

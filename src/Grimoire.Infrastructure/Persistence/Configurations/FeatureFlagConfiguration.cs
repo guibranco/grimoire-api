@@ -47,12 +47,18 @@ public class FeatureFlagConfiguration : IEntityTypeConfiguration<FeatureFlag>
         builder.Property(x => x.Salt).IsRequired().HasMaxLength(SaltLength);
         builder.Property(x => x.Variants).HasJsonConversion().IsRequired();
         builder.Property(x => x.Tags).HasJsonConversion().IsRequired();
-        builder.HasIndex(x => new { x.ApplicationId, x.Key }).IsUnique();
+        // Unique per application, and among globals (NULLs never collide, hence the filters).
+        builder
+            .HasIndex(x => new { x.ApplicationId, x.Key })
+            .IsUnique()
+            .HasFilter("\"ApplicationId\" IS NOT NULL");
+        builder.HasIndex(x => x.Key).IsUnique().HasFilter("\"ApplicationId\" IS NULL");
 
         builder
             .HasOne(x => x.Application)
             .WithMany()
             .HasForeignKey(x => x.ApplicationId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Cascade);
         builder
             .HasMany(x => x.Environments)
@@ -67,18 +73,32 @@ public class FeatureFlagEnvironmentStateConfiguration
 {
     public void Configure(EntityTypeBuilder<FeatureFlagEnvironmentState> builder)
     {
-        builder.ToTable("FeatureFlagEnvironmentStates");
+        builder.ToTable("FeatureFlagEnvironmentStates", t =>
+            t.HasCheckConstraint(
+                "CK_FeatureFlagEnvironmentStates_OneEnvironment",
+                "(\"EnvironmentId\" IS NULL) <> (\"EnvironmentSlug\" IS NULL)"
+            )
+        );
         builder.HasKey(x => x.Id);
         builder.Property(x => x.OffVariant).HasMaxLength(100);
+        builder.Property(x => x.EnvironmentSlug).HasMaxLength(100);
         builder.Property(x => x.Rules).HasJsonConversion().IsRequired();
         builder.Property(x => x.Fallthrough).HasJsonConversion();
         builder.Property(x => x.Version).IsConcurrencyToken();
-        builder.HasIndex(x => new { x.FeatureFlagId, x.EnvironmentId }).IsUnique();
+        builder
+            .HasIndex(x => new { x.FeatureFlagId, x.EnvironmentId })
+            .IsUnique()
+            .HasFilter("\"EnvironmentId\" IS NOT NULL");
+        builder
+            .HasIndex(x => new { x.FeatureFlagId, x.EnvironmentSlug })
+            .IsUnique()
+            .HasFilter("\"EnvironmentSlug\" IS NOT NULL");
 
         builder
             .HasOne(x => x.Environment)
             .WithMany()
             .HasForeignKey(x => x.EnvironmentId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
@@ -109,6 +129,7 @@ public class FeatureFlagAuditEntryConfiguration : IEntityTypeConfiguration<Featu
             .HasOne<Application>()
             .WithMany()
             .HasForeignKey(x => x.ApplicationId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

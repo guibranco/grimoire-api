@@ -6,7 +6,7 @@ namespace Grimoire.Infrastructure.Persistence.Repositories;
 
 public class FeatureFlagRepository(GrimoireDbContext db) : IFeatureFlagRepository
 {
-    public Task<List<FeatureFlag>> ListAsync(Guid applicationId, CancellationToken ct = default) =>
+    public Task<List<FeatureFlag>> ListAsync(Guid? applicationId, CancellationToken ct = default) =>
         db
             .FeatureFlags.Include(f => f.Environments)
             .Where(f => f.ApplicationId == applicationId)
@@ -14,7 +14,7 @@ public class FeatureFlagRepository(GrimoireDbContext db) : IFeatureFlagRepositor
             .ToListAsync(ct);
 
     public Task<FeatureFlag?> GetAsync(
-        Guid applicationId,
+        Guid? applicationId,
         string key,
         CancellationToken ct = default
     ) =>
@@ -51,7 +51,7 @@ public class FeatureFlagRepository(GrimoireDbContext db) : IFeatureFlagRepositor
     ) => db.InWriteTransactionAsync(work, ct);
 
     public Task<List<FeatureFlagAuditEntry>> HistoryAsync(
-        Guid applicationId,
+        Guid? applicationId,
         string key,
         CancellationToken ct = default
     ) =>

@@ -35,6 +35,9 @@ public class SwaggerTests(GrimoireWebApplicationFactory factory)
     )]
     [InlineData("/management/applications/{slug}/feature-flags/{key}/evaluate")]
     [InlineData("/management/applications/{slug}/feature-flags/{key}/history")]
+    [InlineData("/management/global/feature-flags")]
+    [InlineData("/management/global/feature-flags/{key}/environments/{environmentSlug}/toggle")]
+    [InlineData("/management/global/feature-flags/{key}/evaluate")]
     [InlineData(
         "/management/applications/{slug}/secrets/{name}/versions/{environmentSlug}/{version}"
     )]
