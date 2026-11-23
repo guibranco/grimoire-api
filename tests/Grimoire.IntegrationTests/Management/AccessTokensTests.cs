@@ -15,6 +15,8 @@ public class AccessTokensTests(GrimoireWebApplicationFactory factory)
     private static readonly string[] SecretsOnly = ["secrets"];
     private static readonly string[] AllScopes = ["secrets", "configurations", "feature-flags"];
     private static readonly string[] StagingOnly = ["staging"];
+    private static readonly string[] UnknownScope = ["write"];
+    private static readonly string[] UnknownEnvironment = ["nope"];
 
     /// <summary>An app with a "staging" environment, a secret and a config entry in both.</summary>
     private async Task<(string Slug, string ApiKey)> AppAsync()
@@ -326,9 +328,7 @@ public class AccessTokensTests(GrimoireWebApplicationFactory factory)
         );
         Assert.Equal(
             HttpStatusCode.BadRequest,
-            (
-                await Mgmt.PostAsJsonAsync(url, new { name = "x", scopes = new[] { "write" } })
-            ).StatusCode
+            (await Mgmt.PostAsJsonAsync(url, new { name = "x", scopes = UnknownScope })).StatusCode
         );
         Assert.Equal(
             HttpStatusCode.BadRequest,
@@ -353,7 +353,7 @@ public class AccessTokensTests(GrimoireWebApplicationFactory factory)
                     {
                         name = "x",
                         scopes = SecretsOnly,
-                        environments = new[] { "nope" },
+                        environments = UnknownEnvironment,
                     }
                 )
             ).StatusCode
