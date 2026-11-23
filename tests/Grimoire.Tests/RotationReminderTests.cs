@@ -20,7 +20,7 @@ public class RotationReminderTests
 
     [Fact]
     public void Thresholds_DefaultTo30_7_1() =>
-        Assert.Equal([30, 7, 1], new RotationReminderOptions().EffectiveThresholds);
+        Assert.Equal([30, 7, 1], new RotationReminderOptions().GetEffectiveThresholds());
 
     [Fact]
     public void ConfiguredThresholds_ReplaceTheDefaults()
@@ -35,7 +35,7 @@ public class RotationReminderTests
             }
         );
 
-        Assert.Equal([14, 3], options.EffectiveThresholds);
+        Assert.Equal([14, 3], options.GetEffectiveThresholds());
     }
 
     [Theory]

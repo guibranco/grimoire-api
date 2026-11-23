@@ -33,7 +33,7 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
 
         var rawKey = apiKeyHeader.ToString();
         // Find all apps and verify hash (can't query by hash directly since it uses the Argon2/PBKDF2 hasher)
-        var apps = await appRepo.GetAllAsync();
+        var apps = await appRepo.GetAllAsync(context.RequestAborted);
         Application? matched = null;
         foreach (var app in apps)
         {
@@ -66,7 +66,8 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
                 type = "https://tools.ietf.org/html/rfc7235#section-3.1",
                 title = "Unauthorized",
                 status = 401,
-            }
+            },
+            context.RequestAborted
         );
     }
 }

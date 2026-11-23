@@ -43,6 +43,20 @@ All responses use **camelCase JSON**. Errors follow the [RFC 9457 Problem Detail
 }
 ```
 
+Other errors carry a human-readable `detail`, and `status` always matches the HTTP status code (`Content-Type: application/problem+json`):
+
+```json
+{
+  "type":    "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+  "title":   "Not Found",
+  "status":  404,
+  "detail":  "Secret not found.",
+  "traceId": "00-…"
+}
+```
+
+Validation errors (`400`) add an `errors` object keyed by field.
+
 ---
 
 ## HTTP status codes

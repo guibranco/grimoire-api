@@ -23,7 +23,7 @@ public class EnvironmentsController(
     {
         var app = await appRepo.GetBySlugAsync(slug, ct);
         if (app is null)
-            return NotFound(NotFoundProblem("Application not found."));
+            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
 
         var envs = await envRepo.GetByApplicationAsync(app.Id, ct);
         var lastSeen = await consumerActivity.GetLastSeenAsync(ct);
@@ -50,19 +50,12 @@ public class EnvironmentsController(
     {
         var app = await appRepo.GetBySlugAsync(slug, ct);
         if (app is null)
-            return NotFound(NotFoundProblem("Application not found."));
+            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
 
         var envSlug = SlugService.Generate(req.Name);
         var existing = await envRepo.GetBySlugAsync(app.Id, envSlug, ct);
         if (existing is not null)
-            return Conflict(
-                new ProblemDetails
-                {
-                    Title = "Conflict",
-                    Detail = "Environment already exists.",
-                    Status = 409,
-                }
-            );
+            return Problem("Environment already exists.", statusCode: 409, title: "Conflict");
 
         var env = new AppEnvironment
         {
@@ -88,21 +81,13 @@ public class EnvironmentsController(
     {
         var app = await appRepo.GetBySlugAsync(slug, ct);
         if (app is null)
-            return NotFound(NotFoundProblem("Application not found."));
+            return Problem(ProblemMessages.ApplicationNotFound, statusCode: 404);
 
         var env = await envRepo.GetBySlugAsync(app.Id, envSlug, ct);
         if (env is null)
-            return NotFound(NotFoundProblem("Environment not found."));
+            return Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404);
 
         await envRepo.DeleteAsync(env, ct);
         return NoContent();
     }
-
-    private static ProblemDetails NotFoundProblem(string detail) =>
-        new()
-        {
-            Title = "Not Found",
-            Detail = detail,
-            Status = 404,
-        };
 }

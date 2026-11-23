@@ -112,8 +112,13 @@ public sealed class HealthcheckPingerTests
             NullLogger<HealthcheckPinger>.Instance
         );
 
-        await pinger.SuccessAsync(url, CancellationToken.None);
-        await pinger.FailureAsync(url, CancellationToken.None);
+        var error = await Record.ExceptionAsync(async () =>
+        {
+            await pinger.SuccessAsync(url, CancellationToken.None);
+            await pinger.FailureAsync(url, CancellationToken.None);
+        });
+
+        Assert.Null(error);
     }
 
     [Fact]
@@ -128,8 +133,13 @@ public sealed class HealthcheckPingerTests
             NullLogger<HealthcheckPinger>.Instance
         );
 
-        await failing.SuccessAsync("https://hc-ping.com/x", CancellationToken.None);
-        await notFound.SuccessAsync("https://hc-ping.com/x", CancellationToken.None);
+        var error = await Record.ExceptionAsync(async () =>
+        {
+            await failing.SuccessAsync("https://hc-ping.com/x", CancellationToken.None);
+            await notFound.SuccessAsync("https://hc-ping.com/x", CancellationToken.None);
+        });
+
+        Assert.Null(error);
     }
 }
 

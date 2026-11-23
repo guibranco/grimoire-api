@@ -167,7 +167,7 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
         return http;
     }
 
-    private record ConfigItem(
+    private sealed record ConfigItem(
         [property: JsonPropertyName("key")] string Key,
         [property: JsonPropertyName("value")] string Value,
         [property: JsonPropertyName("label")] string Label,
@@ -177,5 +177,7 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    private record ConfigListResponse([property: JsonPropertyName("items")] List<ConfigItem> Items);
+    private sealed record ConfigListResponse(
+        [property: JsonPropertyName("items")] List<ConfigItem> Items
+    );
 }

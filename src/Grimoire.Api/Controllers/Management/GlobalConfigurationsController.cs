@@ -32,7 +32,7 @@ public class GlobalConfigurationsController(IGlobalConfigurationRepository globa
 
         var existing = await globalConfigRepo.GetByKeyAsync(environmentSlug, req.Key, ct);
         if (existing is not null)
-            return Conflict(Problem("Global configuration key already exists.", statusCode: 409));
+            return Problem("Global configuration key already exists.", statusCode: 409);
 
         if (
             !this.TryResolveConfigurationValue(
@@ -72,7 +72,7 @@ public class GlobalConfigurationsController(IGlobalConfigurationRepository globa
     {
         var entry = await globalConfigRepo.GetByKeyAsync(environmentSlug, key, ct);
         if (entry is null)
-            return NotFound(Problem("Global configuration not found.", statusCode: 404));
+            return Problem("Global configuration not found.", statusCode: 404);
 
         if (
             !this.TryResolveConfigurationValue(
@@ -104,7 +104,7 @@ public class GlobalConfigurationsController(IGlobalConfigurationRepository globa
     {
         var entry = await globalConfigRepo.GetByKeyAsync(environmentSlug, key, ct);
         if (entry is null)
-            return NotFound(Problem("Global configuration not found.", statusCode: 404));
+            return Problem("Global configuration not found.", statusCode: 404);
 
         await globalConfigRepo.DeleteAsync(entry, ct);
         return NoContent();

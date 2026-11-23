@@ -382,7 +382,7 @@ public class EffectiveConfigurationServiceTests
 
         var result = await _service.GetSecretsAsync(_app);
 
-        Assert.Equal(new[] { "app-only", "global-only", "shared" }, result.Select(s => s.Name));
+        Assert.Equal<string>(["app-only", "global-only", "shared"], result.Select(s => s.Name));
         var shared = result.Single(s => s.Name == "shared");
         Assert.Equal(ValueSource.Application, shared.Source);
         Assert.True(shared.OverridesGlobal);

@@ -45,7 +45,10 @@ public class RotationRemindersTests(GrimoireWebApplicationFactory factory)
         return (slug, secret);
     }
 
-    private async Task<List<JsonNode>> ExpiringAsync(HttpClient client, int? withinDays = null)
+    private static async Task<List<JsonNode>> ExpiringAsync(
+        HttpClient client,
+        int? withinDays = null
+    )
     {
         var json = JsonNode.Parse(
             await client.GetStringAsync(
