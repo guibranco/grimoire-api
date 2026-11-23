@@ -224,6 +224,8 @@ public class FeatureFlagsTests(GrimoireWebApplicationFactory factory)
             """{"enabled":true,"fallthrough":{"variant":"control","rollout":[{"variant":"control","weight":100}]}}""",
             // Neither.
             """{"enabled":true,"fallthrough":{}}""",
+            // Enabled is required (no silent "off").
+            """{"offVariant":"control"}""",
             // Unknown variant.
             """{"enabled":true,"offVariant":"nope"}""",
             """{"enabled":true,"rules":[{"conditions":[{"attribute":"a","operator":"in","values":["x"]}],"serve":{"variant":"nope"}}]}""",

@@ -9,7 +9,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>Grimoire.Consumer</PackageId>
     <Title>Grimoire Consumer</Title>
-    <Description>.NET client for Grimoire, the self-hosted Vault &amp; Configuration Manager. Load configuration entries into IConfiguration with AddGrimoire() and fetch versioned secrets with GrimoireSecretClient.</Description>
+    <Description>.NET client for Grimoire, the self-hosted Vault &amp; Configuration Manager. Load configuration entries into IConfiguration with AddGrimoire(), fetch versioned secrets with GrimoireSecretClient, and evaluate feature flags locally with GrimoireFeatureFlagClient or Microsoft.FeatureManagement.</Description>
     <Authors>Guilherme Branco Stracini</Authors>
     <Company>Guilherme Branco Stracini ME</Company>
     <Copyright>© $([System.DateTime]::Now.Year) Guilherme Branco Stracini. All rights reserved.</Copyright>
@@ -26,7 +26,15 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <DefineConstants>$(DefineConstants);GRIMOIRE_CONSUMER</DefineConstants>
   </PropertyGroup>
+
+  <ItemGroup Label="Feature flag evaluator shared with Grimoire.Core">
+    <Compile
+      Include="../Grimoire.Core/FeatureFlags/*.cs"
+      Link="FeatureFlags/Evaluation/%(Filename)%(Extension)"
+    />
+  </ItemGroup>
 
   <ItemGroup>
     <None Include="../../assets/icon.png" Pack="true" PackagePath="/" Visible="false" />
@@ -36,6 +44,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="11.0.*" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="11.0.*" />
+    <PackageReference Include="Microsoft.FeatureManagement" Version="4.8.0" />
   </ItemGroup>
 
   <ItemGroup>

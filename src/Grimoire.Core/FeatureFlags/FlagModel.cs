@@ -1,6 +1,14 @@
 using System.Text.Json.Serialization;
 
+// Shared with Grimoire.Consumer (linked source, built with GRIMOIRE_CONSUMER): one evaluator for
+// the server's dry run and the client library, both checked against the shared test vectors.
+#if GRIMOIRE_CONSUMER
+namespace Grimoire.Consumer.FeatureFlags.Evaluation;
+
+#else
 namespace Grimoire.Core.FeatureFlags;
+
+#endif
 
 /// <summary>Wire names of flag types.</summary>
 public static class FlagTypes
@@ -43,9 +51,11 @@ public static class ConditionOperators
     public static bool IsSingleValue(string? op) => op is SemVerGte or SemVerLt;
 }
 
+/// <param name="Key">Variant key, e.g. <c>on</c>, <c>control</c>.</param>
 /// <param name="Value">The variant's value as raw JSON (e.g. <c>true</c>, <c>"blue"</c>, <c>{"limit":5}</c>).</param>
 public sealed record FlagVariant(string Key, string Value);
 
+/// <param name="Variant">Variant key.</param>
 /// <param name="Weight">Percentage of the bucket range, 0–100 with up to two decimals.</param>
 public sealed record RolloutSlice(string Variant, decimal Weight);
 
@@ -68,6 +78,7 @@ public sealed record FlagServe(
 
 /// <param name="Attribute">Context attribute, e.g. <c>userId</c>, <c>email</c>, <c>country</c>.</param>
 /// <param name="Operator">One of <see cref="ConditionOperators"/>.</param>
+/// <param name="Values">Values to compare with (one for the semantic version operators).</param>
 public sealed record FlagCondition(string Attribute, string Operator, IReadOnlyList<string> Values);
 
 /// <summary>All <see cref="Conditions"/> must match; then <see cref="Serve"/> applies.</summary>

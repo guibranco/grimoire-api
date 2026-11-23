@@ -39,7 +39,7 @@ public static partial class FeatureFlagRules
         IReadOnlySet<string> variants
     )
     {
-        IEnumerable<string?> serveVariants(FlagServeDto? s) =>
+        static IEnumerable<string?> serveVariants(FlagServeDto? s) =>
             s is null ? [] : [s.Variant, .. (s.Rollout ?? []).Select(r => r.Variant)];
 
         return new[] { state.OffVariant }

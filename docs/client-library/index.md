@@ -17,19 +17,21 @@ permalink: /client-library/
 | :--- | :---------------- |
 | [Configuration Provider]({{ site.baseurl }}/client-library/configuration-provider/) | Inject Grimoire configs as `IConfiguration` |
 | [Secret Client]({{ site.baseurl }}/client-library/secret-client/) | Fetch individual secrets programmatically |
+| [Feature Flags]({{ site.baseurl }}/client-library/feature-flags/) | Evaluate feature flags locally, alone or behind `Microsoft.FeatureManagement` |
 
 ---
 
 ## Overview
 
-The library provides two ways to consume Grimoire:
+The library provides three ways to consume Grimoire:
 
 | Class | Use when |
 | :---- | :------- |
 | `GrimoireConfigurationClient` | You want configs (and optionally secrets) to be part of `IConfiguration` |
 | `GrimoireSecretClient` | You need fine-grained control — fetch a secret at a specific point in code |
+| `GrimoireFeatureFlagClient` | You check feature flags (locally evaluated; also usable through `Microsoft.FeatureManagement`) |
 
-Both are in the `Grimoire.Consumer` namespace. The library has no dependencies on the Grimoire server-side projects.
+The first two are in the `Grimoire.Consumer` namespace and the flag client in `Grimoire.Consumer.FeatureFlags`. The library has no dependencies on the Grimoire server-side projects.
 
 ---
 
