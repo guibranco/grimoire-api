@@ -57,6 +57,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IRotationReminderStore, RotationReminderStore>();
         services.AddScoped<IMetadataSearchService, MetadataSearchService>();
         services.AddScoped<IUsageReportService, UsageReportService>();
+        services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
 
         return services;
     }

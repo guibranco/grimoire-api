@@ -28,6 +28,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Shared feature flag test vectors: every client must pass them. -->
+    <None
+      Include="..\..\docs\feature-flags\test-vectors.json"
+      Link="FeatureFlags\test-vectors.json"
+      CopyToOutputDirectory="PreserveNewest"
+    />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Grimoire.Core\Grimoire.Core.csproj" />
     <ProjectReference Include="..\..\src\Grimoire.Infrastructure\Grimoire.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Grimoire.Consumer\Grimoire.Consumer.csproj" />

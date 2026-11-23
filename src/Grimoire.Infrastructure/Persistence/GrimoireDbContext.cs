@@ -20,6 +20,10 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
     public DbSet<RotationReminder> RotationReminders => Set<RotationReminder>();
     public DbSet<ConfigurationRevision> ConfigurationRevisions => Set<ConfigurationRevision>();
     public DbSet<SecretRead> SecretReads => Set<SecretRead>();
+    public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
+    public DbSet<FeatureFlagEnvironmentState> FeatureFlagEnvironmentStates =>
+        Set<FeatureFlagEnvironmentState>();
+    public DbSet<FeatureFlagAuditEntry> FeatureFlagAuditEntries => Set<FeatureFlagAuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,5 +40,8 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
         modelBuilder.ApplyConfiguration(new RotationReminderConfiguration());
         modelBuilder.ApplyConfiguration(new ConfigurationRevisionConfiguration());
         modelBuilder.ApplyConfiguration(new SecretReadConfiguration());
+        modelBuilder.ApplyConfiguration(new FeatureFlagConfiguration());
+        modelBuilder.ApplyConfiguration(new FeatureFlagEnvironmentStateConfiguration());
+        modelBuilder.ApplyConfiguration(new FeatureFlagAuditEntryConfiguration());
     }
 }

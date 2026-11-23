@@ -128,6 +128,50 @@ Returns a single configuration entry, falling back to an inherited global entry 
 
 ---
 
+## Feature flags
+
+Flag definitions for local evaluation: the API never evaluates for you and never sees your users' attributes. Evaluate with the [evaluation spec](../feature-flags/evaluation-spec/).
+
+### Get all feature flags
+
+```
+GET /consumer/feature-flags?environment=production
+```
+
+```json
+{
+  "environment": "production",
+  "flags": [
+    {
+      "key": "checkout-redesign",
+      "type": "multivariate",
+      "variants": [ { "key": "control", "value": { "layout": "classic" } }, { "key": "treatment", "value": { "layout": "one-page" } } ],
+      "defaultVariant": "control",
+      "salt": "9f2c4e1a7b3d5f60",
+      "enabled": true,
+      "offVariant": "control",
+      "rules": [ { "conditions": [ { "attribute": "userId", "operator": "in", "values": ["u-123"] } ], "serve": { "variant": "treatment" } } ],
+      "fallthrough": { "rollout": [ { "variant": "control", "weight": 80 }, { "variant": "treatment", "weight": 20 } ], "bucketBy": "userId" },
+      "version": 4
+    }
+  ]
+}
+```
+
+A flag never configured in the environment comes back disabled with `version` 0.
+
+**Caching:** responses carry a strong `ETag`. Send it back in `If-None-Match` and the answer is `304 Not Modified` with no body until a flag changes. Polling clients should always do this. A `304` still counts as consumer activity.
+
+### Get feature flag by key
+
+```
+GET /consumer/feature-flags/{key}?environment=production
+```
+
+One definition, same shape and `ETag` behaviour. **`404`:** unknown flag or environment.
+
+---
+
 ## Using colon-delimited keys
 
 Configuration keys support colon (`:`) delimiters, which map directly to the .NET `IConfiguration` key hierarchy:

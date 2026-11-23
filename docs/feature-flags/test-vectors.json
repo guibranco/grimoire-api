@@ -1,0 +1,896 @@
+{
+  "$comment": "Shared feature flag evaluation test vectors (guibranco/grimoire-api#90). Every client must reproduce every expected result. See evaluation-spec.md.",
+  "version": 1,
+  "hashes": [
+    {
+      "input": "",
+      "murmur3_32": 0
+    },
+    {
+      "input": "a",
+      "murmur3_32": 1009084850
+    },
+    {
+      "input": "ab",
+      "murmur3_32": 2613040991
+    },
+    {
+      "input": "abc",
+      "murmur3_32": 3017643002
+    },
+    {
+      "input": "abcd",
+      "murmur3_32": 1139631978
+    },
+    {
+      "input": "checkout-redesign.9f2c4e1a7b3d5f60.u-1",
+      "murmur3_32": 2422164498
+    },
+    {
+      "input": "κλειδί.sälz.用户-1",
+      "murmur3_32": 223779091
+    }
+  ],
+  "buckets": [
+    {
+      "flagKey": "checkout-redesign",
+      "salt": "9f2c4e1a7b3d5f60",
+      "value": "u-1",
+      "bucket": 4498
+    },
+    {
+      "flagKey": "checkout-redesign",
+      "salt": "9f2c4e1a7b3d5f60",
+      "value": "u-2",
+      "bucket": 3776
+    },
+    {
+      "flagKey": "gradual-rollout",
+      "salt": "c0ffee00c0ffee00",
+      "value": "acc-1",
+      "bucket": 6735
+    },
+    {
+      "flagKey": "a",
+      "salt": "b",
+      "value": "c",
+      "bucket": 8810
+    },
+    {
+      "flagKey": "flag",
+      "salt": "",
+      "value": "",
+      "bucket": 7649
+    },
+    {
+      "flagKey": "κλειδί",
+      "salt": "sälz",
+      "value": "用户-1",
+      "bucket": 9091
+    }
+  ],
+  "flags": {
+    "checkout-redesign": {
+      "key": "checkout-redesign",
+      "salt": "9f2c4e1a7b3d5f60",
+      "type": "multivariate",
+      "variants": [
+        {
+          "key": "control",
+          "value": {
+            "layout": "classic"
+          }
+        },
+        {
+          "key": "treatment",
+          "value": {
+            "layout": "one-page"
+          }
+        }
+      ],
+      "defaultVariant": "control",
+      "state": {
+        "enabled": true,
+        "offVariant": null,
+        "rules": [
+          {
+            "conditions": [
+              {
+                "attribute": "userId",
+                "operator": "in",
+                "values": [
+                  "u-123",
+                  "u-456"
+                ]
+              }
+            ],
+            "serve": {
+              "variant": "treatment"
+            }
+          },
+          {
+            "conditions": [
+              {
+                "attribute": "email",
+                "operator": "endsWith",
+                "values": [
+                  "@straccini.com"
+                ]
+              },
+              {
+                "attribute": "country",
+                "operator": "in",
+                "values": [
+                  "IE",
+                  "BR",
+                  "PT"
+                ]
+              }
+            ],
+            "serve": {
+              "rollout": [
+                {
+                  "variant": "control",
+                  "weight": 50
+                },
+                {
+                  "variant": "treatment",
+                  "weight": 50
+                }
+              ],
+              "bucketBy": "userId"
+            }
+          }
+        ],
+        "fallthrough": {
+          "rollout": [
+            {
+              "variant": "control",
+              "weight": 80
+            },
+            {
+              "variant": "treatment",
+              "weight": 20
+            }
+          ]
+        }
+      }
+    },
+    "kill-switch": {
+      "key": "kill-switch",
+      "salt": "0000000000000001",
+      "type": "boolean",
+      "variants": [
+        {
+          "key": "on",
+          "value": true
+        },
+        {
+          "key": "off",
+          "value": false
+        }
+      ],
+      "defaultVariant": "off",
+      "state": {
+        "enabled": false,
+        "offVariant": null,
+        "rules": [
+          {
+            "conditions": [
+              {
+                "attribute": "userId",
+                "operator": "in",
+                "values": [
+                  "u-1"
+                ]
+              }
+            ],
+            "serve": {
+              "variant": "on"
+            }
+          }
+        ],
+        "fallthrough": {
+          "variant": "on"
+        }
+      }
+    },
+    "email-provider": {
+      "key": "email-provider",
+      "salt": "5a5a5a5a5a5a5a5a",
+      "type": "multivariate",
+      "variants": [
+        {
+          "key": "ses",
+          "value": "ses"
+        },
+        {
+          "key": "sendgrid",
+          "value": "sendgrid"
+        },
+        {
+          "key": "smtp",
+          "value": "smtp"
+        }
+      ],
+      "defaultVariant": "ses",
+      "state": {
+        "enabled": false,
+        "offVariant": "smtp",
+        "rules": [],
+        "fallthrough": {
+          "variant": "sendgrid"
+        }
+      }
+    },
+    "beta-dashboard": {
+      "key": "beta-dashboard",
+      "salt": "b3e7a0c4d2f18e65",
+      "type": "boolean",
+      "variants": [
+        {
+          "key": "on",
+          "value": true
+        },
+        {
+          "key": "off",
+          "value": false
+        }
+      ],
+      "defaultVariant": "off",
+      "state": {
+        "enabled": true,
+        "offVariant": null,
+        "rules": [
+          {
+            "conditions": [
+              {
+                "attribute": "appVersion",
+                "operator": "semVerLt",
+                "values": [
+                  "1.0.0"
+                ]
+              }
+            ],
+            "serve": {
+              "variant": "off"
+            }
+          },
+          {
+            "conditions": [
+              {
+                "attribute": "appVersion",
+                "operator": "semVerGte",
+                "values": [
+                  "2.0.0-beta.2"
+                ]
+              }
+            ],
+            "serve": {
+              "variant": "on"
+            }
+          },
+          {
+            "conditions": [
+              {
+                "attribute": "tenant",
+                "operator": "matches",
+                "values": [
+                  "^acme-[0-9]+$"
+                ]
+              }
+            ],
+            "serve": {
+              "variant": "on"
+            }
+          },
+          {
+            "conditions": [
+              {
+                "attribute": "plan",
+                "operator": "notIn",
+                "values": [
+                  "free"
+                ]
+              },
+              {
+                "attribute": "email",
+                "operator": "contains",
+                "values": [
+                  "+beta"
+                ]
+              }
+            ],
+            "serve": {
+              "variant": "on"
+            }
+          },
+          {
+            "conditions": [
+              {
+                "attribute": "device",
+                "operator": "startsWith",
+                "values": [
+                  "ios-"
+                ]
+              },
+              {
+                "attribute": "locale",
+                "operator": "equals",
+                "values": [
+                  "pt-BR"
+                ]
+              }
+            ],
+            "serve": {
+              "variant": "on"
+            }
+          }
+        ],
+        "fallthrough": {
+          "variant": "off"
+        }
+      }
+    },
+    "gradual-rollout": {
+      "key": "gradual-rollout",
+      "salt": "c0ffee00c0ffee00",
+      "type": "boolean",
+      "variants": [
+        {
+          "key": "on",
+          "value": true
+        },
+        {
+          "key": "off",
+          "value": false
+        }
+      ],
+      "defaultVariant": "off",
+      "state": {
+        "enabled": true,
+        "offVariant": null,
+        "rules": [],
+        "fallthrough": {
+          "rollout": [
+            {
+              "variant": "on",
+              "weight": 12.5
+            },
+            {
+              "variant": "off",
+              "weight": 87.5
+            }
+          ],
+          "bucketBy": "accountId"
+        }
+      }
+    },
+    "no-fallthrough": {
+      "key": "no-fallthrough",
+      "salt": "ffffffffffffffff",
+      "type": "boolean",
+      "variants": [
+        {
+          "key": "on",
+          "value": true
+        },
+        {
+          "key": "off",
+          "value": false
+        }
+      ],
+      "defaultVariant": "off",
+      "state": {
+        "enabled": true,
+        "offVariant": null,
+        "rules": [],
+        "fallthrough": null
+      }
+    }
+  },
+  "cases": [
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-123"
+      },
+      "expected": {
+        "variant": "treatment",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 0,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-456",
+        "country": "US"
+      },
+      "expected": {
+        "variant": "treatment",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 0,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-789",
+        "email": "gui@straccini.com",
+        "country": "IE"
+      },
+      "expected": {
+        "variant": "treatment",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 1,
+        "bucket": 9920
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-790",
+        "email": "gui@straccini.com",
+        "country": "BR"
+      },
+      "expected": {
+        "variant": "treatment",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 1,
+        "bucket": 6911
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "email": "gui@straccini.com",
+        "country": "PT"
+      },
+      "expected": {
+        "variant": "control",
+        "reason": "MISSING_BUCKET_BY",
+        "matchedRuleIndex": 1,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-1",
+        "email": "GUI@STRACCINI.COM",
+        "country": "IE"
+      },
+      "expected": {
+        "variant": "control",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 4498
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-2",
+        "email": "a@b.com"
+      },
+      "expected": {
+        "variant": "control",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 3776
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-3"
+      },
+      "expected": {
+        "variant": "control",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 7953
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-4"
+      },
+      "expected": {
+        "variant": "control",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 1163
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-6"
+      },
+      "expected": {
+        "variant": "treatment",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 8366
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-11"
+      },
+      "expected": {
+        "variant": "treatment",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 9005
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "u-702",
+        "email": "x@straccini.com",
+        "country": "IE"
+      },
+      "expected": {
+        "variant": "control",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 1,
+        "bucket": 2329
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": "ünïcødé-ユーザー"
+      },
+      "expected": {
+        "variant": "control",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 3480
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {},
+      "expected": {
+        "variant": "control",
+        "reason": "MISSING_BUCKET_BY",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "checkout-redesign",
+      "context": {
+        "userId": ""
+      },
+      "expected": {
+        "variant": "control",
+        "reason": "MISSING_BUCKET_BY",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "kill-switch",
+      "context": {
+        "userId": "u-1"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "OFF",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "email-provider",
+      "context": {},
+      "expected": {
+        "variant": "smtp",
+        "reason": "OFF",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "appVersion": "0.9.9"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 0,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "appVersion": "2.0.0-beta.1"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "appVersion": "2.0.0-beta.2"
+      },
+      "expected": {
+        "variant": "on",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 1,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "appVersion": "2.0.0-beta.10"
+      },
+      "expected": {
+        "variant": "on",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 1,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "appVersion": "2.0.0-alpha"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "appVersion": "v2.1.0+build.7"
+      },
+      "expected": {
+        "variant": "on",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 1,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "appVersion": "not-a-version",
+        "tenant": "acme-42"
+      },
+      "expected": {
+        "variant": "on",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 2,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "tenant": "acme-x"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "plan": "pro",
+        "email": "gui+beta@x.io"
+      },
+      "expected": {
+        "variant": "on",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 3,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "plan": "free",
+        "email": "gui+beta@x.io"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "email": "gui+beta@x.io"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "device": "ios-17",
+        "locale": "pt-BR"
+      },
+      "expected": {
+        "variant": "on",
+        "reason": "RULE_MATCH",
+        "matchedRuleIndex": 4,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {
+        "device": "ios-17",
+        "locale": "pt-br"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "beta-dashboard",
+      "context": {},
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "gradual-rollout",
+      "context": {
+        "accountId": "acc-1"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 6735
+      }
+    },
+    {
+      "flag": "gradual-rollout",
+      "context": {
+        "accountId": "acc-2"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 2957
+      }
+    },
+    {
+      "flag": "gradual-rollout",
+      "context": {
+        "accountId": "acc-3"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 8303
+      }
+    },
+    {
+      "flag": "gradual-rollout",
+      "context": {
+        "accountId": "acc-4"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 7215
+      }
+    },
+    {
+      "flag": "gradual-rollout",
+      "context": {
+        "accountId": "acc-5"
+      },
+      "expected": {
+        "variant": "on",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 339
+      }
+    },
+    {
+      "flag": "gradual-rollout",
+      "context": {
+        "accountId": "acc-6"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 6497
+      }
+    },
+    {
+      "flag": "gradual-rollout",
+      "context": {
+        "accountId": "acc-7"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 6434
+      }
+    },
+    {
+      "flag": "gradual-rollout",
+      "context": {
+        "accountId": "acc-8"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": 3199
+      }
+    },
+    {
+      "flag": "gradual-rollout",
+      "context": {
+        "userId": "u-1"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "MISSING_BUCKET_BY",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    },
+    {
+      "flag": "no-fallthrough",
+      "context": {
+        "userId": "u-1"
+      },
+      "expected": {
+        "variant": "off",
+        "reason": "FALLTHROUGH",
+        "matchedRuleIndex": null,
+        "bucket": null
+      }
+    }
+  ]
+}

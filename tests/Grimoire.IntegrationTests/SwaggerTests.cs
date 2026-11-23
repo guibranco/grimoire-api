@@ -25,6 +25,16 @@ public class SwaggerTests(GrimoireWebApplicationFactory factory)
     [InlineData("/management/secrets/expiring/notify")]
     [InlineData("/management/reports/unused-secrets")]
     [InlineData("/management/reports/dependencies")]
+    [InlineData("/management/applications/{slug}/feature-flags")]
+    [InlineData("/management/applications/{slug}/feature-flags/{key}")]
+    [InlineData(
+        "/management/applications/{slug}/feature-flags/{key}/environments/{environmentSlug}"
+    )]
+    [InlineData(
+        "/management/applications/{slug}/feature-flags/{key}/environments/{environmentSlug}/toggle"
+    )]
+    [InlineData("/management/applications/{slug}/feature-flags/{key}/evaluate")]
+    [InlineData("/management/applications/{slug}/feature-flags/{key}/history")]
     [InlineData(
         "/management/applications/{slug}/secrets/{name}/versions/{environmentSlug}/{version}"
     )]

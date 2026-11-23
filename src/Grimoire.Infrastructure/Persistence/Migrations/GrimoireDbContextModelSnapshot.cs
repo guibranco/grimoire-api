@@ -301,6 +301,148 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.ToTable("ConsumerActivities", (string)null);
                 });
 
+            modelBuilder.Entity("Grimoire.Core.Entities.FeatureFlag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DefaultVariant")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Salt")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Variants")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("FeatureFlags", (string)null);
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.FeatureFlagAuditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("After")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Before")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Change")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("ChangedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Environment")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FlagKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId", "FlagKey", "ChangedAt");
+
+                    b.ToTable("FeatureFlagAuditEntries", (string)null);
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.FeatureFlagEnvironmentState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("EnvironmentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Fallthrough")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("FeatureFlagId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OffVariant")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Rules")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("FeatureFlagId", "EnvironmentId")
+                        .IsUnique();
+
+                    b.ToTable("FeatureFlagEnvironmentStates", (string)null);
+                });
+
             modelBuilder.Entity("Grimoire.Core.Entities.GlobalConfigurationEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -612,6 +754,45 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Navigation("Environment");
                 });
 
+            modelBuilder.Entity("Grimoire.Core.Entities.FeatureFlag", b =>
+                {
+                    b.HasOne("Grimoire.Core.Entities.Application", "Application")
+                        .WithMany()
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Application");
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.FeatureFlagAuditEntry", b =>
+                {
+                    b.HasOne("Grimoire.Core.Entities.Application", null)
+                        .WithMany()
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.FeatureFlagEnvironmentState", b =>
+                {
+                    b.HasOne("Grimoire.Core.Entities.AppEnvironment", "Environment")
+                        .WithMany()
+                        .HasForeignKey("EnvironmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Grimoire.Core.Entities.FeatureFlag", "FeatureFlag")
+                        .WithMany("Environments")
+                        .HasForeignKey("FeatureFlagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Environment");
+
+                    b.Navigation("FeatureFlag");
+                });
+
             modelBuilder.Entity("Grimoire.Core.Entities.GlobalSecretVersion", b =>
                 {
                     b.HasOne("Grimoire.Core.Entities.GlobalSecret", "GlobalSecret")
@@ -696,6 +877,11 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Navigation("Environments");
 
                     b.Navigation("Secrets");
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.FeatureFlag", b =>
+                {
+                    b.Navigation("Environments");
                 });
 
             modelBuilder.Entity("Grimoire.Core.Entities.GlobalSecret", b =>

@@ -41,6 +41,12 @@ public static class AuditActions
     public const string GlobalConfigurationUpdate = "global-configuration.update";
     public const string GlobalConfigurationDelete = "global-configuration.delete";
     public const string GlobalConfigurationRollback = "global-configuration.rollback";
+    public const string FeatureFlagCreate = "feature-flag.create";
+    public const string FeatureFlagUpdate = "feature-flag.update";
+    public const string FeatureFlagDelete = "feature-flag.delete";
+    public const string FeatureFlagEnvironmentUpdate = "feature-flag.environment-update";
+    public const string FeatureFlagToggle = "feature-flag.toggle";
+    public const string FeatureFlagRead = "feature-flag.read";
     public const string BackupCreate = "backup.create";
     public const string RotationRemindersRun = "rotation.remind";
     public const string AuthFailed = "auth.failed";
@@ -49,6 +55,7 @@ public static class AuditActions
     private const string EnvironmentTarget = "environment";
     private const string SecretTarget = "secret";
     private const string ConfigurationTarget = "configuration";
+    private const string FeatureFlagTarget = "feature-flag";
 
     private static readonly Dictionary<string, (string Label, string? TargetType)> Catalogue = new()
     {
@@ -80,6 +87,12 @@ public static class AuditActions
         [GlobalConfigurationUpdate] = ("Updated global configuration", ConfigurationTarget),
         [GlobalConfigurationDelete] = ("Deleted global configuration", ConfigurationTarget),
         [GlobalConfigurationRollback] = ("Rolled back global configuration", ConfigurationTarget),
+        [FeatureFlagCreate] = ("Created feature flag", FeatureFlagTarget),
+        [FeatureFlagUpdate] = ("Updated feature flag", FeatureFlagTarget),
+        [FeatureFlagDelete] = ("Deleted feature flag", FeatureFlagTarget),
+        [FeatureFlagEnvironmentUpdate] = ("Updated feature flag targeting", FeatureFlagTarget),
+        [FeatureFlagToggle] = ("Toggled feature flag", FeatureFlagTarget),
+        [FeatureFlagRead] = ("Read feature flags", FeatureFlagTarget),
         [BackupCreate] = ("Created backup", "backup"),
         [RotationRemindersRun] = ("Sent rotation reminders", null),
         [AuthFailed] = ("Rejected unauthenticated request", null),
