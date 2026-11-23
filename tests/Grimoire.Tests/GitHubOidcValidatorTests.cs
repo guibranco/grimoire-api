@@ -126,6 +126,24 @@ public class GitHubOidcValidatorTests
     }
 
     [Fact]
+    public async Task AnExpiredCacheDuringAnOutage_KeepsTheOldKeys_AndRetriesEveryFewMinutes()
+    {
+        var metadata = new Metadata();
+        var validator = Validator(metadata.Provider());
+        Assert.NotNull(await validator.ValidateAsync(Token(OldKey), default));
+
+        metadata.Down = true;
+        metadata.Time.Advance(GitHubOidcKeyProvider.CacheLifetime);
+        for (var i = 0; i < 3; i++)
+            Assert.NotNull(await validator.ValidateAsync(Token(OldKey), default));
+        Assert.Equal(2, metadata.Fetches);
+
+        metadata.Time.Advance(GitHubOidcKeyProvider.MinimumRefreshInterval);
+        Assert.NotNull(await validator.ValidateAsync(Token(OldKey), default));
+        Assert.Equal(3, metadata.Fetches);
+    }
+
+    [Fact]
     public async Task OtherFailures_DoNotRefetchTheKeys()
     {
         var metadata = new Metadata();

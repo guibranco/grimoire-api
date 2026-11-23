@@ -53,13 +53,25 @@ public sealed class GitHubOidcKeyProvider : IGitHubOidcKeyProvider, IDisposable
         await _lock.WaitAsync(ct);
         try
         {
-            if (_keys is null || _time.GetUtcNow() - _fetchedAt >= CacheLifetime)
+            if (_keys is null)
             {
-                if (_keys is null && AttemptedRecently())
+                if (AttemptedRecently())
                     throw new InvalidOperationException(
                         "GitHub's OIDC keys could not be loaded recently; not retrying yet."
                     );
                 await FetchAsync(ct);
+            }
+            else if (_time.GetUtcNow() - _fetchedAt >= CacheLifetime && !AttemptedRecently())
+            {
+                try
+                {
+                    await FetchAsync(ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // GitHub is unreachable: keep serving the expired keys and retry after
+                    // MinimumRefreshInterval, rather than failing every exchange.
+                }
             }
             return _keys!;
         }
