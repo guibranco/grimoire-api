@@ -76,6 +76,9 @@ public class IssuedTokenCleanupTests
             new FakeTimeProvider(Start),
             NullLogger<IssuedTokenCleanup>.Instance
         );
-        await cleanup.RunAsync(new Tokens(fail: true), default);
+        var tokens = new Tokens(fail: true);
+        var error = await Record.ExceptionAsync(() => cleanup.RunAsync(tokens, default));
+        Assert.Null(error);
+        Assert.Single(tokens.Cleanups);
     }
 }
