@@ -1043,6 +1043,223 @@ Runs the [rotation reminder](../operations/rotation-reminders.md) job immediatel
 
 ---
 
+## Feature flags
+
+Flags of one application: definitions, per-environment state and targeting. Consumers evaluate them locally; see [Feature Flags](../feature-flags/) and the [evaluation spec](../feature-flags/evaluation-spec/). Every change is kept in the flag's [history](#flag-history) and in the [audit log](#audit-log).
+
+### List feature flags
+
+```
+GET /management/applications/{slug}/feature-flags?tag=&environment=&enabled=
+```
+
+Flags by key, each with its state in every environment of the application.
+
+| Query parameter | Description |
+| :-------------- | :---------- |
+| `tag` | Only flags with this tag. |
+| `environment` + `enabled` | Only flags enabled (`true`) or disabled (`false`) in that environment. |
+
+**Response `200`:** an array of flags (see [Get feature flag](#get-feature-flag)). **`404`:** unknown application or environment.
+
+---
+
+### Create feature flag
+
+```
+POST /management/applications/{slug}/feature-flags
+```
+
+```json
+{
+  "key": "checkout-redesign",
+  "description": "New checkout page layout",
+  "type": "multivariate",
+  "variants": [
+    { "key": "control", "value": { "layout": "classic" } },
+    { "key": "treatment", "value": { "layout": "one-page" } }
+  ],
+  "defaultVariant": "control",
+  "tags": ["checkout", "q4"]
+}
+```
+
+| Field | Notes |
+| :---- | :---- |
+| `key` | Required. Letters, digits, `.`, `_`, `:` and `-`, starting with a letter or digit; ≤ 500 characters. |
+| `type` | `boolean` (default) or `multivariate`. |
+| `variants` | Multivariate only: 2–20, unique keys (letters, digits, `.`, `_`, `-`), any JSON value. Boolean flags always have `on` (`true`) and `off` (`false`). |
+| `defaultVariant` | Default `off` for boolean flags, else the first variant. |
+| `tags` | ≤ 20; trimmed, de-duplicated and sorted. |
+
+The flag starts disabled in every environment, with a random `salt` for bucketing.
+
+**Response `201`:** the flag. **`400`:** validation. **`404`:** unknown application. **`409`:** the key exists.
+
+---
+
+### Get feature flag
+
+```
+GET /management/applications/{slug}/feature-flags/{key}
+```
+
+**Response `200`:**
+
+```json
+{
+  "key": "checkout-redesign",
+  "description": "New checkout page layout",
+  "type": "multivariate",
+  "variants": [ { "key": "control", "value": { "layout": "classic" } }, { "key": "treatment", "value": { "layout": "one-page" } } ],
+  "defaultVariant": "control",
+  "tags": ["checkout", "q4"],
+  "createdAt": "2026-11-23T09:00:00Z",
+  "updatedAt": "2026-11-23T09:00:00Z",
+  "environments": [
+    { "environment": "production", "enabled": false, "offVariant": null, "rules": [], "fallthrough": null, "version": 0, "updatedAt": null },
+    {
+      "environment": "staging",
+      "enabled": true,
+      "offVariant": "control",
+      "rules": [
+        { "conditions": [ { "attribute": "userId", "operator": "in", "values": ["u-123", "u-456"] } ], "serve": { "variant": "treatment" } }
+      ],
+      "fallthrough": { "rollout": [ { "variant": "control", "weight": 80 }, { "variant": "treatment", "weight": 20 } ], "bucketBy": "userId" },
+      "version": 4,
+      "updatedAt": "2026-11-23T09:30:00Z"
+    }
+  ]
+}
+```
+
+`version` 0 means the flag was never configured in that environment (disabled, serving the default variant).
+
+---
+
+### Update feature flag
+
+```
+PUT /management/applications/{slug}/feature-flags/{key}
+```
+
+```json
+{ "description": "Checkout v2", "tags": ["growth"], "variants": [ … ], "defaultVariant": "control" }
+```
+
+Replaces the description and tags, and for multivariate flags the variants and default variant. `variants` omitted keeps them. The type can't change. A variant still used by an environment's off variant, rules or fallthrough can't be removed.
+
+**Response `200`:** the flag. **`400`:** validation, a boolean flag's variants, an unknown default or a variant in use. **`404`:** unknown application or flag.
+
+---
+
+### Delete feature flag
+
+```
+DELETE /management/applications/{slug}/feature-flags/{key}
+```
+
+Deletes the flag and its state in every environment. Its history is kept.
+
+**Response `204`**. **`404`:** unknown application or flag.
+
+---
+
+### Set environment targeting
+
+```
+PUT /management/applications/{slug}/feature-flags/{key}/environments/{environmentSlug}
+```
+
+Replaces the flag's state in one environment and increments its `version`.
+
+```json
+{
+  "enabled": true,
+  "offVariant": "control",
+  "rules": [
+    {
+      "conditions": [
+        { "attribute": "email", "operator": "endsWith", "values": ["@straccini.com"] },
+        { "attribute": "country", "operator": "in", "values": ["IE", "BR", "PT"] }
+      ],
+      "serve": { "rollout": [ { "variant": "control", "weight": 50 }, { "variant": "treatment", "weight": 50 } ], "bucketBy": "userId" }
+    }
+  ],
+  "fallthrough": { "variant": "control" }
+}
+```
+
+| Rule | |
+| :--- | :- |
+| `serve` | Exactly one of `variant` or `rollout`. |
+| `rollout` | Weights 0–100, at most two decimals, summing to 100; each variant once. |
+| `rules` | ≤ 100, each with 1–20 conditions. |
+| `operator` | `in`, `notIn`, `equals`, `contains`, `startsWith`, `endsWith`, `matches` (a valid regex), `semVerGte`, `semVerLt` (exactly one valid version). |
+| `values` | 1–500. |
+| Variants | `offVariant`, served variants and rollout variants must exist on the flag. |
+
+**Response `200`:** the whole flag. **`400`:** validation. **`404`:** unknown application, flag or environment.
+
+---
+
+### Toggle
+
+```
+POST /management/applications/{slug}/feature-flags/{key}/environments/{environmentSlug}/toggle
+```
+
+Kill switch: `{ "enabled": false }` sets the state, and no body flips it. Targeting is kept. **Response `200`:** the whole flag.
+
+---
+
+### Evaluate (dry run)
+
+```
+POST /management/applications/{slug}/feature-flags/{key}/evaluate
+```
+
+```json
+{ "environment": "production", "context": { "userId": "u-789", "email": "gui@straccini.com", "country": "IE" } }
+```
+
+**Response `200`:**
+
+```json
+{ "variant": "treatment", "value": { "layout": "one-page" }, "reason": "RULE_MATCH", "matchedRuleIndex": 1, "bucket": 3127 }
+```
+
+`reason` is `OFF`, `RULE_MATCH`, `FALLTHROUGH` or `MISSING_BUCKET_BY`. `bucket` (0–9999) is set when a rollout bucketed the context. The context is not stored. Numbers and booleans in it are compared as their JSON text.
+
+---
+
+### Flag history
+
+```
+GET /management/applications/{slug}/feature-flags/{key}/history
+```
+
+Every change, newest first, kept after the flag is deleted.
+
+```json
+[
+  {
+    "change": "toggle",
+    "environment": "production",
+    "actor": "admin",
+    "changedAt": "2026-11-23T10:00:00Z",
+    "before": { "enabled": true, "offVariant": "control", "rules": [ … ], "fallthrough": { … }, "version": 3 },
+    "after": { "enabled": false, "offVariant": "control", "rules": [ … ], "fallthrough": { … }, "version": 4 }
+  }
+]
+```
+
+`change` is `create`, `update` (the flag itself), `environment` (targeting), `toggle` or `delete`. `before` is `null` for a create or a first configuration; `after` is `null` for a delete.
+
+**Response `404`:** unknown application, or no history for the key.
+
+---
+
 ## Reports
 
 Built from Consumer API reads. Every successful secret read is recorded per reading application environment and secret (when, roughly how often), buffered in memory and written every `ConsumerActivity:FlushIntervalSeconds`; reports also include reads not written yet. Upgrading seeds the rollup from successful `secret.read` [audit events](#audit-log), so history starts as far back as the audit log goes. Metadata only, never values.
@@ -1319,6 +1536,8 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | `configuration.create` / `.update` / `.delete` / `.rollback` | Configuration changes; every one also adds a [revision](#configuration-history). |
 | `global-secret.*`, `global-configuration.*` | The same for Global entries (`application` is `null`), including `global-secret.version-update` and the `.rollback` actions. |
 | `backup.create` | On-demand backup. |
+| `feature-flag.create`, `.update`, `.delete`, `.environment-update`, `.toggle` | Feature flag changes (also in the [flag history](#flag-history)). |
+| `feature-flag.read` | Consumer read of flag definitions (a read, like `secret.read`). |
 | `rotation.remind` | Rotation reminders sent on demand (`POST /management/secrets/expiring/notify`). Scheduled runs are logged, not audited. |
 | `secret.read`, `configuration.read` | Consumer API reads, by `app:<slug>`. Failed reads are recorded with their outcome. |
 | `auth.failed` | Request rejected by the admin or consumer API key check; `target` is the method and path. |

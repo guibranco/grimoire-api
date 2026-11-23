@@ -226,6 +226,54 @@ Rollup of successful Consumer API secret reads for the [usage reports](../api-re
 
 Unique per (`EnvironmentId`, `SecretId`) and (`EnvironmentId`, `GlobalSecretId`). The migration seeds it from successful `secret.read` audit events.
 
+### FeatureFlag
+
+A [feature flag](../feature-flags/) of one application. Variants, tags, rules and fallthrough are JSON text columns.
+
+| Column | Type | Notes |
+| :----- | :--- | :---- |
+| `Id` | `Guid` | Primary key |
+| `ApplicationId` | `Guid` | Owning application (cascade delete) |
+| `Key` | `string` | Unique per application |
+| `Description` | `string?` | — |
+| `Type` | `string` | `boolean` or `multivariate` |
+| `Variants` | JSON | `[{ "key", "value" }]`; `value` is raw JSON text |
+| `DefaultVariant` | `string` | — |
+| `Tags` | JSON | `["…"]` |
+| `Salt` | `string` | 16 hex characters, random per flag, mixed into bucketing |
+| `CreatedAt` / `UpdatedAt` | `DateTimeOffset` | — |
+
+### FeatureFlagEnvironmentState
+
+A flag's state in one environment; no row means disabled, serving the default variant.
+
+| Column | Type | Notes |
+| :----- | :--- | :---- |
+| `Id` | `Guid` | Primary key |
+| `FeatureFlagId` | `Guid` | Cascade delete; unique with `EnvironmentId` |
+| `EnvironmentId` | `Guid` | Cascade delete |
+| `Enabled` | `bool` | — |
+| `OffVariant` | `string?` | — |
+| `Rules` | JSON | Ordered targeting rules |
+| `Fallthrough` | JSON? | `{ "variant" }` or `{ "rollout", "bucketBy" }` |
+| `Version` | `int` | Incremented on every change; concurrency token |
+| `UpdatedAt` | `DateTimeOffset` | — |
+
+### FeatureFlagAuditEntry
+
+One change to a flag, kept after the flag is deleted (cascade-deleted only with the application).
+
+| Column | Type | Notes |
+| :----- | :--- | :---- |
+| `Id` | `Guid` | Primary key |
+| `ApplicationId` | `Guid` | — |
+| `FlagKey` | `string` | — |
+| `Environment` | `string?` | Environment slug for `environment` and `toggle` changes |
+| `Change` | `string` | `create`, `update`, `environment`, `toggle` or `delete` |
+| `Actor` | `string` | `admin` |
+| `ChangedAt` | `DateTimeOffset` | Stored as an integer |
+| `Before` / `After` | JSON? | Flag or environment state before and after |
+
 ## Global values and precedence
 
 When a consumer reads configuration or a secret, Grimoire resolves it in this order (highest wins):

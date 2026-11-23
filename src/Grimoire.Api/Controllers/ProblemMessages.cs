@@ -11,6 +11,8 @@ internal static class ProblemMessages
     public const string GlobalConfigurationNotFound = "Global configuration not found.";
     public const string SecretVersionNotFound = "Secret version not found.";
     public const string RevisionNotFound = "Revision not found.";
+    public const string FeatureFlagNotFound = "Feature flag not found.";
+    public const string FeatureFlagExists = "A feature flag with this key already exists.";
 
     public static string RevisionIsDelete(int revision) =>
         $"Revision {revision} deleted the key, so it has no value to restore.";

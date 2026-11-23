@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 namespace Grimoire.Api.ConsumerTracking;
 
 /// <summary>
-/// Records a successful (2xx) Consumer API read for the authenticated application and the
+/// Records a successful (2xx or 304) Consumer API read for the authenticated application and the
 /// environment the action resolved, plus the secret it returned (if any). Failed, aborted and unauthorised calls are not recorded here.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
@@ -27,7 +27,8 @@ public sealed class TrackConsumerActivityAttribute : Attribute, IResultFilter
             return;
 
         var http = context.HttpContext;
-        if (http.Response.StatusCode is < 200 or >= 300)
+        // 304: a conditional read (ETag) that found the client up to date still counts.
+        if (http.Response.StatusCode is (< 200 or >= 300) and not StatusCodes.Status304NotModified)
             return;
 
         if (
