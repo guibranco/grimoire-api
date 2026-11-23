@@ -1664,7 +1664,7 @@ Every successful (`2xx`) Consumer API read records, per application and environm
 
 Reads are buffered in memory and written to the database every `ConsumerActivity:FlushIntervalSeconds` (60 s by default) and on shutdown, so a consumer read never waits on a database write. Management responses include reads that haven't been flushed yet. If the process stops abruptly, the last interval of activity can be lost; this affects `lastSeenAt` only.
 
-Behind a reverse proxy, the recorded IP is the proxy's unless forwarded headers are configured.
+Behind a reverse proxy, the recorded IP comes from `X-Forwarded-For`. A proxy on the same host (loopback) is trusted out of the box; any other proxy must be listed in `ReverseProxy:KnownProxies` or `ReverseProxy:KnownNetworks`, otherwise the proxy's own IP is recorded. See [Running behind a reverse proxy](../architecture/security.md#running-behind-a-reverse-proxy).
 
 ---
 

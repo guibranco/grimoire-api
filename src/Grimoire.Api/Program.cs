@@ -7,6 +7,7 @@ using Grimoire.Api.Backups;
 using Grimoire.Api.ConsumerTracking;
 using Grimoire.Api.Logging;
 using Grimoire.Api.Middleware;
+using Grimoire.Api.Networking;
 using Grimoire.Api.Oidc;
 using Grimoire.Api.Rotation;
 using Grimoire.Api.Swagger;
@@ -14,6 +15,7 @@ using Grimoire.Core.Entities;
 using Grimoire.Infrastructure;
 using Grimoire.Infrastructure.Backups;
 using Grimoire.Infrastructure.Persistence;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -146,6 +148,12 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddProblemDetails();
 
+var reverseProxyOptions = builder
+    .Configuration.GetSection(ReverseProxyOptions.SectionName)
+    .Get<ReverseProxyOptions>()
+    ?? new ReverseProxyOptions();
+builder.Services.Configure<ForwardedHeadersOptions>(reverseProxyOptions.Apply);
+
 var app = builder.Build();
 
 // The server and --backup create backups, so they must have a valid backup configuration.
@@ -196,6 +204,13 @@ await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GrimoireDbContext>();
     await db.Database.MigrateAsync();
+}
+
+// Must run first so the audit log, consumer activity and request logs see the real
+// client IP instead of the reverse proxy's (127.0.0.1).
+if (reverseProxyOptions.Enabled)
+{
+    app.UseForwardedHeaders();
 }
 
 app.UseExceptionHandler();
