@@ -149,8 +149,10 @@ public class AccessTokensController(
             StatusOf(t, now)
         );
 
-    private static string StatusOf(AccessToken t, DateTimeOffset now) =>
-        t.IsRevoked ? "revoked"
-        : t.IsExpired(now) ? "expired"
-        : "active";
+    private static string StatusOf(AccessToken t, DateTimeOffset now)
+    {
+        if (t.IsRevoked)
+            return "revoked";
+        return t.IsExpired(now) ? "expired" : "active";
+    }
 }
