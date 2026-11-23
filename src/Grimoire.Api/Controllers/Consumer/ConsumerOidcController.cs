@@ -45,21 +45,14 @@ public class ConsumerOidcController(
             return Problem("GitHub OIDC is disabled on this instance.", statusCode: 404);
 
         var claims = await validator.ValidateAsync(req.Token, ct);
-        var app = claims is null ? null : await appRepo.GetBySlugAsync(req.Application, ct);
-        var policy =
-            app is null || claims is null
-                ? null
-                : TrustPolicyMatcher.BestMatch(await policies.ListAsync(app.Id, ct), claims);
-
-        if (claims is null || app is null || policy is null)
-        {
-            Record(claims, req.Application, null, 401, AuditOutcome.Forbidden);
-            return Problem(
-                "The OIDC token is invalid, or no trust policy allows it.",
-                statusCode: 401,
-                title: "Unauthorized"
-            );
-        }
+        if (claims is null)
+            return Reject(null, req.Application);
+        var app = await appRepo.GetBySlugAsync(req.Application, ct);
+        if (app is null)
+            return Reject(claims, req.Application);
+        var policy = TrustPolicyMatcher.BestMatch(await policies.ListAsync(app.Id, ct), claims);
+        if (policy is null)
+            return Reject(claims, app.Slug);
 
         var now = time.GetUtcNow();
         await tokens.DeleteExpiredIssuedAsync(now.AddDays(-1), ct);
@@ -85,6 +78,17 @@ public class ConsumerOidcController(
                 AccessTokenScopeNames.Names(policy.Scopes),
                 policy.Name
             )
+        );
+    }
+
+    /// <summary>The same <c>401</c> whatever failed, so callers can't probe which part did.</summary>
+    private ObjectResult Reject(GitHubOidcClaims? claims, string? application)
+    {
+        Record(claims, application, null, 401, AuditOutcome.Forbidden);
+        return Problem(
+            "The OIDC token is invalid, or no trust policy allows it.",
+            statusCode: 401,
+            title: "Unauthorized"
         );
     }
 

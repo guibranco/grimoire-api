@@ -12,6 +12,8 @@ public class GitHubOidcTests(GrimoireWebApplicationFactory factory)
     private static readonly string[] StagingOnly = ["staging"];
     private static readonly string[] ProductionOnly = ["production"];
     private static readonly string[] UnknownEnvironment = ["nope"];
+    private static readonly string[] ProductionMixedCase = ["Production"];
+    private static readonly string[] SecretsAndFlags = ["secrets", "feature-flags"];
 
     private async Task<string> AppAsync()
     {
@@ -298,8 +300,8 @@ public class GitHubOidcTests(GrimoireWebApplicationFactory factory)
                 repository = "guibranco/demo",
                 refPattern = "refs/tags/v*",
                 gitHubEnvironment = "release",
-                environments = new[] { "Production" },
-                scopes = new[] { "secrets", "feature-flags" },
+                environments = ProductionMixedCase,
+                scopes = SecretsAndFlags,
                 tokenLifetimeMinutes = 60,
             }
         );
