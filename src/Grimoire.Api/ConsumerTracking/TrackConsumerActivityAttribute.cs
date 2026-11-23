@@ -7,11 +7,17 @@ namespace Grimoire.Api.ConsumerTracking;
 
 /// <summary>
 /// Records a successful (2xx) Consumer API read for the authenticated application and the
-/// environment the action resolved. Failed, aborted and unauthorised calls are not recorded here.
+/// environment the action resolved, plus the secret it returned (if any). Failed, aborted and unauthorised calls are not recorded here.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public sealed class TrackConsumerActivityAttribute : Attribute, IResultFilter
 {
+    /// <summary>
+    /// <see cref="HttpContext.Items"/> key for the <see cref="ResolvedSecretVersion"/> a consumer
+    /// secret read returned, recorded for the usage reports once the response succeeds.
+    /// </summary>
+    public const string SecretReadContextKey = "Grimoire.SecretRead";
+
     public void OnResultExecuting(ResultExecutingContext context) { }
 
     public void OnResultExecuted(ResultExecutedContext context)
@@ -37,5 +43,9 @@ public sealed class TrackConsumerActivityAttribute : Attribute, IResultFilter
             http.Request.Headers.UserAgent.ToString(),
             http.Connection.RemoteIpAddress?.ToString()
         );
+
+        if (http.Items[SecretReadContextKey] is ResolvedSecretVersion secret)
+            http.RequestServices.GetRequiredService<ISecretReadTracker>()
+                .Record(app.Id, env.Id, secret.Source, secret.SecretId);
     }
 }

@@ -107,7 +107,8 @@ public class EffectiveConfigurationService(
                     version.NotBefore,
                     version.Version,
                     version.CreatedAt,
-                    ValueSource.Application
+                    ValueSource.Application,
+                    appSecret.Id
                 );
         }
 
@@ -134,7 +135,8 @@ public class EffectiveConfigurationService(
                 globalVersion.NotBefore,
                 globalVersion.Version,
                 globalVersion.CreatedAt,
-                ValueSource.Global
+                ValueSource.Global,
+                globalSecret.Id
             );
     }
 
@@ -146,7 +148,8 @@ public class EffectiveConfigurationService(
         DateTimeOffset? notBefore,
         int version,
         DateTimeOffset createdAt,
-        ValueSource source
+        ValueSource source,
+        Guid secretId
     ) =>
         new(
             SecretResolutionStatus.Resolved,
@@ -158,7 +161,8 @@ public class EffectiveConfigurationService(
                 notBefore,
                 version,
                 createdAt,
-                source
+                source,
+                secretId
             )
         );
 }

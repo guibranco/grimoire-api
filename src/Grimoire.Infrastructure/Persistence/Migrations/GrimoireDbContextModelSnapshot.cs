@@ -477,6 +477,52 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.ToTable("Secrets");
                 });
 
+            modelBuilder.Entity("Grimoire.Core.Entities.SecretRead", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EnvironmentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("GlobalSecretId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("LastReadAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ReadCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("SecretId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId");
+
+                    b.HasIndex("GlobalSecretId");
+
+                    b.HasIndex("SecretId");
+
+                    b.HasIndex("EnvironmentId", "GlobalSecretId")
+                        .IsUnique()
+                        .HasFilter("\"GlobalSecretId\" IS NOT NULL");
+
+                    b.HasIndex("EnvironmentId", "SecretId")
+                        .IsUnique()
+                        .HasFilter("\"SecretId\" IS NOT NULL");
+
+                    b.ToTable("SecretReads", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SecretReads_OneSecret", "(\"SecretId\" IS NULL) <> (\"GlobalSecretId\" IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Grimoire.Core.Entities.SecretVersion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -586,6 +632,35 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Application");
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.SecretRead", b =>
+                {
+                    b.HasOne("Grimoire.Core.Entities.Application", "Application")
+                        .WithMany()
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Grimoire.Core.Entities.AppEnvironment", "Environment")
+                        .WithMany()
+                        .HasForeignKey("EnvironmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Grimoire.Core.Entities.GlobalSecret", null)
+                        .WithMany()
+                        .HasForeignKey("GlobalSecretId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Grimoire.Core.Entities.Secret", null)
+                        .WithMany()
+                        .HasForeignKey("SecretId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Application");
+
+                    b.Navigation("Environment");
                 });
 
             modelBuilder.Entity("Grimoire.Core.Entities.SecretVersion", b =>

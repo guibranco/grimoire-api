@@ -210,6 +210,22 @@ Remembers which [rotation reminders](../operations/rotation-reminders.md) were d
 | `Key` | `string` | Unique. Scope, secret id, environment, reason, due date (ticks) and threshold. |
 | `SentAt` | `DateTimeOffset` | Stored as an integer. Rows older than `RotationReminders:KeepSentDays` are deleted. |
 
+### SecretRead
+
+Rollup of successful Consumer API secret reads for the [usage reports](../api-reference/management-api.md#reports): one row per reading application environment and secret. Holds no values.
+
+| Column | Type | Notes |
+| :----- | :--- | :---- |
+| `Id` | `Guid` | Primary key |
+| `ApplicationId` | `Guid` | Reading application (cascade delete) |
+| `EnvironmentId` | `Guid` | Reading environment (cascade delete) |
+| `SecretId` | `Guid?` | Application secret read (cascade delete) |
+| `GlobalSecretId` | `Guid?` | Global secret read (cascade delete). Exactly one of the two is set. |
+| `LastReadAt` | `DateTimeOffset` | Stored as an integer, like `AuditEvents.OccurredAt` |
+| `ReadCount` | `long` | Approximate; incremented per flush |
+
+Unique per (`EnvironmentId`, `SecretId`) and (`EnvironmentId`, `GlobalSecretId`). The migration seeds it from successful `secret.read` audit events.
+
 ## Global values and precedence
 
 When a consumer reads configuration or a secret, Grimoire resolves it in this order (highest wins):
