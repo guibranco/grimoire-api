@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Grimoire.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(GrimoireDbContext))]
-    [Migration("20261123010417_AddConfigurationRevisions")]
+    [Migration("20261123011612_AddConfigurationRevisions")]
     partial class AddConfigurationRevisions
     {
         /// <inheritdoc />
@@ -245,7 +245,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Key")
                         .IsRequired()
-                        .HasMaxLength(200)
+                        .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Revision")
@@ -260,8 +260,10 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Property<string>("Value")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("ValueType")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("ValueType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 

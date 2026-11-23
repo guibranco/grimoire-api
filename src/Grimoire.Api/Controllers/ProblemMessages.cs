@@ -7,4 +7,11 @@ internal static class ProblemMessages
     public const string EnvironmentNotFound = "Environment not found.";
     public const string SecretNotFound = "Secret not found.";
     public const string GlobalSecretNotFound = "Global secret not found.";
+    public const string ConfigurationNotFound = "Configuration not found.";
+    public const string GlobalConfigurationNotFound = "Global configuration not found.";
+    public const string SecretVersionNotFound = "Secret version not found.";
+    public const string RevisionNotFound = "Revision not found.";
+
+    public static string RevisionIsDelete(int revision) =>
+        $"Revision {revision} deleted the key, so it has no value to restore.";
 }

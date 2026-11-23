@@ -377,4 +377,108 @@ public class SecretVersionLifecycleTests(GrimoireWebApplicationFactory factory)
             .Select(i => i["version"]!.GetValue<int>());
         Assert.Equal<int>([1, 2], writes.OrderBy(v => v));
     }
+
+    [Fact]
+    public async Task Rollback_CopiesAnOlderValueIntoANewCurrentVersion()
+    {
+        var (slug, apiKey, secret) = await AppWithSecretAsync("first");
+        (await AddValueAsync(slug, secret, "second")).EnsureSuccessStatusCode();
+        Assert.Equal("second", await ConsumerValueAsync(apiKey, secret));
+
+        var rollback = await Client.PostAsync(
+            $"/management/applications/{slug}/secrets/{secret}/versions/local/1/rollback",
+            null
+        );
+        Assert.Equal(HttpStatusCode.OK, rollback.StatusCode);
+        var body = (await rollback.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal(3, body["version"]!.GetValue<int>());
+        Assert.True(body["isCurrent"]!.GetValue<bool>());
+        Assert.Null(body["value"]);
+        Assert.Equal("first", await ConsumerValueAsync(apiKey, secret));
+
+        var audit = await Client.GetFromJsonAsync<JsonObject>(
+            $"/management/audit?application={slug}&action={AuditActions.SecretRollback}"
+        );
+        Assert.Equal(3, audit!["items"]![0]!["version"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task Rollback_WithGracePeriod_ExpiresTheOtherVersions()
+    {
+        var (slug, _, secret) = await AppWithSecretAsync("first");
+        (await AddValueAsync(slug, secret, "second")).EnsureSuccessStatusCode();
+
+        (
+            await Client.PostAsJsonAsync(
+                $"/management/applications/{slug}/secrets/{secret}/versions/local/1/rollback",
+                new { previousVersionGraceDays = 2 }
+            )
+        ).EnsureSuccessStatusCode();
+
+        var versions = await VersionsAsync(slug, secret);
+        Assert.Null(Version(versions, 3)["expiresAt"]);
+        Assert.NotNull(Version(versions, 2)["expiresAt"]);
+        Assert.NotNull(Version(versions, 1)["expiresAt"]);
+    }
+
+    [Fact]
+    public async Task Rollback_UnknownVersion_Returns404_AndBadGrace_Returns400()
+    {
+        var (slug, _, secret) = await AppWithSecretAsync();
+        var url = $"/management/applications/{slug}/secrets/{secret}/versions/local";
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await Client.PostAsync($"{url}/9/rollback", null)).StatusCode
+        );
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            (
+                await Client.PostAsJsonAsync(
+                    $"{url}/1/rollback",
+                    new { previousVersionGraceDays = -1 }
+                )
+            ).StatusCode
+        );
+    }
+
+    [Fact]
+    public async Task GlobalSecret_Rollback()
+    {
+        var name = TestHelpers.UniqueName("G");
+        await TestHelpers.CreateGlobalSecretAsync(Client, name, ("*", "g1", true));
+        (
+            await Client.PostAsJsonAsync(
+                $"/management/global/secrets/{name}/values",
+                new[] { new { environmentSlug = "*", value = "g2" } }
+            )
+        ).EnsureSuccessStatusCode();
+
+        var rollback = await Client.PostAsync(
+            $"/management/global/secrets/{name}/versions/*/1/rollback",
+            null
+        );
+        Assert.Equal(HttpStatusCode.OK, rollback.StatusCode);
+        Assert.Equal(
+            3,
+            (await rollback.Content.ReadFromJsonAsync<JsonObject>())!["version"]!.GetValue<int>()
+        );
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (
+                await Client.PostAsync(
+                    $"/management/global/secrets/{name}/versions/*/7/rollback",
+                    null
+                )
+            ).StatusCode
+        );
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (
+                await Client.PostAsync(
+                    "/management/global/secrets/NOPE/versions/*/1/rollback",
+                    null
+                )
+            ).StatusCode
+        );
+    }
 }

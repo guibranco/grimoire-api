@@ -6,6 +6,7 @@ using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Grimoire.Api.Controllers.Management;
 
@@ -265,6 +266,58 @@ public class SecretsController(
 
     internal static DateTimeOffset? GraceExpiry(int? graceDays, DateTimeOffset now) =>
         graceDays is { } days ? now.AddDays(days) : null;
+
+    /// <summary>
+    /// Rolls back to an earlier version: copies its stored value into a new version, which becomes
+    /// the current one. The value is never decrypted or returned. Optionally expires the other
+    /// versions after a grace period, as when setting a value.
+    /// </summary>
+    [Audited(AuditActions.SecretRollback)]
+    [HttpPost("{name}/versions/{environmentSlug}/{version:int}/rollback")]
+    [ProducesResponseType<SecretVersionMetadata>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Rollback(
+        string slug,
+        string name,
+        string environmentSlug,
+        int version,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RollbackSecretRequest? req,
+        CancellationToken ct
+    )
+    {
+        var (app, secret, missing) = await FindSecretAsync(slug, name, ct);
+        if (missing is not null)
+            return missing;
+        var env = await envRepo.GetBySlugAsync(app.Id, environmentSlug, ct);
+        if (env is null)
+            return Problem(ProblemMessages.EnvironmentNotFound, statusCode: 404);
+
+        var source = await secretRepo.GetVersionAsync(secret.Id, env.Id, version, ct);
+        if (source is null)
+            return Problem(ProblemMessages.SecretVersionNotFound, statusCode: 404);
+
+        var now = DateTimeOffset.UtcNow;
+        var next = await secretRepo.GetNextVersionNumberAsync(secret.Id, env.Id, ct);
+        secret.UpdatedAt = now;
+        await secretRepo.AddVersionAsync(
+            new SecretVersion
+            {
+                Id = Guid.NewGuid(),
+                SecretId = secret.Id,
+                EnvironmentId = env.Id,
+                EncryptedValue = source.EncryptedValue,
+                IsEnabled = true,
+                Version = next,
+                CreatedAt = now,
+            },
+            GraceExpiry(req?.PreviousVersionGraceDays, now),
+            ct
+        );
+        AuditContext.SetVersion(HttpContext, next);
+
+        var versions = await secretRepo.GetVersionsAsync(secret.Id, env.Id, ct);
+        return Ok(SecretVersionEditor.ToMetadata(versions, now).Single(v => v.Version == next));
+    }
 
     [Audited(AuditActions.SecretDelete)]
     [HttpDelete("{name}")]

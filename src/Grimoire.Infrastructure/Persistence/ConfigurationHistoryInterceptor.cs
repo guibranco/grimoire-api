@@ -78,11 +78,13 @@ public sealed class ConfigurationHistoryInterceptor(
                                 && r.EnvironmentKey == p.EnvironmentKey
                                 && r.Key == p.Key
                             )
-                            .MaxAsync(r => (int?)r.Revision, ct) ?? 0
+                            .MaxAsync(r => (int?)r.Revision, ct)
+                        ?? 0
                     ) + 1;
             next[id] = revision + 1;
 
-            var isRollback = change.RollbackOf is not null && p.Change != ConfigurationChanges.Delete;
+            var isRollback =
+                change.RollbackOf is not null && p.Change != ConfigurationChanges.Delete;
             db.ConfigurationRevisions.Add(
                 new ConfigurationRevision
                 {

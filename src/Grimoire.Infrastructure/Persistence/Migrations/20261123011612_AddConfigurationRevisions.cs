@@ -18,32 +18,43 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     Scope = table.Column<int>(type: "INTEGER", nullable: false),
                     ApplicationId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    EnvironmentKey = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Key = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    EnvironmentKey = table.Column<string>(
+                        type: "TEXT",
+                        maxLength: 100,
+                        nullable: false
+                    ),
+                    Key = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
                     Revision = table.Column<int>(type: "INTEGER", nullable: false),
                     Change = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
                     Value = table.Column<string>(type: "TEXT", nullable: true),
-                    ValueType = table.Column<int>(type: "INTEGER", nullable: false),
-                    Description = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: true),
+                    ValueType = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
+                    Description = table.Column<string>(
+                        type: "TEXT",
+                        maxLength: 1000,
+                        nullable: true
+                    ),
                     RolledBackFrom = table.Column<int>(type: "INTEGER", nullable: true),
                     ChangedBy = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    ChangedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
+                    ChangedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ConfigurationRevisions", x => x.Id);
-                });
+                }
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_ConfigurationRevisions_ApplicationId",
                 table: "ConfigurationRevisions",
-                column: "ApplicationId");
+                column: "ApplicationId"
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_ConfigurationRevisions_Scope_EnvironmentKey_Key_Revision",
                 table: "ConfigurationRevisions",
                 columns: new[] { "Scope", "EnvironmentKey", "Key", "Revision" },
-                unique: true);
+                unique: true
+            );
 
             // History starts from today's values: one "baseline" revision per existing entry.
             const string newId =
@@ -74,8 +85,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "ConfigurationRevisions");
+            migrationBuilder.DropTable(name: "ConfigurationRevisions");
         }
     }
 }

@@ -79,3 +79,13 @@ public class SetSecretValuesRequestValidator : AbstractValidator<List<SetSecretV
         RuleForEach(x => x).SetValidator(new SetSecretValueRequestValidator());
     }
 }
+
+public class RollbackSecretRequestValidator : AbstractValidator<RollbackSecretRequest>
+{
+    public RollbackSecretRequestValidator()
+    {
+        RuleFor(x => x.PreviousVersionGraceDays)
+            .InclusiveBetween(0, SecretVersionRules.MaxGraceDays)
+            .When(x => x.PreviousVersionGraceDays.HasValue);
+    }
+}

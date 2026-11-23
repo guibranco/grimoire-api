@@ -242,7 +242,7 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Key")
                         .IsRequired()
-                        .HasMaxLength(200)
+                        .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Revision")
@@ -257,8 +257,10 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Property<string>("Value")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("ValueType")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("ValueType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
