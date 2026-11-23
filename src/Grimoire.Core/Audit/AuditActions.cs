@@ -60,6 +60,7 @@ public static class AuditActions
     public const string GlobalFeatureFlagEnvironmentUpdate =
         "global-feature-flag.environment-update";
     public const string GlobalFeatureFlagToggle = "global-feature-flag.toggle";
+    public const string ImportApply = "import.apply";
     public const string BackupCreate = "backup.create";
     public const string RotationRemindersRun = "rotation.remind";
     public const string AuthFailed = "auth.failed";
@@ -123,6 +124,7 @@ public static class AuditActions
             FeatureFlagTarget
         ),
         [GlobalFeatureFlagToggle] = ("Toggled global feature flag", FeatureFlagTarget),
+        [ImportApply] = ("Imported values", "import"),
         [BackupCreate] = ("Created backup", "backup"),
         [RotationRemindersRun] = ("Sent rotation reminders", null),
         [AuthFailed] = ("Rejected unauthenticated request", null),

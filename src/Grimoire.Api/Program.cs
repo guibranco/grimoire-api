@@ -63,6 +63,7 @@ builder.Services.AddScoped<IPasswordHasher<AccessToken>, PasswordHasher<AccessTo
 builder.Services.AddSingleton<AccessTokenUsageThrottle>();
 builder.Services.AddSingleton<IssuedTokenCleanup>();
 builder.Services.AddScoped<AccessTokenFactory>();
+builder.Services.AddSingleton<Grimoire.Api.Import.Importer>();
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<IConfiguration>()
         .GetSection(GitHubOidcOptions.SectionName)
