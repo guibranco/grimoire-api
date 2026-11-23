@@ -16,6 +16,7 @@ namespace Grimoire.Api.Controllers.Management;
 /// configuration. A dry run (the default) only returns the plan.
 /// </summary>
 [ApiController]
+[Route("management")]
 [Tags("Management - Import")]
 public class ImportController(Importer importer, IEncryptionService encryption) : ControllerBase
 {
@@ -30,7 +31,7 @@ public class ImportController(Importer importer, IEncryptionService encryption) 
     /// <param name="secrets">Secrets.</param>
     /// <param name="ct">Request cancellation.</param>
     [Audited(AuditActions.ImportApply)]
-    [HttpPost("management/applications/{slug}/import")]
+    [HttpPost("applications/{slug}/import")]
     [ProducesResponseType<ImportPlanResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -70,7 +71,7 @@ public class ImportController(Importer importer, IEncryptionService encryption) 
     /// <param name="secrets">Global secrets.</param>
     /// <param name="ct">Request cancellation.</param>
     [Audited(AuditActions.ImportApply)]
-    [HttpPost("management/global/import")]
+    [HttpPost("global/import")]
     [ProducesResponseType<ImportPlanResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ImportGlobal(

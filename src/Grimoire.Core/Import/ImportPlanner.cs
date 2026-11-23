@@ -78,9 +78,7 @@ public static class ImportPlanner
         values
             .Select(v =>
             {
-                var kind = kinds.TryGetValue(v.Key, out var k)
-                    ? k
-                    : (Matches(v.Key, secretKeys) ? ImportKind.Secret : ImportKind.Configuration);
+                var kind = KindFor(v.Key, secretKeys, kinds);
                 var action = excluded.Contains(v.Key)
                     ? ImportAction.Excluded
                     : ActionFor(v, kind, snapshot, overwrite);
@@ -111,10 +109,23 @@ public static class ImportPlanner
         return Compare(entry.Value == v.Value && entry.Type == v.Type, overwrite);
     }
 
-    private static ImportAction Compare(bool same, bool overwrite) =>
-        same ? ImportAction.Unchanged
-        : overwrite ? ImportAction.Update
-        : ImportAction.Skip;
+    private static ImportKind KindFor(
+        string key,
+        IEnumerable<string> secretKeys,
+        IReadOnlyDictionary<string, ImportKind> kinds
+    )
+    {
+        if (kinds.TryGetValue(key, out var kind))
+            return kind;
+        return Matches(key, secretKeys) ? ImportKind.Secret : ImportKind.Configuration;
+    }
+
+    private static ImportAction Compare(bool same, bool overwrite)
+    {
+        if (same)
+            return ImportAction.Unchanged;
+        return overwrite ? ImportAction.Update : ImportAction.Skip;
+    }
 
     /// <summary>Whether <paramref name="key"/> matches any glob (<c>*</c> = any run of characters), ignoring case.</summary>
     public static bool Matches(string key, IEnumerable<string> globs) =>

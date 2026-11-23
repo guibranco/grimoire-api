@@ -27,46 +27,59 @@ internal static class PhpTokenizer
         var i = 0;
         while (i < src.Length)
         {
-            var c = src[i];
-            if (c == '\n')
-            {
-                line++;
-                i++;
-            }
-            else if (char.IsWhiteSpace(c))
-                i++;
-            else if (StartsWith(src, i, "<?php"))
-                i += 5;
-            else if (StartsWith(src, i, "?>"))
-                i += 2;
-            else if (c == '#' || StartsWith(src, i, "//"))
-                i = SkipLine(src, i);
-            else if (StartsWith(src, i, "/*"))
-                i = SkipBlock(src, i, ref line);
-            else if (c is '\'' or '"')
-                tokens.Add(new Token(TokenKind.String, ReadString(src, ref i, ref line), line));
-            else if (char.IsDigit(c))
-                tokens.Add(new Token(TokenKind.Number, ReadWhile(src, ref i, IsNumberChar), line));
-            else if (c == '$')
-            {
-                i++;
-                tokens.Add(new Token(TokenKind.Variable, ReadWhile(src, ref i, IsWordChar), line));
-            }
-            else if (IsWordChar(c))
-                tokens.Add(new Token(TokenKind.Word, ReadWhile(src, ref i, IsWordChar), line));
-            else if (StartsWith(src, i, "=>"))
-            {
-                tokens.Add(new Token(TokenKind.Punct, "=>", line));
-                i += 2;
-            }
+            var skipped = SkipTrivia(src, i, ref line);
+            if (skipped > i)
+                i = skipped;
             else
-            {
-                tokens.Add(new Token(TokenKind.Punct, c.ToString(), line));
-                i++;
-            }
+                tokens.Add(ReadToken(src, ref i, ref line));
         }
         tokens.Add(new Token(TokenKind.End, "", line));
         return tokens;
+    }
+
+    /// <summary>The index after whitespace, a comment or a PHP tag at <paramref name="i"/>, or <paramref name="i"/> if there is none.</summary>
+    private static int SkipTrivia(string src, int i, ref int line)
+    {
+        var c = src[i];
+        if (c == '\n')
+        {
+            line++;
+            return i + 1;
+        }
+        if (char.IsWhiteSpace(c))
+            return i + 1;
+        if (StartsWith(src, i, "<?php"))
+            return i + 5;
+        if (StartsWith(src, i, "?>"))
+            return i + 2;
+        if (c == '#' || StartsWith(src, i, "//"))
+            return SkipLine(src, i);
+        if (StartsWith(src, i, "/*"))
+            return SkipBlock(src, i, ref line);
+        return i;
+    }
+
+    private static Token ReadToken(string src, ref int i, ref int line)
+    {
+        var c = src[i];
+        if (c is '\'' or '"')
+            return new Token(TokenKind.String, ReadString(src, ref i, ref line), line);
+        if (char.IsDigit(c))
+            return new Token(TokenKind.Number, ReadWhile(src, ref i, IsNumberChar), line);
+        if (c == '$')
+        {
+            i++;
+            return new Token(TokenKind.Variable, ReadWhile(src, ref i, IsWordChar), line);
+        }
+        if (IsWordChar(c))
+            return new Token(TokenKind.Word, ReadWhile(src, ref i, IsWordChar), line);
+        if (StartsWith(src, i, "=>"))
+        {
+            i += 2;
+            return new Token(TokenKind.Punct, "=>", line);
+        }
+        i++;
+        return new Token(TokenKind.Punct, c.ToString(), line);
     }
 
     private static bool StartsWith(string s, int i, string value) =>

@@ -17,8 +17,10 @@ public static partial class EnvParser
     {
         var lines = content.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
         var values = new List<ImportedValue>();
-        for (var i = 0; i < lines.Length; i++)
+        var next = 0;
+        while (next < lines.Length)
         {
+            var i = next++;
             var line = lines[i].Trim();
             if (line.Length == 0 || line.StartsWith('#'))
                 continue;
@@ -29,7 +31,10 @@ public static partial class EnvParser
             var raw = m.Groups[2].Value.TrimStart();
             string value;
             if (raw.StartsWith('"'))
-                (value, i) = ReadDoubleQuoted(lines, i, raw);
+            {
+                (value, var endLine) = ReadDoubleQuoted(lines, i, raw);
+                next = endLine + 1;
+            }
             else if (raw.StartsWith('\''))
                 value = ReadSingleQuoted(raw, i);
             else
@@ -65,17 +70,20 @@ public static partial class EnvParser
         var current = line;
         while (true)
         {
-            for (var j = 0; j < text.Length; j++)
+            var j = 0;
+            while (j < text.Length)
             {
                 var c = text[j];
                 if (c == '"')
                     return (sb.ToString(), current);
                 if (c == '\\' && j + 1 < text.Length)
                 {
-                    sb.Append(Escape(text[++j]));
+                    sb.Append(Escape(text[j + 1]));
+                    j += 2;
                     continue;
                 }
                 sb.Append(c);
+                j++;
             }
             if (++current >= lines.Length)
                 throw new ImportParseException($"Line {line + 1}: unterminated double quote.");

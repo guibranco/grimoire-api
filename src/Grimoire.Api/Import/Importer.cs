@@ -20,7 +20,8 @@ public sealed class Importer(TimeProvider time)
         CancellationToken ct
     )
     {
-        ImportParser.TryParseFormat(req.Format, out var format);
+        if (!ImportParser.TryParseFormat(req.Format, out var format))
+            return (null, $"Unknown format '{req.Format}'.");
         ImportParseResult parsed;
         try
         {
@@ -31,32 +32,14 @@ public sealed class Importer(TimeProvider time)
             return (null, ex.Message);
         }
 
-        var values = new List<ImportedValue>();
-        foreach (var v in parsed.Values)
-        {
-            if (
-                !ConfigurationValueNormalizer.TryNormalize(
-                    v.Type,
-                    v.Value,
-                    out var normalized,
-                    out var error
-                )
-            )
-                return (null, $"'{v.Key}': {error}");
-            values.Add(v with { Value = normalized });
-        }
+        var (values, normalizeError) = Normalize(parsed.Values);
+        if (normalizeError is not null)
+            return (null, normalizeError);
 
         var secretKeys = req.SecretKeys is { Count: > 0 }
             ? req.SecretKeys
             : ImportPlanner.DefaultSecretKeys.ToList();
-        var kinds = (req.Kinds ?? []).ToDictionary(
-            k => k.Key,
-            k =>
-                k.Value.Equals("secret", StringComparison.OrdinalIgnoreCase)
-                    ? ImportKind.Secret
-                    : ImportKind.Configuration,
-            StringComparer.Ordinal
-        );
+        var kinds = KindOverrides(req.Kinds);
         var excluded = (req.Exclude ?? []).ToHashSet(StringComparer.Ordinal);
         var overwrite = string.Equals(
             req.OnConflict,
@@ -118,6 +101,40 @@ public sealed class Importer(TimeProvider time)
             null
         );
     }
+
+    /// <summary>The values with each normalised for its type, or the first value that isn't valid.</summary>
+    private static (List<ImportedValue> Values, string? Error) Normalize(
+        IEnumerable<ImportedValue> parsed
+    )
+    {
+        var values = new List<ImportedValue>();
+        foreach (var v in parsed)
+        {
+            if (
+                !ConfigurationValueNormalizer.TryNormalize(
+                    v.Type,
+                    v.Value,
+                    out var normalized,
+                    out var error
+                )
+            )
+                return ([], $"'{v.Key}': {error}");
+            values.Add(v with { Value = normalized });
+        }
+        return (values, null);
+    }
+
+    private static Dictionary<string, ImportKind> KindOverrides(
+        IReadOnlyDictionary<string, string>? kinds
+    ) =>
+        (kinds ?? new Dictionary<string, string>()).ToDictionary(
+            k => k.Key,
+            k =>
+                k.Value.Equals("secret", StringComparison.OrdinalIgnoreCase)
+                    ? ImportKind.Secret
+                    : ImportKind.Configuration,
+            StringComparer.Ordinal
+        );
 
     /// <summary>The first key longer than its kind allows, as an error message.</summary>
     private static string? TooLong(IEnumerable<ImportPlanItem> items) =>
