@@ -15,6 +15,7 @@ namespace Grimoire.Api.Middleware;
 public class ConsumerApiKeyMiddleware(RequestDelegate next)
 {
     private const string Prefix = "/consumer";
+    private const string OidcPrefix = "/consumer/oidc";
     public const string AppContextKey = "GrimoireApplication";
 
     /// <summary>The access token used, when the request was not made with the API key.</summary>
@@ -33,7 +34,11 @@ public class ConsumerApiKeyMiddleware(RequestDelegate next)
         TimeProvider time
     )
     {
-        if (!context.Request.Path.StartsWithSegments(Prefix))
+        // The OIDC exchange is its own credential (guibranco/grimoire-api#75).
+        if (
+            !context.Request.Path.StartsWithSegments(Prefix)
+            || context.Request.Path.StartsWithSegments(OidcPrefix)
+        )
         {
             await next(context);
             return;

@@ -1,11 +1,9 @@
-using System.Security.Cryptography;
 using Grimoire.Api.AccessTokens;
 using Grimoire.Api.Audit;
 using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces.Repositories;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Grimoire.Api.Controllers.Management;
@@ -20,15 +18,11 @@ namespace Grimoire.Api.Controllers.Management;
 [Tags("Management - Access Tokens")]
 public class AccessTokensController(
     IApplicationRepository appRepo,
-    IEnvironmentRepository envRepo,
     IAccessTokenRepository tokens,
-    IPasswordHasher<AccessToken> hasher,
+    AccessTokenFactory factory,
     TimeProvider time
 ) : ControllerBase
 {
-    private const string Base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    private const int SecretLength = 40;
-
     /// <summary>The application's tokens, newest first; never their values or hashes.</summary>
     [HttpGet]
     [ProducesResponseType<IEnumerable<AccessTokenResponse>>(StatusCodes.Status200OK)]
@@ -65,42 +59,27 @@ public class AccessTokensController(
         if (await tokens.NameExistsAsync(app.Id, name, ct))
             return Problem(ProblemMessages.AccessTokenExists, statusCode: 409, title: "Conflict");
 
-        List<string>? environments = null;
-        if (req.Environments is not null)
+        var (environments, unknown) = await factory.ResolveEnvironmentsAsync(
+            app.Id,
+            req.Environments,
+            ct
+        );
+        if (unknown.Count > 0)
         {
-            var known = (await envRepo.GetByApplicationAsync(app.Id, ct))
-                .Select(e => e.Slug)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var unknown = req.Environments.Where(e => !known.Contains(e)).ToList();
-            if (unknown.Count > 0)
-            {
-                ModelState.AddModelError(
-                    nameof(req.Environments),
-                    $"Unknown environment(s): {string.Join(", ", unknown)}."
-                );
-                return ValidationProblem(ModelState);
-            }
-            environments = req
-                .Environments.Select(e => e.ToLowerInvariant())
-                .Distinct()
-                .Order(StringComparer.Ordinal)
-                .ToList();
+            ModelState.AddModelError(
+                nameof(req.Environments),
+                $"Unknown environment(s): {string.Join(", ", unknown)}."
+            );
+            return ValidationProblem(ModelState);
         }
 
-        var secret = RandomNumberGenerator.GetString(Base62, SecretLength);
-        var plain = AccessToken.TokenPrefix + secret;
-        var token = new AccessToken
-        {
-            Id = Guid.NewGuid(),
-            ApplicationId = app.Id,
-            Name = name,
-            Prefix = secret[..AccessToken.LookupLength],
-            EnvironmentSlugs = environments,
-            Scopes = AccessTokenScopeNames.Parse(req.Scopes),
-            ExpiresAt = req.ExpiresAt?.ToUniversalTime(),
-            CreatedAt = time.GetUtcNow(),
-        };
-        token.TokenHash = hasher.HashPassword(token, plain);
+        var (token, plain) = factory.Create(
+            app.Id,
+            name,
+            environments,
+            AccessTokenScopeNames.Parse(req.Scopes),
+            req.ExpiresAt
+        );
         await tokens.AddAsync(token, ct);
 
         return CreatedAtAction(

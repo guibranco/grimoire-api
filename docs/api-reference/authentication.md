@@ -81,6 +81,33 @@ curl -X POST https://grimoire.example.com/management/applications/my-app/rotate-
 
 The response contains the new plain key. The old key is invalidated immediately.
 
+### Access tokens
+
+Instead of the application key, give each consumer its own [access token]({{ site.baseurl }}/api-reference/management-api/#access-tokens) (`grm_tok_…`, same `X-Api-Key` header), limited to some environments and kinds of data, optionally expiring and revocable on its own.
+
+### GitHub Actions (OIDC)
+
+Workflows need no stored Grimoire secret at all: they exchange the OIDC token GitHub gives every job for a short-lived access token. Each application's [trust policies]({{ site.baseurl }}/api-reference/management-api/#trust-policies-github-oidc) decide which repositories, refs and GitHub environments may, and what the token can read.
+
+```yaml
+permissions:
+  id-token: write   # lets the job request an OIDC token
+
+steps:
+  - name: Get a Grimoire token
+    run: |
+      oidc=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+        "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=grimoire" | jq -r .value)
+      token=$(curl -sSf https://grimoire.example.com/consumer/oidc/github \
+        -H "Content-Type: application/json" \
+        -d "{\"application\":\"my-app\",\"token\":\"$oidc\"}" | jq -r .token)
+      echo "::add-mask::$token"
+      echo "GRIMOIRE_TOKEN=$token" >> "$GITHUB_ENV"
+  - run: curl -sSf -H "X-Api-Key: $GRIMOIRE_TOKEN" "https://grimoire.example.com/consumer/secrets/DB_PASSWORD?environment=staging"
+```
+
+The `audience` must match `Oidc:GitHub:Audience` (see [configuration]({{ site.baseurl }}/getting-started/configuration/#github-oidc)).
+
 ---
 
 ## Unauthenticated endpoints
@@ -90,6 +117,7 @@ The following endpoints are always accessible without credentials:
 | Endpoint | Purpose |
 | :------- | :------ |
 | `GET /health` | Health check (used by Docker, load balancers) |
+| `POST /consumer/oidc/github` | Exchanges a GitHub Actions OIDC token for an access token; the OIDC token is the credential |
 
 ---
 

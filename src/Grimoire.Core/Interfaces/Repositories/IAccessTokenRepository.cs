@@ -4,7 +4,10 @@ namespace Grimoire.Core.Interfaces.Repositories;
 
 public interface IAccessTokenRepository
 {
-    /// <summary>The application's tokens, newest first, revoked ones included.</summary>
+    /// <summary>
+    /// The application's tokens, newest first, revoked ones included; not those issued by an
+    /// OIDC exchange.
+    /// </summary>
     Task<List<AccessToken>> ListAsync(Guid applicationId, CancellationToken ct = default);
 
     Task<AccessToken?> GetAsync(Guid applicationId, Guid id, CancellationToken ct = default);
@@ -20,4 +23,14 @@ public interface IAccessTokenRepository
 
     /// <summary>Sets <see cref="AccessToken.LastUsedAt"/> without loading the token.</summary>
     Task TouchAsync(Guid id, DateTimeOffset usedAt, CancellationToken ct = default);
+
+    /// <summary>Revokes the unexpired tokens a trust policy issued (when it is deleted).</summary>
+    Task<int> RevokeIssuedAsync(
+        Guid trustPolicyId,
+        DateTimeOffset at,
+        CancellationToken ct = default
+    );
+
+    /// <summary>Deletes OIDC-issued tokens that expired before <paramref name="before"/>.</summary>
+    Task<int> DeleteExpiredIssuedAsync(DateTimeOffset before, CancellationToken ct = default);
 }

@@ -24,6 +24,7 @@ Application (1)
   ├── AppEnvironment (N)   ← named scopes: "local", "staging", "production"
   │
   ├── AccessToken (N)      ← Consumer API tokens, limited to environment slugs and scopes
+  ├── TrustPolicy (N)      ← GitHub OIDC: which runs may get a short-lived AccessToken
   │
   ├── Secret (N)
   │     └── SecretVersion (N)  ← one per (Secret × AppEnvironment × write)
@@ -278,6 +279,25 @@ A Consumer API credential for one application, narrower than its API key (cascad
 | `ExpiresAt` | `DateTimeOffset?` | `null` never expires |
 | `LastUsedAt` | `DateTimeOffset?` | Written at most once a minute per token |
 | `RevokedAt` | `DateTimeOffset?` | Set when revoked; the row is kept |
+| `CreatedAt` | `DateTimeOffset` | Stored as an integer |
+| `TrustPolicyId` | `Guid?` | Set for tokens issued by a GitHub OIDC exchange (not listed with the others; deleted a day after they expire) |
+
+### TrustPolicy
+
+Lets GitHub Actions runs exchange their OIDC token for a short-lived `AccessToken` (cascade-deleted with the application).
+
+| Column | Type | Notes |
+| :----- | :--- | :---- |
+| `Id` | `Guid` | Primary key |
+| `ApplicationId` | `Guid` | FK → `Application` |
+| `Name` | `string` | Unique per application |
+| `Repository` | `string` | `owner/repo`, compared case-insensitively |
+| `RefPattern` | `string?` | e.g. `refs/heads/main`, `refs/tags/v*`; `null` for any ref |
+| `GitHubEnvironment` | `string?` | Exact GitHub environment; `null` for any |
+| `EnvironmentSlugs` | JSON? | Environments the issued token may read; `null` for all |
+| `Scopes` | `int` | Same flags as `AccessToken.Scopes` |
+| `TokenLifetimeMinutes` | `int` | 1–60 (default 15) |
+| `LastUsedAt` | `DateTimeOffset?` | Last successful exchange |
 | `CreatedAt` | `DateTimeOffset` | Stored as an integer |
 
 ### FeatureFlagAuditEntry

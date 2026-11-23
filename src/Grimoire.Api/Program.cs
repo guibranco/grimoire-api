@@ -7,6 +7,7 @@ using Grimoire.Api.Backups;
 using Grimoire.Api.ConsumerTracking;
 using Grimoire.Api.Logging;
 using Grimoire.Api.Middleware;
+using Grimoire.Api.Oidc;
 using Grimoire.Api.Rotation;
 using Grimoire.Api.Swagger;
 using Grimoire.Core.Entities;
@@ -60,6 +61,15 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddScoped<IPasswordHasher<Application>, PasswordHasher<Application>>();
 builder.Services.AddScoped<IPasswordHasher<AccessToken>, PasswordHasher<AccessToken>>();
 builder.Services.AddSingleton<AccessTokenUsageThrottle>();
+builder.Services.AddScoped<AccessTokenFactory>();
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<IConfiguration>()
+        .GetSection(GitHubOidcOptions.SectionName)
+        .Get<GitHubOidcOptions>()
+    ?? new GitHubOidcOptions()
+);
+builder.Services.AddSingleton<IGitHubOidcKeyProvider, GitHubOidcKeyProvider>();
+builder.Services.AddScoped<GitHubOidcValidator>();
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<BackupScheduler>();

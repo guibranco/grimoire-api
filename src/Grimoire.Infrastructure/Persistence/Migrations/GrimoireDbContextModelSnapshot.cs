@@ -59,9 +59,14 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("TrustPolicyId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Prefix");
+
+                    b.HasIndex("TrustPolicyId");
 
                     b.HasIndex("ApplicationId", "Name")
                         .IsUnique();
@@ -774,6 +779,56 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.ToTable("SecretVersions");
                 });
 
+            modelBuilder.Entity("Grimoire.Core.Entities.TrustPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EnvironmentSlugs")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GitHubEnvironment")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RefPattern")
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Scopes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TokenLifetimeMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("TrustPolicies");
+                });
+
             modelBuilder.Entity("Grimoire.Core.Entities.AccessToken", b =>
                 {
                     b.HasOne("Grimoire.Core.Entities.Application", "Application")
@@ -938,6 +993,17 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Navigation("Environment");
 
                     b.Navigation("Secret");
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.TrustPolicy", b =>
+                {
+                    b.HasOne("Grimoire.Core.Entities.Application", "Application")
+                        .WithMany()
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Application");
                 });
 
             modelBuilder.Entity("Grimoire.Core.Entities.AppEnvironment", b =>

@@ -49,6 +49,9 @@ public class AccessToken
     public DateTimeOffset? RevokedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 
+    /// <summary>Set for short-lived tokens issued by a GitHub OIDC exchange.</summary>
+    public Guid? TrustPolicyId { get; set; }
+
     public Application Application { get; set; } = null!;
 
     public bool IsRevoked => RevokedAt is not null;

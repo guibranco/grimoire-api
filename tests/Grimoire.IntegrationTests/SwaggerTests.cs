@@ -38,6 +38,8 @@ public class SwaggerTests(GrimoireWebApplicationFactory factory)
     [InlineData("/management/global/feature-flags")]
     [InlineData("/management/applications/{slug}/access-tokens")]
     [InlineData("/management/applications/{slug}/access-tokens/{id}/revoke")]
+    [InlineData("/management/applications/{slug}/trust-policies")]
+    [InlineData("/management/applications/{slug}/trust-policies/{id}")]
     [InlineData("/management/global/feature-flags/{key}/environments/{environmentSlug}/toggle")]
     [InlineData("/management/global/feature-flags/{key}/evaluate")]
     [InlineData(
@@ -51,5 +53,15 @@ public class SwaggerTests(GrimoireWebApplicationFactory factory)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var doc = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
         Assert.NotNull(doc["paths"]![path]);
+    }
+
+    [Fact]
+    public async Task ConsumerDocument_IncludesTheOidcExchange()
+    {
+        var response = await factory.CreateClient().GetAsync("/swagger/consumer/swagger.json");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var doc = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
+        Assert.NotNull(doc["paths"]!["/consumer/oidc/github"]);
     }
 }
