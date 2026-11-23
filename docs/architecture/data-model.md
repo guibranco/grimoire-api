@@ -180,6 +180,26 @@ The active global version for an environment is the latest active version for th
 
 ---
 
+### ConfigurationRevision
+
+One change to a configuration key in one environment, appended by a `SaveChanges` interceptor in the same transaction as the change, so every write path is covered. Revisions are numbered per key and survive deleting and re-creating it.
+
+| Column | Type | Notes |
+| :----- | :--- | :---- |
+| `Id` | `Guid` | Primary key |
+| `Scope` | `int` | `0` application, `1` global |
+| `ApplicationId` | `Guid?` | Owning application; `null` for global |
+| `EnvironmentKey` | `string` | Environment id (`N` format) for application keys, environment slug (`*` included) for global keys |
+| `Key` | `string` | Configuration key |
+| `Revision` | `int` | 1, 2, 3… per (scope, environment, key); unique |
+| `Change` | `string` | `baseline`, `create`, `update`, `delete` or `rollback` |
+| `Value` | `string?` | Value after the change; `null` for `delete` |
+| `ValueType` | `string` | As on the entry |
+| `Description` | `string?` | As on the entry |
+| `RolledBackFrom` | `int?` | For `rollback`, the restored revision |
+| `ChangedBy` | `string` | `admin`, or `system` for the `baseline` written by the migration |
+| `ChangedAt` | `DateTimeOffset` | — |
+
 ### RotationReminder
 
 Remembers which [rotation reminders](../operations/rotation-reminders.md) were delivered, so each one is sent once. Holds no secret data.

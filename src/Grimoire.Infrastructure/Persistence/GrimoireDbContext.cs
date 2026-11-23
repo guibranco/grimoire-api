@@ -18,6 +18,7 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
     public DbSet<ConsumerActivity> ConsumerActivities => Set<ConsumerActivity>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<RotationReminder> RotationReminders => Set<RotationReminder>();
+    public DbSet<ConfigurationRevision> ConfigurationRevisions => Set<ConfigurationRevision>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,5 +33,6 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
         modelBuilder.ApplyConfiguration(new ConsumerActivityConfiguration());
         modelBuilder.ApplyConfiguration(new AuditEventConfiguration());
         modelBuilder.ApplyConfiguration(new RotationReminderConfiguration());
+        modelBuilder.ApplyConfiguration(new ConfigurationRevisionConfiguration());
     }
 }

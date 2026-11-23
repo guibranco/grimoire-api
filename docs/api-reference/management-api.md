@@ -434,6 +434,27 @@ Enables or disables a version, or changes its start/expiry. **The value can't be
 
 ---
 
+### Roll back a secret
+
+```
+POST /management/applications/{slug}/secrets/{name}/versions/{environmentSlug}/{version}/rollback
+```
+
+Copies the stored value of `version` into a new version, which becomes the current one. The value is never decrypted or returned. The new version is enabled, with no start or expiry date.
+
+Optional body:
+
+```json
+{ "previousVersionGraceDays": 7 }
+```
+
+`previousVersionGraceDays` (`0`–`3650`) expires the other versions after a grace period, as when [setting a value](#set-secret-values).
+
+**Response `200`:** The new version's metadata (same shape as [List secret versions](#list-secret-versions)).  
+**Response `404`:** Application, secret, environment or version not found.
+
+---
+
 ### Delete secret
 
 ```
@@ -599,6 +620,77 @@ Returns the configuration the application actually receives for an environment, 
 
 ---
 
+### Configuration history
+
+```
+GET /management/applications/{slug}/configurations/{environmentSlug}/{key}/history
+```
+
+Every change to a key in an environment, newest first. Revisions are numbered per key, so history survives deleting and re-creating the key. Changes that don't alter the value, value type or description add no revision.
+
+**Response `200`:**
+
+```json
+[
+  { "revision": 3, "change": "rollback", "value": "safe", "valueType": "string", "description": null, "rolledBackFrom": 1, "changedBy": "admin", "changedAt": "2026-11-23T10:00:00Z" },
+  { "revision": 2, "change": "update",   "value": "fast", "valueType": "string", "description": null, "rolledBackFrom": null, "changedBy": "admin", "changedAt": "2026-11-22T09:00:00Z" },
+  { "revision": 1, "change": "create",   "value": "safe", "valueType": "string", "description": null, "rolledBackFrom": null, "changedBy": "admin", "changedAt": "2026-11-20T08:00:00Z" }
+]
+```
+
+| `change` | Meaning |
+| :------- | :------ |
+| `baseline` | The value when history started (entries that existed before the upgrade). |
+| `create` / `update` | The key was created or changed. |
+| `delete` | The key was deleted (`value` is `null`). |
+| `rollback` | An earlier revision was restored (`rolledBackFrom`). |
+
+**Response `404`:** Application or environment not found, or the key has no history.
+
+---
+
+### Roll back a configuration
+
+```
+POST /management/applications/{slug}/configurations/{environmentSlug}/{key}/rollback/{revision}
+```
+
+Restores the value, value type and description the key had at `revision`, as a new `rollback` revision. If the key was deleted since, it is re-created.
+
+**Response `200`:** The configuration entry.  
+**Response `400`:** That revision deleted the key, so it has no value to restore.  
+**Response `404`:** Application, environment or revision not found.
+
+---
+
+### Compare environments
+
+```
+GET /management/applications/{slug}/configurations/diff?from=staging&to=production&includeUnchanged=false
+```
+
+Compares the [effective configuration](#effective-configuration) (globals merged in) of two environments, key by key.
+
+**Response `200`:**
+
+```json
+{
+  "from": "staging",
+  "to": "production",
+  "items": [
+    { "key": "Cdn",   "status": "added",   "from": null, "to": { "value": "on", "valueType": "string", "source": "application", "globalEnvironmentSlug": null } },
+    { "key": "Debug", "status": "removed", "from": { "value": "true", "valueType": "string", "source": "application", "globalEnvironmentSlug": null }, "to": null },
+    { "key": "Url",   "status": "changed", "from": { "value": "stg", "valueType": "string", "source": "application", "globalEnvironmentSlug": null }, "to": { "value": "prd", "valueType": "string", "source": "application", "globalEnvironmentSlug": null } }
+  ]
+}
+```
+
+`added` keys are only in `to`, `removed` keys only in `from`, and `changed` keys differ in value or value type (a different source alone is not a change). `includeUnchanged=true` also lists `unchanged` keys. Keys are sorted and compared case-sensitively.
+
+**Response `404`:** Application or one of the environments not found.
+
+---
+
 ## Secrets (effective)
 
 ### Effective secrets
@@ -715,6 +807,17 @@ DELETE /management/global/configurations/{environmentSlug}/{key}
 
 **Response `204`:** No content.  
 **Response `404`:** Entry not found.
+
+---
+
+### Global configuration history and rollback
+
+```
+GET  /management/global/configurations/{environmentSlug}/{key}/history
+POST /management/global/configurations/{environmentSlug}/{key}/rollback/{revision}
+```
+
+Same as [Configuration history](#configuration-history) and [Roll back a configuration](#roll-back-a-configuration), for a global key and environment slug (`*` included).
 
 ---
 
@@ -846,6 +949,16 @@ PATCH /management/global/secrets/{name}/versions/{environmentSlug}/{version}?for
 ```
 
 Same body, rules and responses as [Update secret version](#update-secret-version). The `409` guardrail considers the versions of that environment slug (`*` or a specific slug).
+
+---
+
+### Roll back a global secret
+
+```
+POST /management/global/secrets/{name}/versions/{environmentSlug}/{version}/rollback
+```
+
+Same as [Roll back a secret](#roll-back-a-secret), for one environment slug.
 
 ---
 
@@ -1108,8 +1221,9 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | `environment.create` / `.delete` | Environment changes (`target` is the name). |
 | `secret.create` / `.update` / `.write` / `.delete` | Secret changes; `.update` changes the description or rotation interval, `.write` adds a version (`environment` lists the environments set). |
 | `secret.version-update` | A version was enabled/disabled or its window changed (`version` is set). |
-| `configuration.create` / `.update` / `.delete` | Configuration changes. |
-| `global-secret.*`, `global-configuration.*` | The same for Global entries (`application` is `null`), including `global-secret.version-update`. |
+| `secret.rollback` | An earlier version was copied into a new version (`version` is the new one). |
+| `configuration.create` / `.update` / `.delete` / `.rollback` | Configuration changes; every one also adds a [revision](#configuration-history). |
+| `global-secret.*`, `global-configuration.*` | The same for Global entries (`application` is `null`), including `global-secret.version-update` and the `.rollback` actions. |
 | `backup.create` | On-demand backup. |
 | `rotation.remind` | Rotation reminders sent on demand (`POST /management/secrets/expiring/notify`). Scheduled runs are logged, not audited. |
 | `secret.read`, `configuration.read` | Consumer API reads, by `app:<slug>`. Failed reads are recorded with their outcome. |

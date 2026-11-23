@@ -6,6 +6,7 @@ using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace Grimoire.Api.Controllers.Management;
 
@@ -179,6 +180,55 @@ public class GlobalSecretsController(
                 ),
             ct
         );
+    }
+
+    /// <summary>Same as the application secret rollback, for one environment slug of a Global secret.</summary>
+    [Audited(AuditActions.GlobalSecretRollback)]
+    [HttpPost("{name}/versions/{environmentSlug}/{version:int}/rollback")]
+    [ProducesResponseType<SecretVersionMetadata>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Rollback(
+        string name,
+        string environmentSlug,
+        int version,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RollbackSecretRequest? req,
+        CancellationToken ct
+    )
+    {
+        var secret = await globalSecretRepo.GetByNameAsync(name, ct);
+        if (secret is null)
+            return Problem(ProblemMessages.GlobalSecretNotFound, statusCode: 404);
+
+        var source = await globalSecretRepo.GetVersionAsync(
+            secret.Id,
+            environmentSlug,
+            version,
+            ct
+        );
+        if (source is null)
+            return Problem(ProblemMessages.SecretVersionNotFound, statusCode: 404);
+
+        var now = DateTimeOffset.UtcNow;
+        var next = await globalSecretRepo.GetNextVersionNumberAsync(secret.Id, environmentSlug, ct);
+        secret.UpdatedAt = now;
+        await globalSecretRepo.AddVersionAsync(
+            new GlobalSecretVersion
+            {
+                Id = Guid.NewGuid(),
+                GlobalSecretId = secret.Id,
+                EnvironmentSlug = environmentSlug,
+                EncryptedValue = source.EncryptedValue,
+                IsEnabled = true,
+                Version = next,
+                CreatedAt = now,
+            },
+            SecretsController.GraceExpiry(req?.PreviousVersionGraceDays, now),
+            ct
+        );
+        AuditContext.SetVersion(HttpContext, next);
+
+        var versions = await globalSecretRepo.GetVersionsAsync(secret.Id, environmentSlug, ct);
+        return Ok(SecretVersionEditor.ToMetadata(versions, now).Single(v => v.Version == next));
     }
 
     [Audited(AuditActions.GlobalSecretDelete)]
