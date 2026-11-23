@@ -48,9 +48,7 @@ internal static class SecretVersionEditor
     {
         var target = versions.FirstOrDefault(v => v.Version == version);
         if (target is null)
-            return controller.NotFound(
-                controller.Problem("Secret version not found.", statusCode: 404)
-            );
+            return controller.Problem("Secret version not found.", statusCode: 404);
 
         var isEnabled = request.IsEnabled ?? target.IsEnabled;
         var notBefore = request.ClearNotBefore ? null : request.NotBefore ?? target.NotBefore;
@@ -77,12 +75,10 @@ internal static class SecretVersionEditor
                 now
             )
         )
-            return controller.Conflict(
-                controller.Problem(
-                    "This change would leave the secret with no valid version in this environment. "
-                        + "Add a new value first, or repeat the request with force=true.",
-                    statusCode: 409
-                )
+            return controller.Problem(
+                "This change would leave the secret with no valid version in this environment. "
+                    + "Add a new value first, or repeat the request with force=true.",
+                statusCode: 409
             );
 
         target.SetWindow(isEnabled, notBefore, expiresAt);

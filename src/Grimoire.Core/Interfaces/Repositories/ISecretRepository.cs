@@ -45,4 +45,14 @@ public interface ISecretRepository
 
     /// <summary>Saves changes made to versions returned by this repository.</summary>
     Task SaveChangesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Runs <paramref name="work"/> inside a write transaction that holds the database write
+    /// lock from its first read, so version reads, rule checks and saves made inside it can't
+    /// interleave with another writer. Joins the ambient transaction when one is open.
+    /// </summary>
+    Task<T> InWriteTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> work,
+        CancellationToken ct = default
+    );
 }

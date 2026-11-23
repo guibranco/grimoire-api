@@ -224,24 +224,29 @@ public class SecretsController(
     {
         var app = await appRepo.GetBySlugAsync(slug, ct);
         if (app is null)
-            return NotFound(Problem("Application not found.", statusCode: 404));
+            return Problem("Application not found.", statusCode: 404);
 
         var secret = await secretRepo.GetByNameAsync(app.Id, name, ct);
         if (secret is null)
-            return NotFound(Problem("Secret not found.", statusCode: 404));
+            return Problem("Secret not found.", statusCode: 404);
 
         var env = await envRepo.GetBySlugAsync(app.Id, environmentSlug, ct);
         if (env is null)
-            return NotFound(Problem("Environment not found.", statusCode: 404));
+            return Problem("Environment not found.", statusCode: 404);
 
-        var versions = await secretRepo.GetVersionsAsync(secret.Id, env.Id, ct);
-        return await SecretVersionEditor.UpdateAsync(
-            this,
-            versions,
-            version,
-            req,
-            force,
-            secretRepo.SaveChangesAsync,
+        // Read, guard and save under one write lock so two concurrent edits can't each pass
+        // the "no valid version" check against the same snapshot.
+        return await secretRepo.InWriteTransactionAsync(
+            async token =>
+                await SecretVersionEditor.UpdateAsync(
+                    this,
+                    await secretRepo.GetVersionsAsync(secret.Id, env.Id, token),
+                    version,
+                    req,
+                    force,
+                    secretRepo.SaveChangesAsync,
+                    token
+                ),
             ct
         );
     }

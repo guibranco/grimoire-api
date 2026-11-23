@@ -134,6 +134,9 @@ public class SecretVersionLifecycleTests(GrimoireWebApplicationFactory factory)
 
         var refused = await PatchAsync(slug, secret, 1, new { isEnabled = false });
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        var problem = await refused.Content.ReadFromJsonAsync<JsonObject>();
+        Assert.Equal(409, problem!["status"]!.GetValue<int>());
+        Assert.Contains("no valid version", problem["detail"]!.GetValue<string>());
         var expiredRefused = await PatchAsync(
             slug,
             secret,
@@ -153,6 +156,28 @@ public class SecretVersionLifecycleTests(GrimoireWebApplicationFactory factory)
             (await PatchAsync(slug, secret, 1, new { isEnabled = true })).StatusCode
         );
         Assert.Equal("v1", await ConsumerValueAsync(apiKey, secret));
+    }
+
+    [Fact]
+    public async Task ConcurrentDisables_CannotBothPassTheGuard()
+    {
+        var (slug, apiKey, secret) = await AppWithSecretAsync();
+        await AddValueAsync(slug, secret, "v2");
+
+        // Each request alone leaves one valid version; together they would leave none.
+        for (var round = 0; round < 5; round++)
+        {
+            var results = await Task.WhenAll(
+                PatchAsync(slug, secret, 1, new { isEnabled = false }),
+                PatchAsync(slug, secret, 2, new { isEnabled = false })
+            );
+            Assert.Single(results, r => r.StatusCode == HttpStatusCode.OK);
+            Assert.Single(results, r => r.StatusCode == HttpStatusCode.Conflict);
+            Assert.NotNull(await ConsumerValueAsync(apiKey, secret));
+
+            await PatchAsync(slug, secret, 1, new { isEnabled = true });
+            await PatchAsync(slug, secret, 2, new { isEnabled = true });
+        }
     }
 
     [Fact]

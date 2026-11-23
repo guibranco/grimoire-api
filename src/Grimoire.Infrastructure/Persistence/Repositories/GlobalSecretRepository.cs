@@ -99,19 +99,31 @@ public class GlobalSecretRepository(GrimoireDbContext db) : IGlobalSecretReposit
         CancellationToken ct = default
     )
     {
-        if (expirePreviousAt is { } expiresAt)
-        {
-            var others = await GetVersionsAsync(
-                version.GlobalSecretId,
-                version.EnvironmentSlug,
-                ct
-            );
-            foreach (var previous in SecretVersionRules.VersionsToExpire(others, expiresAt))
-                previous.ExpiresAt = expiresAt;
-        }
-        db.GlobalSecretVersions.Add(version);
-        await db.SaveChangesAsync(ct);
+        // See SecretRepository.AddVersionAsync: the grace expiry runs under the write lock.
+        await db.InWriteTransactionAsync(
+            async token =>
+            {
+                if (expirePreviousAt is { } expiresAt)
+                {
+                    var others = await GetVersionsAsync(
+                        version.GlobalSecretId,
+                        version.EnvironmentSlug,
+                        token
+                    );
+                    foreach (var previous in SecretVersionRules.VersionsToExpire(others, expiresAt))
+                        previous.ExpiresAt = expiresAt;
+                }
+                db.GlobalSecretVersions.Add(version);
+                return await db.SaveChangesAsync(token);
+            },
+            ct
+        );
     }
 
     public Task SaveChangesAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
+
+    public Task<T> InWriteTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> work,
+        CancellationToken ct = default
+    ) => db.InWriteTransactionAsync(work, ct);
 }

@@ -138,16 +138,20 @@ public class GlobalSecretsController(
     {
         var secret = await globalSecretRepo.GetByNameAsync(name, ct);
         if (secret is null)
-            return NotFound(Problem("Global secret not found.", statusCode: 404));
+            return Problem("Global secret not found.", statusCode: 404);
 
-        var versions = await globalSecretRepo.GetVersionsAsync(secret.Id, environmentSlug, ct);
-        return await SecretVersionEditor.UpdateAsync(
-            this,
-            versions,
-            version,
-            req,
-            force,
-            globalSecretRepo.SaveChangesAsync,
+        // See SecretsController.UpdateVersion: the guard and the save share one write lock.
+        return await globalSecretRepo.InWriteTransactionAsync(
+            async token =>
+                await SecretVersionEditor.UpdateAsync(
+                    this,
+                    await globalSecretRepo.GetVersionsAsync(secret.Id, environmentSlug, token),
+                    version,
+                    req,
+                    force,
+                    globalSecretRepo.SaveChangesAsync,
+                    token
+                ),
             ct
         );
     }
