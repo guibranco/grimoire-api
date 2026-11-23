@@ -206,6 +206,12 @@ public class FeatureFlagEvaluatorTests
         Assert.Equal(expected, va.CompareTo(vb));
         Assert.Equal(-expected, vb.CompareTo(va));
         Assert.Equal(1, va.CompareTo(null));
+        Assert.Equal(expected < 0, va < vb);
+        Assert.Equal(expected <= 0, va <= vb);
+        Assert.Equal(expected > 0, va > vb);
+        Assert.Equal(expected >= 0, va >= vb);
+        Assert.True((SemVer?)null < va);
+        Assert.True((SemVer?)null <= null);
     }
 
     [Theory]

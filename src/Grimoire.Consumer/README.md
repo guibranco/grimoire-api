@@ -4,6 +4,7 @@
 
 - **Configuration provider**: load every configuration entry for an environment into `IConfiguration` with one call.
 - **Secret client**: fetch individual versioned secrets on demand.
+- **Feature flags**: evaluate flags locally (percentage rollouts, A/B/n, user and attribute targeting), directly or through `Microsoft.FeatureManagement`.
 - **Azure-compatible shapes**: the consumer API mirrors Azure Key Vault and Azure App Configuration responses.
 
 ## Install
@@ -39,6 +40,29 @@ var secrets = new GrimoireSecretClient(
 
 var secret = await secrets.GetSecretAsync("DatabasePassword");
 Console.WriteLine(secret.Value);
+```
+
+## Feature flags
+
+```csharp
+using Grimoire.Consumer.FeatureFlags;
+
+var flags = new GrimoireFeatureFlagClient(new GrimoireFeatureFlagOptions
+{
+    BaseUrl = "https://grimoire.example.com",
+    ApiKey = apiKey,
+    Environment = "production",
+});
+
+var user = new FlagContext("u-123").With("country", "IE");
+if (await flags.IsEnabledAsync("new-checkout", user)) { /* … */ }
+var variant = await flags.GetVariantAsync("checkout-redesign", user);
+```
+
+Definitions are cached and refreshed in the background; checks never wait on the network once loaded, and keep working if Grimoire is down. With `Microsoft.FeatureManagement`:
+
+```csharp
+builder.Services.AddGrimoireFeatureManagement(o => { o.BaseUrl = "…"; o.ApiKey = "…"; o.Environment = "production"; });
 ```
 
 ## Documentation

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Grimoire.Api.DTOs.Management;
 
@@ -48,7 +49,7 @@ public record UpdateFeatureFlagRequest(
 /// <param name="Rules">Evaluated in order; the first whose conditions all match wins.</param>
 /// <param name="Fallthrough">Served when no rule matches; the default variant when omitted.</param>
 public record FlagEnvironmentStateRequest(
-    bool Enabled,
+    [property: JsonRequired] bool Enabled,
     string? OffVariant = null,
     List<TargetingRuleDto>? Rules = null,
     FlagServeDto? Fallthrough = null

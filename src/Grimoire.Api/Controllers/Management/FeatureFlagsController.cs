@@ -518,7 +518,7 @@ public class FeatureFlagsController(
 
     private static IEnumerable<string> UsedVariants(FeatureFlagEnvironmentState state)
     {
-        IEnumerable<string?> serve(FlagServe? s) =>
+        static IEnumerable<string?> serve(FlagServe? s) =>
             s is null ? [] : [s.Variant, .. (s.Rollout ?? []).Select(r => r.Variant)];
         return new[] { state.OffVariant }
             .Concat(serve(state.Fallthrough))

@@ -1,7 +1,15 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
+// Shared with Grimoire.Consumer (linked source, built with GRIMOIRE_CONSUMER): one evaluator for
+// the server's dry run and the client library, both checked against the shared test vectors.
+#if GRIMOIRE_CONSUMER
+namespace Grimoire.Consumer.FeatureFlags.Evaluation;
+
+#else
 namespace Grimoire.Core.FeatureFlags;
+
+#endif
 
 /// <summary>Why a variant was served.</summary>
 public static class EvaluationReasons
@@ -19,6 +27,8 @@ public static class EvaluationReasons
     public const string MissingBucketBy = "MISSING_BUCKET_BY";
 }
 
+/// <param name="Variant">The variant served.</param>
+/// <param name="Reason">One of <see cref="EvaluationReasons"/>.</param>
 /// <param name="MatchedRuleIndex">Zero-based index of the rule that matched, for <c>RULE_MATCH</c>.</param>
 /// <param name="Bucket">0–9999 when a rollout bucketed the context.</param>
 public sealed record FlagEvaluation(

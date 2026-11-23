@@ -1,7 +1,15 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
+// Shared with Grimoire.Consumer (linked source, built with GRIMOIRE_CONSUMER): one evaluator for
+// the server's dry run and the client library, both checked against the shared test vectors.
+#if GRIMOIRE_CONSUMER
+namespace Grimoire.Consumer.FeatureFlags.Evaluation;
+
+#else
 namespace Grimoire.Core.FeatureFlags;
+
+#endif
 
 /// <summary>
 /// Semantic Versioning 2.0.0 parsing and precedence (build metadata ignored). A leading <c>v</c>
@@ -81,6 +89,22 @@ public sealed partial record SemVer(
                 return c;
         }
         return Math.Sign(PreRelease.Count.CompareTo(other.PreRelease.Count));
+    }
+
+    public static bool operator <(SemVer? left, SemVer? right) => Compare(left, right) < 0;
+
+    public static bool operator <=(SemVer? left, SemVer? right) => Compare(left, right) <= 0;
+
+    public static bool operator >(SemVer? left, SemVer? right) => Compare(left, right) > 0;
+
+    public static bool operator >=(SemVer? left, SemVer? right) => Compare(left, right) >= 0;
+
+    /// <summary>Precedence order with <c>null</c> lowest.</summary>
+    private static int Compare(SemVer? left, SemVer? right)
+    {
+        if (left is not null)
+            return left.CompareTo(right);
+        return right is null ? 0 : -1;
     }
 
     private static int CompareIdentifier(string a, string b)

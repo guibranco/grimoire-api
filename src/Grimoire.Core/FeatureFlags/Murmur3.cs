@@ -1,7 +1,15 @@
 using System.Buffers.Binary;
 using System.Text;
 
+// Shared with Grimoire.Consumer (linked source, built with GRIMOIRE_CONSUMER): one evaluator for
+// the server's dry run and the client library, both checked against the shared test vectors.
+#if GRIMOIRE_CONSUMER
+namespace Grimoire.Consumer.FeatureFlags.Evaluation;
+
+#else
 namespace Grimoire.Core.FeatureFlags;
+
+#endif
 
 /// <summary>MurmurHash3 x86 32-bit (seed 0 by default) over UTF-8, as used for flag bucketing.</summary>
 public static class Murmur3

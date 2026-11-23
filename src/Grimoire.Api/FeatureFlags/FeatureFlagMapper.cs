@@ -19,8 +19,6 @@ public static class FeatureFlagMapper
 
     public static FlagVariantDto ToDto(FlagVariant v) => new(v.Key, ToJson(v.Value));
 
-    public static FlagVariant ToModel(FlagVariantDto v) => new(v.Key, v.Value.GetRawText());
-
     public static FlagServeDto ToDto(FlagServe s) =>
         new(
             s.Variant,
@@ -28,18 +26,23 @@ public static class FeatureFlagMapper
             s.BucketBy
         );
 
-    public static FlagServe ToModel(FlagServeDto s) =>
-        new(
-            s.Variant,
-            s.Rollout?.Select(r => new RolloutSlice(r.Variant, r.Weight)).ToList(),
-            string.IsNullOrWhiteSpace(s.BucketBy) ? null : s.BucketBy
-        );
-
     public static TargetingRuleDto ToDto(TargetingRule r) =>
         new(
             r.Conditions.Select(c => new FlagConditionDto(c.Attribute, c.Operator, [.. c.Values]))
                 .ToList(),
             ToDto(r.Serve)
+        );
+
+    /// <summary><c>null</c> stays <c>null</c>.</summary>
+    public static FlagServeDto? ToDtoOrNull(FlagServe? s) => s is null ? null : ToDto(s);
+
+    public static FlagVariant ToModel(FlagVariantDto v) => new(v.Key, v.Value.GetRawText());
+
+    public static FlagServe ToModel(FlagServeDto s) =>
+        new(
+            s.Variant,
+            s.Rollout?.Select(r => new RolloutSlice(r.Variant, r.Weight)).ToList(),
+            string.IsNullOrWhiteSpace(s.BucketBy) ? null : s.BucketBy
         );
 
     public static TargetingRule ToModel(TargetingRuleDto r) =>
@@ -60,7 +63,7 @@ public static class FeatureFlagMapper
                 state.Enabled,
                 state.OffVariant,
                 state.Rules.Select(ToDto).ToList(),
-                state.Fallthrough is null ? null : ToDto(state.Fallthrough),
+                ToDtoOrNull(state.Fallthrough),
                 state.Version,
                 state.UpdatedAt
             );
@@ -86,6 +89,16 @@ public static class FeatureFlagMapper
                 .ToList()
         );
 
+    public static FeatureFlagHistoryEntryResponse ToResponse(FeatureFlagAuditEntry entry) =>
+        new(
+            entry.Change,
+            entry.Environment,
+            entry.Actor,
+            entry.ChangedAt,
+            entry.Before is null ? null : ToJson(entry.Before),
+            entry.After is null ? null : ToJson(entry.After)
+        );
+
     public static ConsumerFeatureFlag ToConsumer(FeatureFlag flag, Guid environmentId)
     {
         var state = flag.Environments.FirstOrDefault(s => s.EnvironmentId == environmentId);
@@ -98,20 +111,10 @@ public static class FeatureFlagMapper
             state?.Enabled ?? false,
             state?.OffVariant,
             state?.Rules.Select(ToDto).ToList() ?? [],
-            state?.Fallthrough is null ? null : ToDto(state.Fallthrough),
+            ToDtoOrNull(state?.Fallthrough),
             state?.Version ?? 0
         );
     }
-
-    public static FeatureFlagHistoryEntryResponse ToResponse(FeatureFlagAuditEntry entry) =>
-        new(
-            entry.Change,
-            entry.Environment,
-            entry.Actor,
-            entry.ChangedAt,
-            entry.Before is null ? null : ToJson(entry.Before),
-            entry.After is null ? null : ToJson(entry.After)
-        );
 
     /// <summary>The flag itself (no environment states) as stored in the audit trail.</summary>
     public static string Snapshot(FeatureFlag flag) =>
@@ -138,7 +141,7 @@ public static class FeatureFlagMapper
                     state.Enabled,
                     state.OffVariant,
                     Rules = state.Rules.Select(ToDto),
-                    Fallthrough = state.Fallthrough is null ? null : ToDto(state.Fallthrough),
+                    Fallthrough = ToDtoOrNull(state.Fallthrough),
                     state.Version,
                 },
                 SnapshotOptions

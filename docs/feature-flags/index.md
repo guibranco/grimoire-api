@@ -14,6 +14,7 @@ Feature flags sit next to Secrets and Configuration. A flag is switched on or of
 - [Evaluation spec](evaluation-spec/): the rules every client implements, with shared [test vectors](https://github.com/guibranco/grimoire-api/blob/main/docs/feature-flags/test-vectors.json)
 - [Management API](../api-reference/management-api/#feature-flags): create, target, toggle, dry-run and history
 - [Consumer API](../api-reference/consumer-api/#feature-flags): definitions with `ETag` support
+- [.NET client](../client-library/feature-flags/): `GrimoireFeatureFlagClient` and the `Microsoft.FeatureManagement` integration
 
 ## Concepts
 
