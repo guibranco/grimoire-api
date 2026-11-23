@@ -5,6 +5,12 @@ public static class AuditContext
 {
     private const string VersionKey = "grimoire.audit.version";
     private const string TargetKey = "grimoire.audit.target";
+    private const string SkipKey = "grimoire.audit.skip";
+
+    /// <summary>Don't record this request (e.g. an import's dry run, which changes nothing).</summary>
+    public static void Skip(HttpContext context) => context.Items[SkipKey] = true;
+
+    public static bool IsSkipped(HttpContext context) => context.Items.ContainsKey(SkipKey);
 
     /// <summary>The secret version created or changed by this request.</summary>
     public static void SetVersion(HttpContext context, int version) =>

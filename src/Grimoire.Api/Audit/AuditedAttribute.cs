@@ -31,6 +31,8 @@ public sealed class AuditedAttribute(string action) : Attribute, IAsyncActionFil
         var executed = await next();
 
         var http = context.HttpContext;
+        if (AuditContext.IsSkipped(http))
+            return;
         var statusCode = StatusCodeOf(executed);
         var app = http.Items[ConsumerApiKeyMiddleware.AppContextKey] as Application;
         var bodies = context

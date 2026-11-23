@@ -855,6 +855,81 @@ Because this route is matched literally, an application secret named `effective`
 
 ---
 
+## Import
+
+Moves an existing app's settings into Grimoire in one step: a dotenv file, an `appsettings.json`, a PHP config file or a flat JSON object. Keys that look like credentials become secrets; the rest become configuration entries.
+
+```
+POST /management/applications/{slug}/import?environment={env}&dryRun=true
+POST /management/global/import?environment={env|*}&dryRun=true
+```
+
+`dryRun` defaults to `true`: the response is the plan and nothing is written. Send `dryRun=false` to apply the same plan; every write happens in one transaction, and the import is audited as `import.apply`. Dry runs aren't audited.
+
+**Request:**
+
+```json
+{
+  "format": "env",
+  "content": "APP_MODE=safe\nDB_PASSWORD=\"s3cret\"",
+  "secretKeys": ["*Password*", "*Secret*", "*Token*", "ConnectionStrings:*"],
+  "onConflict": "skip",
+  "kinds": { "ConnectionStrings:Reporting": "configuration" },
+  "exclude": ["DEBUG"]
+}
+```
+
+| Field | Description |
+| :---- | :---------- |
+| `format` | `env`, `appsettings`, `php` or `json`. |
+| `content` | The file's text, up to 1 MiB. |
+| `secretKeys` | Globs (`*` matches anything, case-insensitive) for keys to import as secrets. Defaults to the four shown. |
+| `onConflict` | `skip` (default) leaves keys that already have another value; `overwrite` replaces them. Configuration changes get a [revision](#configuration-history); secrets get a new version. |
+| `kinds` | Per-key overrides of the classification: `secret` or `configuration`. |
+| `exclude` | Keys to leave out. |
+
+**Formats:**
+
+| Format | What is read |
+| :----- | :----------- |
+| `env` | `KEY=value` lines; `export`, `#` comments, single quotes (literal), double quotes (`\n`, `\"` escapes; may span lines), unquoted values (trimmed, ending at ` #`). |
+| `appsettings` | Nested objects flatten to `Section:Key` (as .NET reads them). Arrays of strings, numbers and booleans become `array` values; other arrays stay `json`. Comments and trailing commas are allowed. |
+| `json` | Top-level keys only; objects stay `json` values. |
+| `php` | `return [ … ];` / `return array( … );`, `define('KEY', value);` and `$config['a']['b'] = value;`. The file is **parsed as data, never executed**. Nested keyed arrays become `a:b` keys; lists become `array` (or `json`) values. Values built from anything but literals (`getenv()`, constants, `__DIR__ . '/x'`) are left out and listed in `skipped`. |
+
+A key that appears more than once keeps its last value. Values with line breaks import as `multiline`.
+
+**Response `200`:**
+
+```json
+{
+  "environment": "production",
+  "dryRun": true,
+  "secretKeys": ["*Password*", "*Secret*", "*Token*", "ConnectionStrings:*"],
+  "items": [
+    { "key": "APP_MODE",    "kind": "configuration", "action": "create",    "value": "safe", "valueType": "string" },
+    { "key": "DB_PASSWORD", "kind": "secret",        "action": "unchanged", "value": null,   "valueType": null }
+  ],
+  "summary": { "create": 1, "update": 0, "unchanged": 1, "skipped": 0 },
+  "skipped": []
+}
+```
+
+| `action` | Meaning |
+| :------- | :------ |
+| `create` | A new key, or a secret's first value in this environment. |
+| `update` | The key has another value and `onConflict` is `overwrite`. |
+| `unchanged` | The key already has this value (and value type). |
+| `skip` | The key has another value and `onConflict` is `skip`. |
+| `conflict` | The key exists as the other kind (e.g. a configuration entry imported as a secret). It is never written; change its kind with `kinds` or rename it. |
+| `excluded` | Listed in `exclude`. |
+
+Secret values are never returned; secrets are compared with the value served in that environment. On globals, only the exact environment is compared (a `*` value doesn't count as `staging`'s own).
+
+**Errors:** `400` for an unknown format, empty content, an invalid `onConflict` or kind, content that can't be read (the message gives the line), or a key longer than allowed (200 characters for secret names, 500 for configuration keys); nothing is written. `404` when the application or environment doesn't exist.
+
+---
+
 ## Global configurations
 
 Global configuration entries are defined once and inherited by every application with `inheritGlobals: true`. They target environments **by slug**: `production` applies to every application's `production` environment, and `*` applies to all environments. See [Data Model — Global values and precedence](../architecture/data-model.md#global-values-and-precedence) for the resolution rules.
@@ -1696,6 +1771,7 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | `secret.rollback` | An earlier version was copied into a new version (`version` is the new one). |
 | `configuration.create` / `.update` / `.delete` / `.rollback` | Configuration changes; every one also adds a [revision](#configuration-history). |
 | `global-secret.*`, `global-configuration.*` | The same for Global entries (`application` is `null`), including `global-secret.version-update` and the `.rollback` actions. |
+| `import.apply` | An [import](#import) was applied (`environment` is set, `target` is the format). |
 | `backup.create` | On-demand backup. |
 | `feature-flag.create`, `.update`, `.delete`, `.environment-update`, `.toggle` | Feature flag changes (also in the [flag history](#flag-history)). |
 | `feature-flag.read` | Consumer read of flag definitions (a read, like `secret.read`). |
