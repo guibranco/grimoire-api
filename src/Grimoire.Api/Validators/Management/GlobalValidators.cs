@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using FluentValidation;
 using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Entities;
+using Grimoire.Core.Secrets;
 
 namespace Grimoire.Api.Validators.Management;
 
@@ -74,6 +75,9 @@ public class SetGlobalSecretValueRequestValidator : AbstractValidator<SetGlobalS
         RuleFor(x => x.ExpiresAt)
             .GreaterThan(x => x.NotBefore)
             .When(x => x.ExpiresAt.HasValue && x.NotBefore.HasValue);
+        RuleFor(x => x.PreviousVersionGraceDays)
+            .InclusiveBetween(0, SecretVersionRules.MaxGraceDays)
+            .When(x => x.PreviousVersionGraceDays.HasValue);
     }
 }
 

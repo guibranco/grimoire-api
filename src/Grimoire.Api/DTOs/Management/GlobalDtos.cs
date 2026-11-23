@@ -31,12 +31,14 @@ public record GlobalConfigurationEntryResponse(
 
 public record CreateGlobalSecretRequest(string Name, string? Description);
 
+/// <param name="PreviousVersionGraceDays">See <see cref="SetSecretValueRequest.PreviousVersionGraceDays"/>.</param>
 public record SetGlobalSecretValueRequest(
     string EnvironmentSlug,
     string Value,
     bool IsEnabled = true,
     DateTimeOffset? ExpiresAt = null,
-    DateTimeOffset? NotBefore = null
+    DateTimeOffset? NotBefore = null,
+    int? PreviousVersionGraceDays = null
 );
 
 public record GlobalSecretResponse(

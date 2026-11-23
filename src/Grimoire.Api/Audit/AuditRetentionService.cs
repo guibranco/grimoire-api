@@ -42,7 +42,7 @@ public sealed class AuditRetentionService(
                 time.GetUtcNow().AddDays(-options.RetentionDays),
                 ct
             );
-            if (deleted > 0)
+            if (deleted > 0 && logger.IsEnabled(LogLevel.Information))
                 logger.LogInformation(
                     "Deleted {Count} audit events older than {Days} days",
                     deleted,

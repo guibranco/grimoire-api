@@ -1,6 +1,8 @@
+using Grimoire.Core.Secrets;
+
 namespace Grimoire.Core.Entities;
 
-public class SecretVersion
+public class SecretVersion : IEditableSecretVersion
 {
     public Guid Id { get; set; }
     public Guid SecretId { get; set; }
@@ -14,4 +16,11 @@ public class SecretVersion
 
     public Secret Secret { get; set; } = null!;
     public AppEnvironment Environment { get; set; } = null!;
+
+    public void SetWindow(bool isEnabled, DateTimeOffset? notBefore, DateTimeOffset? expiresAt)
+    {
+        IsEnabled = isEnabled;
+        NotBefore = notBefore;
+        ExpiresAt = expiresAt;
+    }
 }

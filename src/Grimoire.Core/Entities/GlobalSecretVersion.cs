@@ -1,10 +1,12 @@
+using Grimoire.Core.Secrets;
+
 namespace Grimoire.Core.Entities;
 
 /// <summary>
 /// A versioned value of a <see cref="GlobalSecret"/>, targeting an environment by slug
 /// (or <see cref="GlobalConfigurationEntry.AllEnvironments"/> for every environment).
 /// </summary>
-public class GlobalSecretVersion
+public class GlobalSecretVersion : IEditableSecretVersion
 {
     public Guid Id { get; set; }
     public Guid GlobalSecretId { get; set; }
@@ -17,4 +19,11 @@ public class GlobalSecretVersion
     public DateTimeOffset CreatedAt { get; set; }
 
     public GlobalSecret GlobalSecret { get; set; } = null!;
+
+    public void SetWindow(bool isEnabled, DateTimeOffset? notBefore, DateTimeOffset? expiresAt)
+    {
+        IsEnabled = isEnabled;
+        NotBefore = notBefore;
+        ExpiresAt = expiresAt;
+    }
 }

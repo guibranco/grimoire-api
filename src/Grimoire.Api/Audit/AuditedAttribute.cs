@@ -46,6 +46,7 @@ public sealed class AuditedAttribute(string action) : Attribute, IAsyncActionFil
             Environment = EnvironmentOf(context, bodies),
             TargetType = AuditActions.TargetType(Action),
             Target = TargetOf(context, bodies),
+            Version = AuditContext.GetVersion(http) ?? VersionOf(context),
             StatusCode = statusCode,
             Outcome = AuditActions.OutcomeFor(statusCode),
             IpAddress = http.Connection.RemoteIpAddress?.ToString(),
@@ -66,6 +67,9 @@ public sealed class AuditedAttribute(string action) : Attribute, IAsyncActionFil
             _ => StatusCodes.Status200OK,
         };
     }
+
+    private static int? VersionOf(ActionExecutingContext context) =>
+        int.TryParse(Route(context, "version"), out var version) ? version : null;
 
     private static string? Route(ActionExecutingContext context, string key) =>
         context.RouteData.Values.TryGetValue(key, out var value) ? value?.ToString() : null;

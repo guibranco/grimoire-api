@@ -25,5 +25,34 @@ public interface ISecretRepository
         Guid environmentId,
         CancellationToken ct = default
     );
-    Task AddVersionAsync(SecretVersion version, CancellationToken ct = default);
+    Task<SecretVersion?> GetVersionAsync(
+        Guid secretId,
+        Guid environmentId,
+        int version,
+        CancellationToken ct = default
+    );
+
+    /// <summary>
+    /// Adds <paramref name="version"/>. With <paramref name="expirePreviousAt"/>, every other
+    /// enabled version of the same secret and environment with no expiry (or a later one) is
+    /// given that expiry in the same save.
+    /// </summary>
+    Task AddVersionAsync(
+        SecretVersion version,
+        DateTimeOffset? expirePreviousAt = null,
+        CancellationToken ct = default
+    );
+
+    /// <summary>Saves changes made to versions returned by this repository.</summary>
+    Task SaveChangesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Runs <paramref name="work"/> inside a write transaction that holds the database write
+    /// lock from its first read, so version reads, rule checks and saves made inside it can't
+    /// interleave with another writer. Joins the ambient transaction when one is open.
+    /// </summary>
+    Task<T> InWriteTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> work,
+        CancellationToken ct = default
+    );
 }

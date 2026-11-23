@@ -1,5 +1,6 @@
 using Grimoire.Api.Audit;
 using Grimoire.Api.DTOs.Management;
+using Grimoire.Api.Secrets;
 using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
@@ -69,6 +70,7 @@ public class GlobalSecretsController(
         if (secret is null)
             return NotFound(Problem("Global secret not found.", statusCode: 404));
 
+        var now = DateTimeOffset.UtcNow;
         foreach (var item in req)
         {
             var nextVersion = await globalSecretRepo.GetNextVersionNumberAsync(
@@ -86,9 +88,15 @@ public class GlobalSecretsController(
                 ExpiresAt = item.ExpiresAt,
                 NotBefore = item.NotBefore,
                 Version = nextVersion,
-                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedAt = now,
             };
-            await globalSecretRepo.AddVersionAsync(version, ct);
+            await globalSecretRepo.AddVersionAsync(
+                version,
+                SecretsController.GraceExpiry(item.PreviousVersionGraceDays, now),
+                ct
+            );
+            if (req.Count == 1)
+                AuditContext.SetVersion(HttpContext, nextVersion);
         }
 
         return Ok();
@@ -106,15 +114,45 @@ public class GlobalSecretsController(
             return NotFound(Problem("Global secret not found.", statusCode: 404));
 
         var versions = await globalSecretRepo.GetVersionsAsync(secret.Id, environmentSlug, ct);
-        return Ok(
-            versions.Select(v => new SecretVersionMetadata(
-                v.Id,
-                v.Version,
-                v.IsEnabled,
-                v.ExpiresAt,
-                v.NotBefore,
-                v.CreatedAt
-            ))
+        return Ok(SecretVersionEditor.ToMetadata(versions, DateTimeOffset.UtcNow));
+    }
+
+    /// <summary>
+    /// Enables or disables a Global secret version, or changes its start/expiry. Same rules as
+    /// application secret versions; the guardrail considers this environment slug's versions.
+    /// </summary>
+    [Audited(AuditActions.GlobalSecretVersionUpdate)]
+    [HttpPatch("{name}/versions/{environmentSlug}/{version:int}")]
+    [ProducesResponseType<SecretVersionMetadata>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateVersion(
+        string name,
+        string environmentSlug,
+        int version,
+        [FromBody] UpdateSecretVersionRequest req,
+        [FromQuery] bool force,
+        CancellationToken ct
+    )
+    {
+        var secret = await globalSecretRepo.GetByNameAsync(name, ct);
+        if (secret is null)
+            return Problem("Global secret not found.", statusCode: 404);
+
+        // See SecretsController.UpdateVersion: the guard and the save share one write lock.
+        return await globalSecretRepo.InWriteTransactionAsync(
+            async token =>
+                await SecretVersionEditor.UpdateAsync(
+                    this,
+                    await globalSecretRepo.GetVersionsAsync(secret.Id, environmentSlug, token),
+                    version,
+                    req,
+                    force,
+                    globalSecretRepo.SaveChangesAsync,
+                    token
+                ),
+            ct
         );
     }
 

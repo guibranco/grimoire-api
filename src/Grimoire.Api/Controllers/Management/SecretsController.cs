@@ -1,5 +1,6 @@
 using Grimoire.Api.Audit;
 using Grimoire.Api.DTOs.Management;
+using Grimoire.Api.Secrets;
 using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
@@ -142,6 +143,7 @@ public class SecretsController(
         if (secret is null)
             return NotFound(Problem("Secret not found.", statusCode: 404));
 
+        var now = DateTimeOffset.UtcNow;
         foreach (var item in req)
         {
             var env = await envRepo.GetBySlugAsync(app.Id, item.EnvironmentSlug, ct);
@@ -161,9 +163,15 @@ public class SecretsController(
                 ExpiresAt = item.ExpiresAt,
                 NotBefore = item.NotBefore,
                 Version = nextVersion,
-                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedAt = now,
             };
-            await secretRepo.AddVersionAsync(sv, ct);
+            await secretRepo.AddVersionAsync(
+                sv,
+                GraceExpiry(item.PreviousVersionGraceDays, now),
+                ct
+            );
+            if (req.Count == 1)
+                AuditContext.SetVersion(HttpContext, nextVersion);
         }
 
         return Ok();
@@ -190,17 +198,61 @@ public class SecretsController(
             return NotFound(Problem("Environment not found.", statusCode: 404));
 
         var versions = await secretRepo.GetVersionsAsync(secret.Id, env.Id, ct);
-        return Ok(
-            versions.Select(v => new SecretVersionMetadata(
-                v.Id,
-                v.Version,
-                v.IsEnabled,
-                v.ExpiresAt,
-                v.NotBefore,
-                v.CreatedAt
-            ))
+        return Ok(SecretVersionEditor.ToMetadata(versions, DateTimeOffset.UtcNow));
+    }
+
+    /// <summary>
+    /// Enables or disables a version, or changes its start/expiry. The value is immutable.
+    /// Rejected with 409 when it would leave the secret with no valid version, unless
+    /// <paramref name="force"/> is <c>true</c>.
+    /// </summary>
+    [Audited(AuditActions.SecretVersionUpdate)]
+    [HttpPatch("{name}/versions/{environmentSlug}/{version:int}")]
+    [ProducesResponseType<SecretVersionMetadata>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateVersion(
+        string slug,
+        string name,
+        string environmentSlug,
+        int version,
+        [FromBody] UpdateSecretVersionRequest req,
+        [FromQuery] bool force,
+        CancellationToken ct
+    )
+    {
+        var app = await appRepo.GetBySlugAsync(slug, ct);
+        if (app is null)
+            return Problem("Application not found.", statusCode: 404);
+
+        var secret = await secretRepo.GetByNameAsync(app.Id, name, ct);
+        if (secret is null)
+            return Problem("Secret not found.", statusCode: 404);
+
+        var env = await envRepo.GetBySlugAsync(app.Id, environmentSlug, ct);
+        if (env is null)
+            return Problem("Environment not found.", statusCode: 404);
+
+        // Read, guard and save under one write lock so two concurrent edits can't each pass
+        // the "no valid version" check against the same snapshot.
+        return await secretRepo.InWriteTransactionAsync(
+            async token =>
+                await SecretVersionEditor.UpdateAsync(
+                    this,
+                    await secretRepo.GetVersionsAsync(secret.Id, env.Id, token),
+                    version,
+                    req,
+                    force,
+                    secretRepo.SaveChangesAsync,
+                    token
+                ),
+            ct
         );
     }
+
+    internal static DateTimeOffset? GraceExpiry(int? graceDays, DateTimeOffset now) =>
+        graceDays is { } days ? now.AddDays(days) : null;
 
     [Audited(AuditActions.SecretDelete)]
     [HttpDelete("{name}")]

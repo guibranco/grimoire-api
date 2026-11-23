@@ -31,5 +31,30 @@ public interface IGlobalSecretRepository
         string environmentSlug,
         CancellationToken ct = default
     );
-    Task AddVersionAsync(GlobalSecretVersion version, CancellationToken ct = default);
+    Task<GlobalSecretVersion?> GetVersionAsync(
+        Guid globalSecretId,
+        string environmentSlug,
+        int version,
+        CancellationToken ct = default
+    );
+
+    /// <inheritdoc cref="ISecretRepository.AddVersionAsync"/>
+    Task AddVersionAsync(
+        GlobalSecretVersion version,
+        DateTimeOffset? expirePreviousAt = null,
+        CancellationToken ct = default
+    );
+
+    /// <summary>Saves changes made to versions returned by this repository.</summary>
+    Task SaveChangesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Runs <paramref name="work"/> inside a write transaction that holds the database write
+    /// lock from its first read, so version reads, rule checks and saves made inside it can't
+    /// interleave with another writer. Joins the ambient transaction when one is open.
+    /// </summary>
+    Task<T> InWriteTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> work,
+        CancellationToken ct = default
+    );
 }

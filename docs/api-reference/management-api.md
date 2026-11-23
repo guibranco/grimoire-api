@@ -303,12 +303,18 @@ Creates new versions of the secret for one or more environments. Each call **app
 | `isEnabled` | ➖ | Default `true` |
 | `expiresAt` | ➖ | ISO 8601 timestamp; version expires after this |
 | `notBefore` | ➖ | ISO 8601 timestamp; version inactive before this |
+| `previousVersionGraceDays` | ➖ | `0`–`3650`. Every other enabled version in that environment with no expiry (or a later one) expires this many days from now, in the same request. Omit to leave them untouched. |
 
 {: .note }
 `expiresAt` must be after `notBefore` if both are set (validated server-side).
 
 **Response `200`:** Empty body.  
+**Response `400`:** Invalid item (empty value, `expiresAt` not after `notBefore`, grace days out of range).  
 **Response `404`:** Environment or secret not found.
+
+#### How the served version is chosen
+
+Consumers get the **highest version that is enabled and inside its `notBefore`/`expiresAt` window**. A new version with a future `notBefore` therefore takes over on its own at that time, and the previous version keeps being served until then. Use `previousVersionGraceDays` when rotating so old values stop working after an overlap, instead of staying valid forever.
 
 ---
 
@@ -328,7 +334,7 @@ Returns the secret definition — not the values.
 GET /management/applications/{slug}/secrets/{name}/versions/{environmentSlug}
 ```
 
-Returns all versions for the named secret in the given environment, ordered newest-first.
+Returns all versions for the named secret in the given environment, ordered newest-first, with which one is served. Never includes values.
 
 **Response `200`:**
 
@@ -340,18 +346,59 @@ Returns all versions for the named secret in the given environment, ordered newe
     "isEnabled": true,
     "expiresAt": null,
     "notBefore": null,
-    "createdAt": "2025-06-01T00:00:00Z"
+    "createdAt": "2025-06-01T00:00:00Z",
+    "isCurrent": true,
+    "status": "current"
   },
   {
     "id": "...",
     "version": 1,
-    "isEnabled": false,
-    "expiresAt": "2025-05-31T23:59:59Z",
+    "isEnabled": true,
+    "expiresAt": "2025-06-08T00:00:00Z",
     "notBefore": null,
-    "createdAt": "2025-01-01T00:00:00Z"
+    "createdAt": "2025-01-01T00:00:00Z",
+    "isCurrent": false,
+    "status": "valid"
   }
 ]
 ```
+
+| `status` | Meaning |
+| :------- | :------ |
+| `current` | Served to consumers now (`isCurrent: true`). |
+| `valid` | Enabled and in its window, but a newer valid version is served. |
+| `scheduled` | Enabled, `notBefore` still in the future. |
+| `expired` | `expiresAt` has passed. |
+| `disabled` | `isEnabled` is `false`. |
+
+---
+
+### Update secret version
+
+```
+PATCH /management/applications/{slug}/secrets/{name}/versions/{environmentSlug}/{version}?force=false
+```
+
+Enables or disables a version, or changes its start/expiry. **The value can't be changed**: add a new version instead. Omitted fields keep their current value.
+
+```json
+{ "isEnabled": false }
+```
+
+```json
+{ "expiresAt": "2026-12-01T00:00:00Z", "clearNotBefore": true }
+```
+
+| Field | Description |
+| :---- | :---------- |
+| `isEnabled` | Enable or disable the version. |
+| `notBefore`, `expiresAt` | New start / expiry (ISO 8601). |
+| `clearNotBefore`, `clearExpiresAt` | `true` removes the start / expiry. Can't be combined with a new value for the same field. |
+
+**Response `200`:** The updated version (same shape as an item of [List secret versions](#list-secret-versions)).  
+**Response `400`:** `expiresAt` not after `notBefore` (after merging with the stored values), or a field both set and cleared.  
+**Response `404`:** Application, secret, environment or version not found.  
+**Response `409`:** The change would leave the secret with no valid version in this environment (for example disabling or expiring the only valid one). Add a new value first, or repeat with `?force=true`.
 
 ---
 
@@ -729,6 +776,7 @@ Each item creates a new version for its environment slug.
 | `isEnabled` | ➖ | Defaults to `true` |
 | `expiresAt` | ➖ | Version inactive after this |
 | `notBefore` | ➖ | Version inactive before this |
+| `previousVersionGraceDays` | ➖ | `0`–`3650`; expires the other enabled versions of that slug after this many days (see [Set secret values](#set-secret-values)) |
 
 For an environment, the consumer gets the latest active version for that slug, or if there is none, the latest active version for `*`.
 
@@ -744,7 +792,17 @@ For an environment, the consumer gets the latest active version for that slug, o
 GET /management/global/secrets/{name}/versions/{environmentSlug}
 ```
 
-Version metadata for one environment slug (`*` allowed), newest first. Same shape as [List secret versions](#list-secret-versions); never includes values.
+Version metadata for one environment slug (`*` allowed), newest first. Same shape as [List secret versions](#list-secret-versions), including `isCurrent` and `status` within that slug; never includes values.
+
+---
+
+### Update global secret version
+
+```
+PATCH /management/global/secrets/{name}/versions/{environmentSlug}/{version}?force=false
+```
+
+Same body, rules and responses as [Update secret version](#update-secret-version). The `409` guardrail considers the versions of that environment slug (`*` or a specific slug).
 
 ---
 
@@ -918,6 +976,7 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
       "environment": "production",
       "targetType": "secret",
       "target": "MAILBOX_PASSWORD",
+      "version": null,
       "outcome": "success",
       "statusCode": 200,
       "ipAddress": "10.0.0.5",
@@ -935,8 +994,9 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | `application.create` / `.update` / `.delete` / `.rotate-key` | Application changes. |
 | `environment.create` / `.delete` | Environment changes (`target` is the name). |
 | `secret.create` / `.write` / `.delete` | Secret changes; `.write` adds a version (`environment` lists the environments set). |
+| `secret.version-update` | A version was enabled/disabled or its window changed (`version` is set). |
 | `configuration.create` / `.update` / `.delete` | Configuration changes. |
-| `global-secret.*`, `global-configuration.*` | The same for Global entries (`application` is `null`). |
+| `global-secret.*`, `global-configuration.*` | The same for Global entries (`application` is `null`), including `global-secret.version-update`. |
 | `backup.create` | On-demand backup. |
 | `secret.read`, `configuration.read` | Consumer API reads, by `app:<slug>`. Failed reads are recorded with their outcome. |
 | `auth.failed` | Request rejected by the admin or consumer API key check; `target` is the method and path. |

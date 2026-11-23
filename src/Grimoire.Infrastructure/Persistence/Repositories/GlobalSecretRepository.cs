@@ -1,5 +1,6 @@
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces.Repositories;
+using Grimoire.Core.Secrets;
 using Microsoft.EntityFrameworkCore;
 
 namespace Grimoire.Infrastructure.Persistence.Repositories;
@@ -56,12 +57,7 @@ public class GlobalSecretRepository(GrimoireDbContext db) : IGlobalSecretReposit
             )
             .ToListAsync(ct);
 
-        var active = candidates
-            .Where(v =>
-                (v.NotBefore == null || v.NotBefore <= now)
-                && (v.ExpiresAt == null || v.ExpiresAt >= now)
-            )
-            .ToList();
+        var active = candidates.Where(v => SecretVersionRules.IsValid(v, now)).ToList();
 
         return active.Where(v => v.EnvironmentSlug == environmentSlug).MaxBy(v => v.Version)
             ?? active
@@ -83,9 +79,51 @@ public class GlobalSecretRepository(GrimoireDbContext db) : IGlobalSecretReposit
         return (max ?? 0) + 1;
     }
 
-    public async Task AddVersionAsync(GlobalSecretVersion version, CancellationToken ct = default)
+    public Task<GlobalSecretVersion?> GetVersionAsync(
+        Guid globalSecretId,
+        string environmentSlug,
+        int version,
+        CancellationToken ct = default
+    ) =>
+        db.GlobalSecretVersions.FirstOrDefaultAsync(
+            v =>
+                v.GlobalSecretId == globalSecretId
+                && v.EnvironmentSlug == environmentSlug
+                && v.Version == version,
+            ct
+        );
+
+    public async Task AddVersionAsync(
+        GlobalSecretVersion version,
+        DateTimeOffset? expirePreviousAt = null,
+        CancellationToken ct = default
+    )
     {
-        db.GlobalSecretVersions.Add(version);
-        await db.SaveChangesAsync(ct);
+        // See SecretRepository.AddVersionAsync: the grace expiry runs under the write lock.
+        await db.InWriteTransactionAsync(
+            async token =>
+            {
+                if (expirePreviousAt is { } expiresAt)
+                {
+                    var others = await GetVersionsAsync(
+                        version.GlobalSecretId,
+                        version.EnvironmentSlug,
+                        token
+                    );
+                    foreach (var previous in SecretVersionRules.VersionsToExpire(others, expiresAt))
+                        previous.ExpiresAt = expiresAt;
+                }
+                db.GlobalSecretVersions.Add(version);
+                return await db.SaveChangesAsync(token);
+            },
+            ct
+        );
     }
+
+    public Task SaveChangesAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
+
+    public Task<T> InWriteTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> work,
+        CancellationToken ct = default
+    ) => db.InWriteTransactionAsync(work, ct);
 }

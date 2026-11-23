@@ -17,36 +17,23 @@ public class AuditController(IAuditQueryService audit) : ControllerBase
     /// Audit log, newest first: who read or changed what, where and how it ended. Never contains
     /// secret or configuration values.
     /// </summary>
-    /// <param name="application">Application slug.</param>
-    /// <param name="action">Action code, or a prefix ending in <c>*</c> (e.g. <c>secret.*</c>).</param>
-    /// <param name="actor"><c>admin</c>, <c>app:&lt;slug&gt;</c> or <c>anonymous</c>.</param>
-    /// <param name="environment">Environment slug.</param>
-    /// <param name="target">Secret name or configuration key.</param>
-    /// <param name="outcome"><c>success</c>, <c>notfound</c>, <c>forbidden</c>, <c>invalid</c>, <c>conflict</c> or <c>error</c>.</param>
-    /// <param name="from">Inclusive lower bound (ISO 8601).</param>
-    /// <param name="to">Inclusive upper bound (ISO 8601).</param>
-    /// <param name="includeReads">Include consumer reads (<c>*.read</c>). Default <c>true</c>.</param>
-    /// <param name="page">1-based page number.</param>
-    /// <param name="pageSize">Items per page, 1–200 (default 50).</param>
-    /// <param name="ct">Request cancellation.</param>
     [HttpGet]
     [ProducesResponseType<AuditPageResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> List(
-        [FromQuery] string? application,
-        [FromQuery] string? action,
-        [FromQuery] string? actor,
-        [FromQuery] string? environment,
-        [FromQuery] string? target,
-        [FromQuery] string? outcome,
-        [FromQuery] DateTimeOffset? from,
-        [FromQuery] DateTimeOffset? to,
-        [FromQuery] bool includeReads = true,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50,
-        CancellationToken ct = default
-    )
+    public async Task<IActionResult> List([FromQuery] AuditListRequest query, CancellationToken ct)
     {
+        var (application, action, actor, environment, target, outcome, from, to) = (
+            query.Application,
+            query.Action,
+            query.Actor,
+            query.Environment,
+            query.Target,
+            query.Outcome,
+            query.From,
+            query.To
+        );
+        var (includeReads, page, pageSize) = (query.IncludeReads, query.Page, query.PageSize);
+
         AuditOutcome? parsedOutcome = null;
         if (!string.IsNullOrWhiteSpace(outcome))
         {
@@ -106,6 +93,7 @@ public class AuditController(IAuditQueryService audit) : ControllerBase
             e.Environment,
             e.TargetType,
             e.Target,
+            e.Version,
             e.Outcome.ToString().ToLowerInvariant(),
             e.StatusCode,
             e.IpAddress,

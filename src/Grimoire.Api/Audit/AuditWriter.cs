@@ -61,17 +61,18 @@ public sealed class AuditWriter(
         if (batch.Count == 0)
             return;
 
-        foreach (var e in batch)
-            logger.LogInformation(
-                "Audit {AuditAction} {AuditOutcome} by {AuditActor} app={AuditApplication} env={AuditEnvironment} target={AuditTarget} status={AuditStatus}",
-                e.Action,
-                e.Outcome,
-                e.Actor,
-                e.ApplicationSlug,
-                e.Environment,
-                e.Target,
-                e.StatusCode
-            );
+        if (logger.IsEnabled(LogLevel.Information))
+            foreach (var e in batch)
+                logger.LogInformation(
+                    "Audit {AuditAction} {AuditOutcome} by {AuditActor} app={AuditApplication} env={AuditEnvironment} target={AuditTarget} status={AuditStatus}",
+                    e.Action,
+                    e.Outcome,
+                    e.Actor,
+                    e.ApplicationSlug,
+                    e.Environment,
+                    e.Target,
+                    e.StatusCode
+                );
 
         try
         {

@@ -1,5 +1,6 @@
 using FluentValidation;
 using Grimoire.Api.DTOs.Management;
+using Grimoire.Core.Secrets;
 
 namespace Grimoire.Api.Validators.Management;
 
@@ -18,6 +19,27 @@ public class SetSecretValueRequestValidator : AbstractValidator<SetSecretValueRe
     {
         RuleFor(x => x.EnvironmentSlug).NotEmpty();
         RuleFor(x => x.Value).NotEmpty();
+        RuleFor(x => x.ExpiresAt)
+            .GreaterThan(x => x.NotBefore)
+            .When(x => x.ExpiresAt.HasValue && x.NotBefore.HasValue);
+        RuleFor(x => x.PreviousVersionGraceDays)
+            .InclusiveBetween(0, SecretVersionRules.MaxGraceDays)
+            .When(x => x.PreviousVersionGraceDays.HasValue);
+    }
+}
+
+public class UpdateSecretVersionRequestValidator : AbstractValidator<UpdateSecretVersionRequest>
+{
+    public UpdateSecretVersionRequestValidator()
+    {
+        RuleFor(x => x.NotBefore)
+            .Null()
+            .When(x => x.ClearNotBefore)
+            .WithMessage("Use either 'notBefore' or 'clearNotBefore', not both.");
+        RuleFor(x => x.ExpiresAt)
+            .Null()
+            .When(x => x.ClearExpiresAt)
+            .WithMessage("Use either 'expiresAt' or 'clearExpiresAt', not both.");
         RuleFor(x => x.ExpiresAt)
             .GreaterThan(x => x.NotBefore)
             .When(x => x.ExpiresAt.HasValue && x.NotBefore.HasValue);
