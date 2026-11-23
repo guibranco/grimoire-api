@@ -40,6 +40,7 @@ public class GlobalSecretsController(
             Id = Guid.NewGuid(),
             Name = req.Name,
             Description = req.Description,
+            RotationIntervalDays = req.RotationIntervalDays,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
@@ -55,6 +56,30 @@ public class GlobalSecretsController(
         if (secret is null)
             return NotFound(Problem("Global secret not found.", statusCode: 404));
 
+        return Ok(ToResponse(secret));
+    }
+
+    /// <summary>Changes the description and rotation schedule. Values are changed through <c>/values</c>.</summary>
+    [Audited(AuditActions.GlobalSecretUpdate)]
+    [HttpPatch("{name}")]
+    [ProducesResponseType<GlobalSecretResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(
+        string name,
+        [FromBody] UpdateSecretRequest req,
+        CancellationToken ct
+    )
+    {
+        var secret = await globalSecretRepo.GetByNameAsync(name, ct);
+        if (secret is null)
+            return Problem("Global secret not found.", statusCode: 404);
+
+        secret.Description = req.ClearDescription ? null : req.Description ?? secret.Description;
+        secret.RotationIntervalDays = req.ClearRotationInterval
+            ? null
+            : req.RotationIntervalDays ?? secret.RotationIntervalDays;
+        secret.UpdatedAt = DateTimeOffset.UtcNow;
+        await globalSecretRepo.SaveChangesAsync(ct);
         return Ok(ToResponse(secret));
     }
 
@@ -169,5 +194,5 @@ public class GlobalSecretsController(
     }
 
     private static GlobalSecretResponse ToResponse(GlobalSecret s) =>
-        new(s.Id, s.Name, s.Description, s.CreatedAt, s.UpdatedAt);
+        new(s.Id, s.Name, s.Description, s.CreatedAt, s.UpdatedAt, s.RotationIntervalDays);
 }

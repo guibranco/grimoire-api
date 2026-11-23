@@ -85,6 +85,7 @@ A named secret slot. Does not hold a value itself — values live in `SecretVers
 | `ApplicationId` | `Guid` | FK → Application |
 | `Name` | `string` | Identifier used in API calls and client reads |
 | `Description` | `string?` | Optional |
+| `RotationIntervalDays` | `int?` | Rotate at least this often (1–3650 days). The current version is due this many days after its `NotBefore` (else `CreatedAt`). |
 | `CreatedAt` | `DateTimeOffset` | — |
 | `UpdatedAt` | `DateTimeOffset` | — |
 
@@ -155,6 +156,7 @@ A named secret slot shared by every application with `InheritGlobals = true`.
 | `Id` | `Guid` | Primary key |
 | `Name` | `string` | Unique identifier (up to 200 chars) |
 | `Description` | `string?` | Optional |
+| `RotationIntervalDays` | `int?` | Rotate at least this often (1–3650 days). The current version is due this many days after its `NotBefore` (else `CreatedAt`). |
 | `CreatedAt` | `DateTimeOffset` | — |
 | `UpdatedAt` | `DateTimeOffset` | — |
 
@@ -177,6 +179,16 @@ Same as `SecretVersion`, but targets an environment by slug. Values are encrypte
 The active global version for an environment is the latest active version for that slug; if there is none, the latest active version for `*`.
 
 ---
+
+### RotationReminder
+
+Remembers which [rotation reminders](../operations/rotation-reminders.md) were delivered, so each one is sent once. Holds no secret data.
+
+| Column | Type | Notes |
+| :----- | :--- | :---- |
+| `Id` | `Guid` | Primary key |
+| `Key` | `string` | Unique. Scope, secret id, environment, reason, due date (ticks) and threshold. |
+| `SentAt` | `DateTimeOffset` | Stored as an integer. Rows older than `RotationReminders:KeepSentDays` are deleted. |
 
 ## Global values and precedence
 

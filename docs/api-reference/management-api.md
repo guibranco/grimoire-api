@@ -228,7 +228,8 @@ Returns secret metadata — **never** the decrypted values.
     "name": "database-password",
     "description": null,
     "createdAt": "2025-01-01T00:00:00Z",
-    "updatedAt": "2025-01-01T00:00:00Z"
+    "updatedAt": "2025-01-01T00:00:00Z",
+    "rotationIntervalDays": 90
   }
 ]
 ```
@@ -246,8 +247,14 @@ Creates a named secret slot. Values are set separately via [Set values](#set-sec
 **Request body:**
 
 ```json
-{ "name": "database-password", "description": "Main DB password" }
+{ "name": "database-password", "description": "Main DB password", "rotationIntervalDays": 90 }
 ```
+
+| Field | Required | Constraints |
+| :---- | :------: | :---------- |
+| `name` | ✅ | 1–200 characters, unique in the application |
+| `description` | ➖ | Up to 1000 characters |
+| `rotationIntervalDays` | ➖ | `1`–`3650`. Rotate at least this often: the [current version](#how-the-served-version-is-chosen) is due this many days after its `notBefore` (else its creation). Shows up in [Expiring secrets](#list-expiring-secrets) and [rotation reminders](../operations/rotation-reminders.md). |
 
 **Response `201`:**
 
@@ -315,6 +322,31 @@ Creates new versions of the secret for one or more environments. Each call **app
 #### How the served version is chosen
 
 Consumers get the **highest version that is enabled and inside its `notBefore`/`expiresAt` window**. A new version with a future `notBefore` therefore takes over on its own at that time, and the previous version keeps being served until then. Use `previousVersionGraceDays` when rotating so old values stop working after an overlap, instead of staying valid forever.
+
+---
+
+### Update secret
+
+```
+PATCH /management/applications/{slug}/secrets/{name}
+```
+
+Changes the description and rotation schedule. Omitted fields keep their value; values are changed through [Set values](#set-secret-values).
+
+```json
+{ "rotationIntervalDays": 30 }
+```
+
+| Field | Description |
+| :---- | :---------- |
+| `description` | New description (up to 1000 characters). |
+| `rotationIntervalDays` | New rotation interval (`1`–`3650`). |
+| `clearDescription` | `true` removes the description. Can't be combined with `description`. |
+| `clearRotationInterval` | `true` removes the rotation schedule. Can't be combined with `rotationIntervalDays`. |
+
+**Response `200`:** The updated secret metadata.  
+**Response `400`:** Out-of-range interval, or a field both set and cleared.  
+**Response `404`:** Application or secret not found.
 
 ---
 
@@ -715,7 +747,7 @@ Global secrets mirror application secrets. Values are encrypted at rest with the
 GET /management/global/secrets
 ```
 
-**Response `200`:** Array of `{ id, name, description, createdAt, updatedAt }`. No values.
+**Response `200`:** Array of `{ id, name, description, createdAt, updatedAt, rotationIntervalDays }`. No values.
 
 ---
 
@@ -728,13 +760,14 @@ POST /management/global/secrets
 **Request body:**
 
 ```json
-{ "name": "amqp-uri", "description": "CloudAMQP connection string" }
+{ "name": "amqp-uri", "description": "CloudAMQP connection string", "rotationIntervalDays": 180 }
 ```
 
 | Field | Required | Constraints |
 | :---- | :------: | :---------- |
 | `name` | ✅ | 1–200 characters, unique |
 | `description` | ➖ | Up to 1000 characters |
+| `rotationIntervalDays` | ➖ | `1`–`3650`, as for [application secrets](#create-secret). Evaluated per environment slug. |
 
 **Response `201`:** Created secret metadata.  
 **Response `409`:** A global secret with that name already exists.
@@ -747,8 +780,18 @@ POST /management/global/secrets
 GET /management/global/secrets/{name}
 ```
 
-**Response `200`:** `{ id, name, description, createdAt, updatedAt }`.  
+**Response `200`:** `{ id, name, description, createdAt, updatedAt, rotationIntervalDays }`.  
 **Response `404`:** Not found.
+
+---
+
+### Update global secret
+
+```
+PATCH /management/global/secrets/{name}
+```
+
+Same body, rules and responses as [Update secret](#update-secret).
 
 ---
 
@@ -818,6 +861,75 @@ Deletes the secret and all its versions.
 
 ---
 
+## Rotation
+
+### List expiring secrets
+
+```
+GET /management/secrets/expiring?withinDays=30
+```
+
+Secrets due for rotation across all applications and globals, soonest first. Metadata only, never values. For each secret and environment, the due date is the earlier of the [current version](#how-the-served-version-is-chosen)'s `expiresAt` and its rotation date (`rotationIntervalDays` after its `notBefore`, else its creation). A newer version already scheduled (`notBefore`) to take over by then counts as the rotation being planned, so nothing is due.
+
+| Query parameter | Default | Description |
+| :-------------- | :------ | :---------- |
+| `withinDays` | `30` | `0`–`3650`. Look-ahead window. Overdue and expired secrets are always included. |
+
+**Response `200`:**
+
+```json
+{
+  "generatedAt": "2026-11-23T09:00:00Z",
+  "withinDays": 30,
+  "items": [
+    {
+      "application": "billing",
+      "applicationName": "Billing",
+      "secret": "DB_PASSWORD",
+      "environment": "production",
+      "isGlobal": false,
+      "version": 3,
+      "reason": "rotation",
+      "dueAt": "2026-11-30T09:00:00Z",
+      "daysRemaining": 7,
+      "rotationIntervalDays": 90
+    }
+  ]
+}
+```
+
+| `reason` | Meaning |
+| :------- | :------ |
+| `expiry` | The current version's `expiresAt`. |
+| `rotation` | The current version is older than `rotationIntervalDays` allows. |
+| `expired` | No version is valid any more because the latest enabled one expired. |
+
+`application` and `applicationName` are `null` for global secrets, whose `environment` may be `*`. `daysRemaining` counts UTC calendar days and is negative when overdue. Application secrets are only listed for environments they have a value in.
+
+**Response `400`:** `withinDays` out of range.
+
+---
+
+### Send rotation reminders now
+
+```
+POST /management/secrets/expiring/notify
+```
+
+Runs the [rotation reminder](../operations/rotation-reminders.md) job immediately (it also runs every `RotationReminders:IntervalHours`). Each reminder is delivered once; already-delivered ones are skipped.
+
+**Response `200`:**
+
+```json
+{ "due": 3, "sent": 2, "alreadySent": 1, "webhookConfigured": true, "delivered": true }
+```
+
+`webhookConfigured: false` means reminders are due but `RotationReminders:WebhookUrl` is not set, so nothing was sent.
+
+**Response `502`:** The webhook call failed (same body, `delivered: false`). Nothing is marked as sent, so the next run retries.
+
+---
+
 ## Dashboard
 
 ### Get dashboard summary
@@ -830,7 +942,7 @@ One aggregate, read-only call for the UI home page. Returns **metadata only, nev
 
 | Query parameter | Default | Description |
 | :-------------- | :------ | :---------- |
-| `expiringWithinDays` | `Dashboard:ExpiringWithinDays` (14) | `0`–`3650`. Window for `secret-expiring`. |
+| `expiringWithinDays` | `Dashboard:ExpiringWithinDays` (14) | `0`–`3650`. Window for `secret-expiring` and `secret-rotation-due`. |
 | `staleAfterDays` | `Dashboard:StaleAfterDays` (7) | `1`–`3650`. Threshold for `consumer-stale`. |
 
 **Response `200`:**
@@ -875,6 +987,7 @@ One aggregate, read-only call for the UI home page. Returns **metadata only, nev
 | `secret-expired` | error | The latest enabled version in an environment has expired and no other version is valid. |
 | `secret-no-valid-version` | error | The secret has versions in an environment but none is enabled and inside its `notBefore`/`expiresAt` window, or it has no versions at all (`environment` is `null`). |
 | `secret-expiring` | warning | The active version expires within `expiringWithinDays`. |
+| `secret-rotation-due` | warning | The active version is due for rotation (its secret's `rotationIntervalDays`) within `expiringWithinDays`, before it expires. |
 | `consumer-stale` | warning | Last consumer read is older than `staleAfterDays`. |
 | `consumer-never-seen` | info | The environment has secrets or configuration but no consumer read was recorded. |
 | `config-empty-value` | info | A configuration value is empty or whitespace. |
@@ -993,11 +1106,12 @@ Newest first. All filters are optional. Sent with `Cache-Control: private, no-st
 | :----- | :---------- |
 | `application.create` / `.update` / `.delete` / `.rotate-key` | Application changes. |
 | `environment.create` / `.delete` | Environment changes (`target` is the name). |
-| `secret.create` / `.write` / `.delete` | Secret changes; `.write` adds a version (`environment` lists the environments set). |
+| `secret.create` / `.update` / `.write` / `.delete` | Secret changes; `.update` changes the description or rotation interval, `.write` adds a version (`environment` lists the environments set). |
 | `secret.version-update` | A version was enabled/disabled or its window changed (`version` is set). |
 | `configuration.create` / `.update` / `.delete` | Configuration changes. |
 | `global-secret.*`, `global-configuration.*` | The same for Global entries (`application` is `null`), including `global-secret.version-update`. |
 | `backup.create` | On-demand backup. |
+| `rotation.remind` | Rotation reminders sent on demand (`POST /management/secrets/expiring/notify`). Scheduled runs are logged, not audited. |
 | `secret.read`, `configuration.read` | Consumer API reads, by `app:<slug>`. Failed reads are recorded with their outcome. |
 | `auth.failed` | Request rejected by the admin or consumer API key check; `target` is the method and path. |
 

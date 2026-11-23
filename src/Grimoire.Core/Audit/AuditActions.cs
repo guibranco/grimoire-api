@@ -20,6 +20,7 @@ public static class AuditActions
     public const string EnvironmentCreate = "environment.create";
     public const string EnvironmentDelete = "environment.delete";
     public const string SecretCreate = "secret.create";
+    public const string SecretUpdate = "secret.update";
     public const string SecretWrite = "secret.write";
     public const string SecretDelete = "secret.delete";
     public const string SecretVersionUpdate = "secret.version-update";
@@ -29,6 +30,7 @@ public static class AuditActions
     public const string ConfigurationDelete = "configuration.delete";
     public const string ConfigurationRead = "configuration.read";
     public const string GlobalSecretCreate = "global-secret.create";
+    public const string GlobalSecretUpdate = "global-secret.update";
     public const string GlobalSecretWrite = "global-secret.write";
     public const string GlobalSecretDelete = "global-secret.delete";
     public const string GlobalSecretVersionUpdate = "global-secret.version-update";
@@ -36,6 +38,7 @@ public static class AuditActions
     public const string GlobalConfigurationUpdate = "global-configuration.update";
     public const string GlobalConfigurationDelete = "global-configuration.delete";
     public const string BackupCreate = "backup.create";
+    public const string RotationRemindersRun = "rotation.remind";
     public const string AuthFailed = "auth.failed";
 
     private const string ApplicationTarget = "application";
@@ -52,6 +55,7 @@ public static class AuditActions
         [EnvironmentCreate] = ("Created environment", EnvironmentTarget),
         [EnvironmentDelete] = ("Deleted environment", EnvironmentTarget),
         [SecretCreate] = ("Created secret", SecretTarget),
+        [SecretUpdate] = ("Updated secret", SecretTarget),
         [SecretWrite] = ("Added secret version", SecretTarget),
         [SecretDelete] = ("Deleted secret", SecretTarget),
         [SecretVersionUpdate] = ("Updated secret version", SecretTarget),
@@ -61,6 +65,7 @@ public static class AuditActions
         [ConfigurationDelete] = ("Deleted configuration", ConfigurationTarget),
         [ConfigurationRead] = ("Read configuration", ConfigurationTarget),
         [GlobalSecretCreate] = ("Created global secret", SecretTarget),
+        [GlobalSecretUpdate] = ("Updated global secret", SecretTarget),
         [GlobalSecretWrite] = ("Added global secret version", SecretTarget),
         [GlobalSecretDelete] = ("Deleted global secret", SecretTarget),
         [GlobalSecretVersionUpdate] = ("Updated global secret version", SecretTarget),
@@ -68,6 +73,7 @@ public static class AuditActions
         [GlobalConfigurationUpdate] = ("Updated global configuration", ConfigurationTarget),
         [GlobalConfigurationDelete] = ("Deleted global configuration", ConfigurationTarget),
         [BackupCreate] = ("Created backup", "backup"),
+        [RotationRemindersRun] = ("Sent rotation reminders", null),
         [AuthFailed] = ("Rejected unauthenticated request", null),
     };
 

@@ -9,11 +9,16 @@ public interface ISecretVersionWindow
     DateTimeOffset? ExpiresAt { get; }
 }
 
+/// <summary>A version window plus when the version was created.</summary>
+public interface ISecretVersionRecord : ISecretVersionWindow
+{
+    DateTimeOffset CreatedAt { get; }
+}
+
 /// <summary>A stored secret version whose window can be edited (the value never changes).</summary>
-public interface IEditableSecretVersion : ISecretVersionWindow
+public interface IEditableSecretVersion : ISecretVersionRecord
 {
     Guid Id { get; }
-    DateTimeOffset CreatedAt { get; }
     void SetWindow(bool isEnabled, DateTimeOffset? notBefore, DateTimeOffset? expiresAt);
 }
 

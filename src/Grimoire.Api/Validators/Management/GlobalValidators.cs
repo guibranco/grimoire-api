@@ -60,6 +60,9 @@ public class CreateGlobalSecretRequestValidator : AbstractValidator<CreateGlobal
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Description).MaximumLength(1000).When(x => x.Description != null);
+        RuleFor(x => x.RotationIntervalDays)
+            .InclusiveBetween(1, SecretDueRules.MaxRotationIntervalDays)
+            .When(x => x.RotationIntervalDays.HasValue);
     }
 }
 

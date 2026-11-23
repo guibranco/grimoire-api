@@ -50,15 +50,7 @@ public class SecretsController(
             return NotFound(Problem("Application not found.", statusCode: 404));
 
         var secrets = await secretRepo.GetByApplicationAsync(app.Id, ct);
-        return Ok(
-            secrets.Select(s => new SecretResponse(
-                s.Id,
-                s.Name,
-                s.Description,
-                s.CreatedAt,
-                s.UpdatedAt
-            ))
-        );
+        return Ok(secrets.Select(ToResponse));
     }
 
     [Audited(AuditActions.SecretCreate)]
@@ -83,6 +75,7 @@ public class SecretsController(
             ApplicationId = app.Id,
             Name = req.Name,
             Description = req.Description,
+            RotationIntervalDays = req.RotationIntervalDays,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
@@ -99,7 +92,8 @@ public class SecretsController(
                 secret.Name,
                 secret.Description,
                 secret.CreatedAt,
-                required
+                required,
+                secret.RotationIntervalDays
             )
         );
     }
@@ -115,15 +109,36 @@ public class SecretsController(
         if (secret is null)
             return NotFound(Problem("Secret not found.", statusCode: 404));
 
-        return Ok(
-            new SecretResponse(
-                secret.Id,
-                secret.Name,
-                secret.Description,
-                secret.CreatedAt,
-                secret.UpdatedAt
-            )
-        );
+        return Ok(ToResponse(secret));
+    }
+
+    /// <summary>Changes the description and rotation schedule. Values are changed through <c>/values</c>.</summary>
+    [Audited(AuditActions.SecretUpdate)]
+    [HttpPatch("{name}")]
+    [ProducesResponseType<SecretResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(
+        string slug,
+        string name,
+        [FromBody] UpdateSecretRequest req,
+        CancellationToken ct
+    )
+    {
+        var app = await appRepo.GetBySlugAsync(slug, ct);
+        if (app is null)
+            return Problem("Application not found.", statusCode: 404);
+
+        var secret = await secretRepo.GetByNameAsync(app.Id, name, ct);
+        if (secret is null)
+            return Problem("Secret not found.", statusCode: 404);
+
+        secret.Description = req.ClearDescription ? null : req.Description ?? secret.Description;
+        secret.RotationIntervalDays = req.ClearRotationInterval
+            ? null
+            : req.RotationIntervalDays ?? secret.RotationIntervalDays;
+        secret.UpdatedAt = DateTimeOffset.UtcNow;
+        await secretRepo.SaveChangesAsync(ct);
+        return Ok(ToResponse(secret));
     }
 
     [Audited(AuditActions.SecretWrite)]
@@ -250,6 +265,9 @@ public class SecretsController(
             ct
         );
     }
+
+    private static SecretResponse ToResponse(Secret s) =>
+        new(s.Id, s.Name, s.Description, s.CreatedAt, s.UpdatedAt, s.RotationIntervalDays);
 
     internal static DateTimeOffset? GraceExpiry(int? graceDays, DateTimeOffset now) =>
         graceDays is { } days ? now.AddDays(days) : null;
