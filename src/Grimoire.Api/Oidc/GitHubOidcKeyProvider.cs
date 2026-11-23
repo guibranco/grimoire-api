@@ -32,6 +32,7 @@ public sealed class GitHubOidcKeyProvider : IGitHubOidcKeyProvider, IDisposable
     private readonly SemaphoreSlim _lock = new(1, 1);
     private IReadOnlyCollection<SecurityKey>? _keys;
     private DateTimeOffset _fetchedAt;
+    private DateTimeOffset? _lastAttemptAt;
 
     public GitHubOidcKeyProvider(GitHubOidcOptions options, TimeProvider time)
         : this(FetchFrom($"{options.Issuer.TrimEnd('/')}/.well-known/openid-configuration"), time)
@@ -53,7 +54,13 @@ public sealed class GitHubOidcKeyProvider : IGitHubOidcKeyProvider, IDisposable
         try
         {
             if (_keys is null || _time.GetUtcNow() - _fetchedAt >= CacheLifetime)
+            {
+                if (_keys is null && AttemptedRecently())
+                    throw new InvalidOperationException(
+                        "GitHub's OIDC keys could not be loaded recently; not retrying yet."
+                    );
                 await FetchAsync(ct);
+            }
             return _keys!;
         }
         finally
@@ -67,7 +74,7 @@ public sealed class GitHubOidcKeyProvider : IGitHubOidcKeyProvider, IDisposable
         await _lock.WaitAsync(ct);
         try
         {
-            if (_keys is not null && _time.GetUtcNow() - _fetchedAt < MinimumRefreshInterval)
+            if (AttemptedRecently())
                 return null;
             await FetchAsync(ct);
             return _keys;
@@ -80,8 +87,13 @@ public sealed class GitHubOidcKeyProvider : IGitHubOidcKeyProvider, IDisposable
 
     public void Dispose() => _lock.Dispose();
 
+    /// <summary>Whether any fetch, successful or not, started within <see cref="MinimumRefreshInterval"/>.</summary>
+    private bool AttemptedRecently() =>
+        _lastAttemptAt is { } at && _time.GetUtcNow() - at < MinimumRefreshInterval;
+
     private async Task FetchAsync(CancellationToken ct)
     {
+        _lastAttemptAt = _time.GetUtcNow();
         _keys = await _fetch(ct);
         _fetchedAt = _time.GetUtcNow();
     }

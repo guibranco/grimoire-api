@@ -21,6 +21,7 @@ public class GitHubOidcValidatorTests
     private sealed class Metadata
     {
         public bool Rotated { get; set; }
+        public bool Down { get; set; }
         public int Fetches { get; private set; }
         public FakeTimeProvider Time { get; } = new(Start);
 
@@ -30,7 +31,9 @@ public class GitHubOidcValidatorTests
                 {
                     await Task.Delay(50, ct);
                     Fetches++;
-                    return [Rotated ? NewKey : OldKey];
+                    return Down
+                        ? throw new HttpRequestException("GitHub is down")
+                        : [Rotated ? NewKey : OldKey];
                 },
                 Time
             );
@@ -89,6 +92,37 @@ public class GitHubOidcValidatorTests
         Assert.Null(await validator.ValidateAsync(Token(NewKey), default));
         Assert.Null(await validator.ValidateAsync(Token(NewKey), default));
         Assert.Equal(1, metadata.Fetches);
+    }
+
+    [Fact]
+    public async Task FailedFetches_AreRateLimitedToo()
+    {
+        var metadata = new Metadata();
+        var validator = Validator(metadata.Provider());
+        Assert.NotNull(await validator.ValidateAsync(Token(OldKey), default));
+
+        metadata.Down = true;
+        metadata.Time.Advance(GitHubOidcKeyProvider.MinimumRefreshInterval);
+        for (var i = 0; i < 3; i++)
+            Assert.Null(await validator.ValidateAsync(Token(NewKey), default));
+        Assert.Equal(2, metadata.Fetches);
+
+        // The cached keys still work while GitHub is down.
+        Assert.NotNull(await validator.ValidateAsync(Token(OldKey), default));
+    }
+
+    [Fact]
+    public async Task AColdStartDuringAnOutage_DoesNotFetchOnEveryRequest()
+    {
+        var metadata = new Metadata { Down = true };
+        var validator = Validator(metadata.Provider());
+        for (var i = 0; i < 3; i++)
+            Assert.Null(await validator.ValidateAsync(Token(OldKey), default));
+        Assert.Equal(1, metadata.Fetches);
+
+        metadata.Down = false;
+        metadata.Time.Advance(GitHubOidcKeyProvider.MinimumRefreshInterval);
+        Assert.NotNull(await validator.ValidateAsync(Token(OldKey), default));
     }
 
     [Fact]
