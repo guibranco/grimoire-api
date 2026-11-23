@@ -13,6 +13,13 @@ public class FeatureFlagRepository(GrimoireDbContext db) : IFeatureFlagRepositor
             .OrderBy(f => f.Key)
             .ToListAsync(ct);
 
+    public async Task<(int Total, int Enabled)> CountAsync(CancellationToken ct = default)
+    {
+        var total = await db.FeatureFlags.CountAsync(ct);
+        var enabled = await db.FeatureFlags.CountAsync(f => f.Environments.Any(e => e.Enabled), ct);
+        return (total, enabled);
+    }
+
     public Task<FeatureFlag?> GetAsync(
         Guid? applicationId,
         string key,

@@ -1,17 +1,21 @@
 namespace Grimoire.Api.DTOs.Management;
 
 /// <summary>Value-free summary for the management UI home page. Never contains secret or configuration values.</summary>
-/// <param name="FeatureFlags">Always <c>null</c> until feature flags (#90) land.</param>
+/// <param name="FeatureFlags">Application and global flags, and how many are on in at least one environment.</param>
 /// <param name="RecentActivity">Latest changes from the audit log (consumer reads excluded); <c>null</c> when auditing is disabled.</param>
 public record DashboardResponse(
     DateTimeOffset GeneratedAt,
     DashboardTotalsResponse Totals,
     IReadOnlyList<DashboardApplicationResponse> Applications,
     DashboardGlobalResponse Global,
-    object? FeatureFlags,
+    DashboardFeatureFlagsResponse FeatureFlags,
     IReadOnlyList<DashboardActivityResponse>? RecentActivity,
     IReadOnlyList<AttentionItemResponse> Attention
 );
+
+/// <param name="Total">Every flag, application and global.</param>
+/// <param name="Enabled">Flags on in at least one environment (for a global flag, including <c>*</c>).</param>
+public record DashboardFeatureFlagsResponse(int Total, int Enabled);
 
 public record DashboardTotalsResponse(
     int Applications,
