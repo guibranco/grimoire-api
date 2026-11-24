@@ -133,9 +133,15 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      - name: 📦 Pack Grimoire.Consumer
+      - name: 📦 Pack Grimoire.Consumer and Grimoire.Cli
         run: |
           dotnet pack src/Grimoire.Consumer/Grimoire.Consumer.csproj \
+            --no-build \
+            --configuration Release \
+            --output ./nupkgs \
+            -p:Version="$VERSION" \
+            -p:ContinuousIntegrationBuild=true
+          dotnet pack src/Grimoire.Cli/Grimoire.Cli.csproj \
             --no-build \
             --configuration Release \
             --output ./nupkgs \
@@ -262,7 +268,7 @@ jobs:
         if: always()
         run: rm -f ~/.ssh/deploy_key
 
-  # ── 5. Publish Grimoire.Consumer to NuGet.org ─────────────────────────────────
+  # ── 5. Publish Grimoire.Consumer and Grimoire.Cli to NuGet.org ─────────────────────────────────
   # Uses NuGet trusted publishing: the OIDC token is exchanged for a short-lived
   # API key, so no long-lived key is stored. Requires the NUGET_USER secret (your
   # nuget.org username) and a trusted publishing policy on nuget.org for

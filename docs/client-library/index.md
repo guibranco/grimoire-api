@@ -18,6 +18,7 @@ permalink: /client-library/
 | [Configuration Provider]({{ site.baseurl }}/client-library/configuration-provider/) | Inject Grimoire configs as `IConfiguration` |
 | [Secret Client]({{ site.baseurl }}/client-library/secret-client/) | Fetch individual secrets programmatically |
 | [Feature Flags]({{ site.baseurl }}/client-library/feature-flags/) | Evaluate feature flags locally, alone or behind `Microsoft.FeatureManagement` |
+| [CLI]({{ site.baseurl }}/cli/) | `grimoire` dotnet tool: read secrets, export to `.env`, run any program with its secrets injected |
 
 ---
 

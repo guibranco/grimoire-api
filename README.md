@@ -10,6 +10,7 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=guibranco_grimoire-api&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=guibranco_grimoire-api)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=guibranco_grimoire-api&metric=coverage)](https://sonarcloud.io/summary/new_code?id=guibranco_grimoire-api)
 [![NuGet](https://img.shields.io/nuget/v/Grimoire.Consumer?logo=nuget&label=Grimoire.Consumer)](https://www.nuget.org/packages/Grimoire.Consumer)
+[![NuGet](https://img.shields.io/nuget/v/Grimoire.Cli?logo=nuget&label=Grimoire.Cli)](https://www.nuget.org/packages/Grimoire.Cli)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -59,7 +60,8 @@ grimoire-api/
 │   ├── Grimoire.Core            # Domain entities & repository interfaces
 │   ├── Grimoire.Infrastructure  # EF Core + SQLite, AES-GCM encryption, slug service
 │   ├── Grimoire.Api             # ASP.NET Core 10 — Management & Consumer REST APIs
-│   └── Grimoire.Consumer        # .NET client library (NuGet: Grimoire.Consumer)
+│   ├── Grimoire.Consumer        # .NET client library (NuGet: Grimoire.Consumer)
+│   └── Grimoire.Cli             # `grimoire` dotnet tool (NuGet: Grimoire.Cli)
 └── 🧪 tests/
     ├── Grimoire.Tests            # Unit tests (validators, slug service)
     ├── Grimoire.IntegrationTests # WebApplicationFactory integration tests
@@ -209,6 +211,23 @@ Console.WriteLine(secret.Properties.Version);     // 2
 
 ---
 
+## ⌨️ CLI
+
+For anything that isn't .NET, or for scripts, CI and systemd units, install the `grimoire` tool:
+
+```bash
+dotnet tool install -g Grimoire.Cli
+
+grimoire login --url https://grimoire.example.com     # prompts for the token
+grimoire get smtp-host -e production
+grimoire export -e local --format env > .env
+grimoire run -e local -- npm start                    # secrets as env vars, nothing on disk
+```
+
+See the [CLI documentation](https://guibranco.github.io/grimoire-api/cli/).
+
+---
+
 ## ⚙️ Configuration Reference
 
 Settings can be provided via `appsettings.json`, environment variables (use `__` as separator), or CLI args.
@@ -310,6 +329,7 @@ Grimoire.Api
         └── Grimoire.Core
 
 Grimoire.Consumer  (standalone, no Api dependency)
+Grimoire.Cli       (standalone, talks to the Consumer API)
 ```
 
 ---
@@ -335,6 +355,11 @@ src/Grimoire.Consumer/
   GrimoireSecretClient.cs             Typed HTTP client
   GrimoireConfigurationClient.cs      IConfigurationSource / IConfigurationProvider
   GrimoireConfigurationExtensions.cs  AddGrimoire() builder extension
+
+src/Grimoire.Cli/
+  CliApp.cs           Commands: login, logout, get, config list, export, run
+  GrimoireClient.cs   Consumer API calls
+  ProcessRunner.cs    Starts `run` children with the injected environment
 ```
 
 ---

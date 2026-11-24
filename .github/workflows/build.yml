@@ -66,9 +66,11 @@ jobs:
             --results-directory ./coverage \
             -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
-      - name: Pack Grimoire.Consumer (validation)
+      - name: Pack Grimoire.Consumer and Grimoire.Cli (validation)
         run: |
           dotnet pack src/Grimoire.Consumer/Grimoire.Consumer.csproj \
+            --no-build --configuration Release --output ./nupkgs
+          dotnet pack src/Grimoire.Cli/Grimoire.Cli.csproj \
             --no-build --configuration Release --output ./nupkgs
 
       - name: End SonarCloud analysis

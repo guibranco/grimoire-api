@@ -41,5 +41,6 @@
     <ProjectReference Include="..\..\src\Grimoire.Infrastructure\Grimoire.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Grimoire.Consumer\Grimoire.Consumer.csproj" />
     <ProjectReference Include="..\..\src\Grimoire.Api\Grimoire.Api.csproj" />
+    <ProjectReference Include="..\..\src\Grimoire.Cli\Grimoire.Cli.csproj" />
   </ItemGroup>
 </Project>
