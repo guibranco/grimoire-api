@@ -1,6 +1,14 @@
 using System.Text;
 
+// Shared with Grimoire.Cli (linked source, built with GRIMOIRE_CLI): `grimoire run` names the
+// environment variables exactly as `format=env` does.
+#if GRIMOIRE_CLI
+namespace Grimoire.Cli.Export;
+
+#else
 namespace Grimoire.Core.Export;
+
+#endif
 
 public enum ExportFormat
 {
@@ -96,10 +104,14 @@ public static class ExportFormatter
         return sb.Append('"').ToString();
     }
 
+    /// <summary>Environment variables by <see cref="EnvKey"/> name, sorted; values unquoted.</summary>
+    public static SortedDictionary<string, string> ToEnvironment(ExportedValues values) =>
+        Merge(values, EnvKey);
+
     /// <summary>One <c>KEY=value</c> line per value, sorted by name.</summary>
     public static string ToEnv(ExportedValues values)
     {
-        var lines = Merge(values, EnvKey).Select(kv => $"{kv.Key}={EnvValue(kv.Value)}").ToList();
+        var lines = ToEnvironment(values).Select(kv => $"{kv.Key}={EnvValue(kv.Value)}").ToList();
         return lines.Count == 0 ? "" : string.Join('\n', lines) + "\n";
     }
 
