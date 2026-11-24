@@ -147,7 +147,7 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
         return data;
     }
 
-    private static void Add(ConfigItem item, IDictionary<string, string?> data)
+    private static void Add(ConfigItem item, Dictionary<string, string?> data)
     {
         if (IsStructured(item.ValueType) && TryFlatten(item.Key, item.Value, data))
             return;
@@ -168,7 +168,8 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
         {
             // Values are loaded; the sentinels will be read on the first check.
         }
-        _ = Task.Run(() => WatchAsync(_stopping.Token));
+        var stopping = _stopping.Token;
+        _ = Task.Run(() => WatchAsync(stopping), stopping);
     }
 
     private async Task WatchAsync(CancellationToken ct)

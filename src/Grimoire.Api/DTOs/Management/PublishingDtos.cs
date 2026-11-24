@@ -1,8 +1,10 @@
+using System.Text.Json.Serialization;
 using Grimoire.Core.Publishing;
 
 namespace Grimoire.Api.DTOs.Management;
 
-public record UpdatePublishingRequest(bool AutoPublish);
+/// <param name="AutoPublish">Required: a missing value is a 400, never a silent <c>false</c>.</param>
+public record UpdatePublishingRequest([property: JsonRequired] bool AutoPublish);
 
 /// <param name="AutoPublish">Every change bumps the sentinel (<c>true</c>) or only a publish does.</param>
 /// <param name="SentinelKey">The configuration key clients watch: <c>Sentinel</c> or <c>Global:Sentinel</c>.</param>

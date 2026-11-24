@@ -166,6 +166,20 @@ public class PublishingTests(GrimoireWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task UpdatePublishing_Returns400_WhenAutoPublishIsMissing()
+    {
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(MgmtClient);
+
+        var response = await MgmtClient.PutAsJsonAsync(
+            $"/management/applications/{slug}/environments/{Env}/publishing",
+            new { }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.True((await GetPublishingAsync(slug))["autoPublish"]!.GetValue<bool>());
+    }
+
+    [Fact]
     public async Task Publishing_Returns404_ForUnknownEnvironment()
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(MgmtClient);

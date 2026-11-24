@@ -66,56 +66,80 @@ public sealed class SentinelPublishInterceptor(TimeProvider time) : SaveChangesI
 
         var now = time.GetUtcNow();
         foreach (var environmentId in changes.ChangedEnvironments)
-        {
-            if (changes.PublishedEnvironments.Contains(environmentId))
-                continue;
-            var env = await db.Environments.FindAsync([environmentId], ct);
-            if (env is null || db.Entry(env).State == EntityState.Deleted)
-                continue;
-            if (env.AutoPublish)
-            {
-                await SentinelWriter.BumpApplicationAsync(db, env, now, ct);
-                env.PendingChangesSince = null;
-            }
-            else
-            {
-                env.PendingChangesSince ??= now;
-            }
-        }
+            if (!changes.PublishedEnvironments.Contains(environmentId))
+                await ApplyEnvironmentChangeAsync(db, environmentId, now, ct);
 
         foreach (var environmentId in changes.PublishedEnvironments)
-        {
-            var env = await db.Environments.FindAsync([environmentId], ct);
-            if (env is not null && db.Entry(env).State != EntityState.Deleted)
+            if (await FindLiveEnvironmentAsync(db, environmentId, ct) is { } env)
                 env.PendingChangesSince = null;
-        }
 
         if (changes.GlobalPublished)
-        {
-            var settings = await db.GlobalPublishing.FindAsync([GlobalPublishing.SingletonId], ct);
-            if (settings is not null)
-            {
-                settings.PendingChangesSince = null;
-                settings.UpdatedAt = now;
-            }
-        }
+            await MarkGlobalPublishedAsync(db, now, ct);
         else if (changes.GlobalChanged)
+            await ApplyGlobalChangeAsync(db, now, ct);
+    }
+
+    private static async Task<AppEnvironment?> FindLiveEnvironmentAsync(
+        GrimoireDbContext db,
+        Guid environmentId,
+        CancellationToken ct
+    )
+    {
+        var env = await db.Environments.FindAsync([environmentId], ct);
+        return env is null || db.Entry(env).State == EntityState.Deleted ? null : env;
+    }
+
+    /// <summary>Auto-publish: bump the sentinel. Otherwise: remember there are pending changes.</summary>
+    private static async Task ApplyEnvironmentChangeAsync(
+        GrimoireDbContext db,
+        Guid environmentId,
+        DateTimeOffset now,
+        CancellationToken ct
+    )
+    {
+        if (await FindLiveEnvironmentAsync(db, environmentId, ct) is not { } env)
+            return;
+        if (!env.AutoPublish)
         {
-            var settings = await db.GlobalPublishing.FindAsync([GlobalPublishing.SingletonId], ct);
-            if (settings is null || settings.AutoPublish)
-            {
-                await SentinelWriter.BumpGlobalAsync(db, now, ct);
-                if (settings is not null)
-                {
-                    settings.PendingChangesSince = null;
-                    settings.UpdatedAt = now;
-                }
-            }
-            else
-            {
-                settings.PendingChangesSince ??= now;
-                settings.UpdatedAt = now;
-            }
+            env.PendingChangesSince ??= now;
+            return;
+        }
+        await SentinelWriter.BumpApplicationAsync(db, env, now, ct);
+        env.PendingChangesSince = null;
+    }
+
+    private static async Task MarkGlobalPublishedAsync(
+        GrimoireDbContext db,
+        DateTimeOffset now,
+        CancellationToken ct
+    )
+    {
+        var settings = await db.GlobalPublishing.FindAsync([GlobalPublishing.SingletonId], ct);
+        if (settings is null)
+            return;
+        settings.PendingChangesSince = null;
+        settings.UpdatedAt = now;
+    }
+
+    /// <summary>No settings row means auto-publish, the default.</summary>
+    private static async Task ApplyGlobalChangeAsync(
+        GrimoireDbContext db,
+        DateTimeOffset now,
+        CancellationToken ct
+    )
+    {
+        var settings = await db.GlobalPublishing.FindAsync([GlobalPublishing.SingletonId], ct);
+        if (settings is { AutoPublish: false })
+        {
+            settings.PendingChangesSince ??= now;
+            settings.UpdatedAt = now;
+            return;
+        }
+        await SentinelWriter.BumpGlobalAsync(db, now, ct);
+        if (settings is not null)
+        {
+            settings.PendingChangesSince = null;
+            settings.UpdatedAt = now;
         }
     }
 
@@ -136,39 +160,55 @@ public sealed class SentinelPublishInterceptor(TimeProvider time) : SaveChangesI
     private static async Task<Changes> CollectAsync(GrimoireDbContext db, CancellationToken ct)
     {
         var changes = new Changes();
+        CollectApplicationChanges(db, changes);
+        CollectGlobalChanges(db, changes);
+        changes.ChangedEnvironments.UnionWith(await InheritanceChangedEnvironmentsAsync(db, ct));
+        return changes;
+    }
 
-        foreach (var entry in db.ChangeTracker.Entries<ConfigurationEntry>())
+    private static void CollectApplicationChanges(GrimoireDbContext db, Changes changes)
+    {
+        var configurations = db
+            .ChangeTracker.Entries<ConfigurationEntry>()
+            .Where(e => IsChange(e, ConfigurationProperties))
+            .Select(e => e.Entity);
+        foreach (var entry in configurations)
         {
-            if (!IsChange(entry, ConfigurationProperties))
-                continue;
-            if (entry.Entity.Key == ConfigurationSentinel.ApplicationKey)
-                changes.PublishedEnvironments.Add(entry.Entity.EnvironmentId);
-            else
-                changes.ChangedEnvironments.Add(entry.Entity.EnvironmentId);
+            var target =
+                entry.Key == ConfigurationSentinel.ApplicationKey
+                    ? changes.PublishedEnvironments
+                    : changes.ChangedEnvironments;
+            target.Add(entry.EnvironmentId);
         }
 
-        foreach (var entry in db.ChangeTracker.Entries<SecretVersion>())
-            if (IsChange(entry, SecretVersionProperties))
-                changes.ChangedEnvironments.Add(entry.Entity.EnvironmentId);
+        changes.ChangedEnvironments.UnionWith(
+            db.ChangeTracker.Entries<SecretVersion>()
+                .Where(e => IsChange(e, SecretVersionProperties))
+                .Select(e => e.Entity.EnvironmentId)
+        );
+    }
 
-        foreach (var entry in db.ChangeTracker.Entries<GlobalConfigurationEntry>())
-        {
-            if (!IsChange(entry, ConfigurationProperties))
-                continue;
-            if (entry.Entity.Key == ConfigurationSentinel.GlobalKey)
-                changes.GlobalPublished = true;
-            else
-                changes.GlobalChanged = true;
-        }
+    private static void CollectGlobalChanges(GrimoireDbContext db, Changes changes)
+    {
+        var keys = db
+            .ChangeTracker.Entries<GlobalConfigurationEntry>()
+            .Where(e => IsChange(e, ConfigurationProperties))
+            .Select(e => e.Entity.Key)
+            .ToList();
+        changes.GlobalPublished = keys.Contains(ConfigurationSentinel.GlobalKey);
+        changes.GlobalChanged =
+            keys.Exists(k => k != ConfigurationSentinel.GlobalKey)
+            || db.ChangeTracker.Entries<GlobalSecretVersion>()
+                .Any(e => IsChange(e, SecretVersionProperties));
+    }
 
-        if (
-            db
-                .ChangeTracker.Entries<GlobalSecretVersion>()
-                .Any(e => IsChange(e, SecretVersionProperties))
-        )
-            changes.GlobalChanged = true;
-
-        var inheritanceChanged = db
+    /// <summary>Environments of applications whose global inheritance was switched.</summary>
+    private static async Task<List<Guid>> InheritanceChangedEnvironmentsAsync(
+        GrimoireDbContext db,
+        CancellationToken ct
+    )
+    {
+        var applicationIds = db
             .ChangeTracker.Entries<Application>()
             .Where(e =>
                 e.State == EntityState.Modified
@@ -180,16 +220,12 @@ public sealed class SentinelPublishInterceptor(TimeProvider time) : SaveChangesI
             )
             .Select(e => e.Entity.Id)
             .ToList();
-        if (inheritanceChanged.Count > 0)
-        {
-            var environmentIds = await db
-                .Environments.Where(e => inheritanceChanged.Contains(e.ApplicationId))
-                .Select(e => e.Id)
-                .ToListAsync(ct);
-            changes.ChangedEnvironments.UnionWith(environmentIds);
-        }
-
-        return changes;
+        if (applicationIds.Count == 0)
+            return [];
+        return await db
+            .Environments.Where(e => applicationIds.Contains(e.ApplicationId))
+            .Select(e => e.Id)
+            .ToListAsync(ct);
     }
 
     private static bool IsChange(EntityEntry entry, string[] properties) =>
