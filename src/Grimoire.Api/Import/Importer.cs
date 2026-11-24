@@ -1,6 +1,7 @@
 using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Import;
+using Grimoire.Core.Publishing;
 using Grimoire.Core.Services;
 
 namespace Grimoire.Api.Import;
@@ -64,7 +65,7 @@ public sealed class Importer(TimeProvider time)
                 async token =>
                 {
                     var plan = await PlanAsync(token);
-                    if (TooLong(plan) is null)
+                    if (Invalid(plan) is null)
                         foreach (
                             var item in plan.Where(i =>
                                 i.Action is ImportAction.Create or ImportAction.Update
@@ -76,7 +77,7 @@ public sealed class Importer(TimeProvider time)
                 ct
             );
 
-        if (TooLong(items) is { } tooLong)
+        if (Invalid(items) is { } tooLong)
             return (null, tooLong);
 
         return (
@@ -135,6 +136,17 @@ public sealed class Importer(TimeProvider time)
                     : ImportKind.Configuration,
             StringComparer.Ordinal
         );
+
+    /// <summary>The first problem that rejects the whole import, as an error message.</summary>
+    private static string? Invalid(List<ImportPlanItem> items) => TooLong(items) ?? Reserved(items);
+
+    /// <summary>Sentinel keys are managed by Grimoire (publishing), never imported.</summary>
+    private static string? Reserved(IEnumerable<ImportPlanItem> items) =>
+        items
+            .Where(i => i.Action != ImportAction.Excluded && i.Kind == ImportKind.Configuration)
+            .Where(i => ConfigurationSentinel.IsSentinel(i.Key))
+            .Select(i => $"'{i.Key}' is managed by Grimoire and can't be imported.")
+            .FirstOrDefault();
 
     /// <summary>The first key longer than its kind allows, as an error message.</summary>
     private static string? TooLong(IEnumerable<ImportPlanItem> items) =>

@@ -284,4 +284,80 @@ public class PublishingTests(GrimoireWebApplicationFactory factory)
         Assert.DoesNotContain("SENTINEL", export);
         Assert.Contains("\"A\"", list);
     }
+
+    [Fact]
+    public async Task DeletingASecret_BumpsTheSentinel()
+    {
+        var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(MgmtClient);
+        var consumer = factory.CreateConsumerClient(apiKey);
+        await TestHelpers.CreateSecretWithValueAsync(MgmtClient, slug, "db-password", Env, "x");
+        var before = await SentinelAsync(consumer);
+
+        (
+            await MgmtClient.DeleteAsync($"/management/applications/{slug}/secrets/db-password")
+        ).EnsureSuccessStatusCode();
+
+        Assert.NotEqual(before, await SentinelAsync(consumer));
+    }
+
+    [Fact]
+    public async Task SentinelKeys_AreReservedOutsideTheirPlace()
+    {
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(MgmtClient);
+
+        var appGlobalSentinel = await MgmtClient.PostAsJsonAsync(
+            $"/management/applications/{slug}/configurations",
+            new
+            {
+                environmentSlug = Env,
+                key = "Global:Sentinel",
+                value = "1",
+            }
+        );
+        var globalSlugLayer = await MgmtClient.PostAsJsonAsync(
+            "/management/global/configurations",
+            new
+            {
+                environmentSlug = Env,
+                key = "Global:Sentinel",
+                value = "1",
+            }
+        );
+        var globalAppSentinel = await MgmtClient.PostAsJsonAsync(
+            "/management/global/configurations",
+            new { key = "Sentinel", value = "1" }
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, appGlobalSentinel.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, globalSlugLayer.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, globalAppSentinel.StatusCode);
+    }
+
+    [Fact]
+    public async Task ConcurrentChanges_EachGetADistinctSentinelValue()
+    {
+        var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(MgmtClient);
+        var consumer = factory.CreateConsumerClient(apiKey);
+        await TestHelpers.CreateConfigurationAsync(MgmtClient, slug, Env, "Seed", "0");
+
+        await Task.WhenAll(
+            Enumerable
+                .Range(0, 8)
+                .Select(i =>
+                    TestHelpers.CreateConfigurationAsync(MgmtClient, slug, Env, $"K{i}", $"{i}")
+                )
+        );
+
+        var history = JsonNode
+            .Parse(
+                await MgmtClient.GetStringAsync(
+                    $"/management/applications/{slug}/configurations/{Env}/Sentinel/history"
+                )
+            )!
+            .AsArray();
+        var values = history.Select(r => r!["value"]!.GetValue<string>()).ToList();
+        Assert.Equal(9, values.Count);
+        Assert.Equal(values.Count, values.Distinct().Count());
+        Assert.Equal(values.Max(long.Parse).ToString(), await SentinelAsync(consumer));
+    }
 }

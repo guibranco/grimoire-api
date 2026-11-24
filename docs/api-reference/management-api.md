@@ -833,7 +833,7 @@ Compares the [effective configuration](#effective-configuration) (globals merged
 
 ## Publishing
 
-Clients reload when a **sentinel key** changes ([refresh spec](../client-library/refresh-spec/)). With **auto-publish** on (the default), every change to an environment's configuration or secret versions bumps its `Sentinel`. With it off, changes are staged until you publish them, so clients get a batch of edits at once.
+Clients reload when a **sentinel key** changes ([refresh spec](../client-library/refresh-spec/)). With **auto-publish** on (the default), every change to an environment's configuration or secret versions bumps its `Sentinel`. With it off, the sentinel changes only when you publish, so running clients reload once after a batch of edits instead of after every edit. Edits are still saved and served immediately: a client that starts or reloads for another reason, such as a global publish, reads them before they are published. See the [refresh spec](../client-library/refresh-spec/#auto-publish).
 
 ### Get publishing status
 

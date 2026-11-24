@@ -27,11 +27,17 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
     private int _started;
     private bool _disposed;
 
-    /// <summary>The last seen state of a watched key; <see cref="Known"/> is false until first read.</summary>
-    private sealed record WatchedKey(bool Known, bool Exists, string? Value, string? ETag);
+    /// <summary>
+    /// Set when the sentinel baseline couldn't be read at startup: the first successful check
+    /// then reloads once, so a publish made around startup is never missed.
+    /// </summary>
+    private bool _reloadOnFirstCheck;
+
+    /// <summary>The last seen state of a watched key.</summary>
+    private sealed record WatchedKey(bool Exists, string? Value, string? ValueType, string? ETag);
 
     public GrimoireConfigurationClient(string baseUrl, string apiKey, string environment)
-        : this(baseUrl, apiKey, environment, null) { }
+        : this(baseUrl, apiKey, environment, refresh: null) { }
 
     /// <summary>A provider that also watches for published changes (<paramref name="refresh"/>).</summary>
     public GrimoireConfigurationClient(
@@ -133,10 +139,18 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
     /// </summary>
     public override void Load()
     {
+        // With refresh, read the sentinel baseline *before* the values: a publish in between
+        // then shows up as a change on the first check instead of being missed.
+        var watching = _refresh is not null && Interlocked.Exchange(ref _started, 1) == 0;
+        if (watching)
+            RecordBaseline();
         var items = FetchAllAsync(CancellationToken.None).GetAwaiter().GetResult();
         Data = ToData(items);
-        if (_refresh is not null)
-            StartWatching();
+        if (watching)
+        {
+            var stopping = _stopping.Token;
+            _ = Task.Run(() => WatchAsync(stopping), stopping);
+        }
     }
 
     private static Dictionary<string, string?> ToData(IEnumerable<ConfigItem> items)
@@ -154,22 +168,21 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
         data[item.Key] = item.Value;
     }
 
-    /// <summary>Primes the watched keys and starts the background loop, once.</summary>
-    private void StartWatching()
+    /// <summary>Records the watched keys' current state (no reload).</summary>
+    private void RecordBaseline()
     {
-        if (Interlocked.Exchange(ref _started, 1) != 0)
-            return;
         try
         {
-            // Record the current sentinel values so the first check doesn't reload for nothing.
-            TryRefreshAsync(_stopping.Token).GetAwaiter().GetResult();
+            var states = new Dictionary<string, WatchedKey>(StringComparer.Ordinal);
+            foreach (var key in _refresh!.WatchedKeys.Keys)
+                states[key] = CheckAsync(key, null, _stopping.Token).GetAwaiter().GetResult().State;
+            foreach (var (key, state) in states)
+                _watched[key] = state;
         }
         catch (Exception ex) when (IsTransient(ex, _stopping.Token))
         {
-            // Values are loaded; the sentinels will be read on the first check.
+            _reloadOnFirstCheck = true;
         }
-        var stopping = _stopping.Token;
-        _ = Task.Run(() => WatchAsync(stopping), stopping);
     }
 
     private async Task WatchAsync(CancellationToken ct)
@@ -215,92 +228,113 @@ public class GrimoireConfigurationClient : ConfigurationProvider, IConfiguration
 
     private async Task<bool> RefreshWatchedAsync(CancellationToken ct)
     {
-        var reloadAll = false;
-        var changedKeys = new List<ConfigItem?>();
-        var changedNames = new List<string>();
-
+        // Read every watched key first; nothing is committed until the reload has succeeded,
+        // so a failure (here or while reloading) is retried on the next check.
+        var states = new Dictionary<string, WatchedKey>(StringComparer.Ordinal);
+        var reloadAll = _reloadOnFirstCheck;
+        var changedKeys = new List<(string Key, ConfigItem? Item)>();
         foreach (var (key, refreshAll) in _refresh!.WatchedKeys)
         {
-            var (changed, item) = await CheckAsync(key, ct);
+            _watched.TryGetValue(key, out var previous);
+            var (changed, state, item) = await CheckAsync(key, previous, ct);
+            states[key] = state;
             if (!changed)
                 continue;
             if (refreshAll)
                 reloadAll = true;
             else
-            {
-                changedNames.Add(key);
-                changedKeys.Add(item);
-            }
+                changedKeys.Add((key, item));
         }
-        LastRefreshedAt = _time.GetUtcNow();
 
+        var reloaded = false;
         if (reloadAll)
         {
             Data = ToData(await FetchAllAsync(ct));
-            OnReload();
-            return true;
+            reloaded = true;
         }
-        if (changedNames.Count == 0)
-            return false;
-
-        var data = new Dictionary<string, string?>(Data, StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < changedNames.Count; i++)
+        else if (changedKeys.Count > 0)
         {
-            var key = changedNames[i];
-            foreach (
-                var existing in data
-                    .Keys.Where(k =>
-                        string.Equals(k, key, StringComparison.OrdinalIgnoreCase)
-                        || k.StartsWith(
-                            key + ConfigurationPath.KeyDelimiter,
-                            StringComparison.OrdinalIgnoreCase
-                        )
+            Data = WithKeys(Data, changedKeys);
+            reloaded = true;
+        }
+
+        foreach (var (key, state) in states)
+            _watched[key] = state;
+        _reloadOnFirstCheck = false;
+        LastRefreshedAt = _time.GetUtcNow();
+        if (reloaded)
+            OnReload();
+        return reloaded;
+    }
+
+    /// <summary>A copy of <paramref name="current"/> with each key (and its flattened children) replaced.</summary>
+    private static Dictionary<string, string?> WithKeys(
+        IDictionary<string, string?> current,
+        List<(string Key, ConfigItem? Item)> changes
+    )
+    {
+        var data = new Dictionary<string, string?>(current, StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, item) in changes)
+        {
+            var stale = data
+                .Keys.Where(k =>
+                    string.Equals(k, key, StringComparison.OrdinalIgnoreCase)
+                    || k.StartsWith(
+                        key + ConfigurationPath.KeyDelimiter,
+                        StringComparison.OrdinalIgnoreCase
                     )
-                    .ToList()
-            )
-                data.Remove(existing);
-            if (changedKeys[i] is { } item)
+                )
+                .ToList();
+            foreach (var k in stale)
+                data.Remove(k);
+            if (item is not null)
                 Add(item, data);
         }
-        Data = data;
-        OnReload();
-        return true;
+        return data;
     }
 
     /// <summary>
-    /// Conditional read of one watched key. A change is a different value, or the key appearing
-    /// or disappearing, after it was first seen; the first read only records the state.
+    /// Conditional read of one watched key. A change is a different value or value type, or the
+    /// key appearing or disappearing, compared with <paramref name="previous"/>; without a
+    /// previous state the read only records it. Returns the new state without storing it.
     /// </summary>
-    private async Task<(bool Changed, ConfigItem? Item)> CheckAsync(
+    private async Task<(bool Changed, WatchedKey State, ConfigItem? Item)> CheckAsync(
         string key,
+        WatchedKey? previous,
         CancellationToken ct
     )
     {
-        _watched.TryGetValue(key, out var previous);
         using var request = new HttpRequestMessage(HttpMethod.Get, KeyUrl(key));
         if (previous?.ETag is { } etag && EntityTagHeaderValue.TryParse(etag, out var tag))
             request.Headers.IfNoneMatch.Add(tag);
 
         using var response = await Http.SendAsync(request, ct);
         if (response.StatusCode == HttpStatusCode.NotModified && previous is not null)
-            return (false, null);
+            return (false, previous, null);
         if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            _watched[key] = new WatchedKey(true, false, null, null);
-            return (previous is { Known: true, Exists: true }, null);
-        }
+            return (previous is { Exists: true }, new WatchedKey(false, null, null, null), null);
         response.EnsureSuccessStatusCode();
 
         var item = await response.Content.ReadFromJsonAsync<ConfigItem>(ct)
             ?? throw new HttpRequestException($"Empty response for {key}.");
-        _watched[key] = new WatchedKey(true, true, item.Value, response.Headers.ETag?.ToString());
+        var state = new WatchedKey(
+            true,
+            item.Value,
+            item.ValueType,
+            response.Headers.ETag?.ToString()
+        );
         var changed =
-            previous is { Known: true }
+            previous is not null
             && (
                 !previous.Exists
                 || !string.Equals(previous.Value, item.Value, StringComparison.Ordinal)
+                || !string.Equals(
+                    previous.ValueType,
+                    item.ValueType,
+                    StringComparison.OrdinalIgnoreCase
+                )
             );
-        return (changed, item);
+        return (changed, state, item);
     }
 
     /// <summary>Stops watching for changes.</summary>

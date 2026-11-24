@@ -6,8 +6,8 @@ namespace Grimoire.Core.Publishing;
 /// The sentinel keys clients watch to know when to reload configuration
 /// (guibranco/grimoire-api#95). A client polls the sentinel with <c>If-None-Match</c> and
 /// reloads everything only when its value changes. The value is bumped on every change while
-/// auto-publish is on, or only on an explicit publish while it is off, so a batch of edits
-/// reaches clients in one go.
+/// auto-publish is on, or only on an explicit publish while it is off, so running clients
+/// reload once after a batch of edits. Values themselves are served as soon as they are saved.
 /// </summary>
 public static class ConfigurationSentinel
 {
@@ -26,6 +26,24 @@ public static class ConfigurationSentinel
     /// dashboard counts, where they would only be noise.
     /// </summary>
     public static bool IsSentinel(string key) => key is ApplicationKey or GlobalKey;
+
+    /// <summary>
+    /// Why <paramref name="key"/> can't be written where it was asked, or <c>null</c> when it
+    /// can. <c>Global:Sentinel</c> lives only in global configuration at the <c>*</c> layer, and
+    /// <c>Sentinel</c> only in applications: anywhere else they would shadow the real sentinel,
+    /// and clients would miss publishes.
+    /// </summary>
+    /// <param name="key">Configuration key.</param>
+    /// <param name="globalEnvironmentSlug">The global layer (<c>*</c> or a slug); <c>null</c> for an application.</param>
+    public static string? ReservedKeyError(string key, string? globalEnvironmentSlug) =>
+        (key, globalEnvironmentSlug) switch
+        {
+            (GlobalKey, null) => $"'{GlobalKey}' is managed by Grimoire for global configuration.",
+            (ApplicationKey, not null) =>
+                $"'{ApplicationKey}' is managed by Grimoire per application environment.",
+            (GlobalKey, not "*") => $"'{GlobalKey}' can only be set for all environments (*).",
+            _ => null,
+        };
 
     /// <summary>
     /// A new value, strictly greater than <paramref name="current"/>: Unix milliseconds of

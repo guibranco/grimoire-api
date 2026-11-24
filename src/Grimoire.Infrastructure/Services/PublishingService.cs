@@ -20,62 +20,85 @@ public sealed class PublishingService(GrimoireDbContext db, TimeProvider time) :
         return await StatusAsync(env, ct);
     }
 
-    public async Task<PublishingStatus> SetAutoPublishAsync(
+    public Task<PublishingStatus> SetAutoPublishAsync(
         AppEnvironment environment,
         bool autoPublish,
         CancellationToken ct = default
-    )
-    {
-        var env = await LoadAsync(environment, ct);
-        var now = time.GetUtcNow();
-        env.AutoPublish = autoPublish;
-        env.UpdatedAt = now;
-        if (autoPublish && env.PendingChangesSince is not null)
-            await SentinelWriter.BumpApplicationAsync(db, env, now, ct);
-        await db.SaveChangesAsync(ct);
-        return await StatusAsync(env, ct);
-    }
+    ) =>
+        // Read the pending state and decide under the write lock, so a concurrent change can't
+        // slip in between and be left unpublished.
+        db.InWriteTransactionAsync(
+            async token =>
+            {
+                var env = await LoadAsync(environment, token);
+                await db.Entry(env).ReloadAsync(token);
+                var now = time.GetUtcNow();
+                env.AutoPublish = autoPublish;
+                env.UpdatedAt = now;
+                if (autoPublish && env.PendingChangesSince is not null)
+                    await SentinelWriter.BumpApplicationAsync(db, env, now, token);
+                await db.SaveChangesAsync(token);
+                return await StatusAsync(env, token);
+            },
+            ct
+        );
 
-    public async Task<PublishingStatus> PublishAsync(
+    public Task<PublishingStatus> PublishAsync(
         AppEnvironment environment,
         CancellationToken ct = default
-    )
-    {
-        var env = await LoadAsync(environment, ct);
-        await SentinelWriter.BumpApplicationAsync(db, env, time.GetUtcNow(), ct);
-        await db.SaveChangesAsync(ct);
-        return await StatusAsync(env, ct);
-    }
+    ) =>
+        db.InWriteTransactionAsync(
+            async token =>
+            {
+                var env = await LoadAsync(environment, token);
+                await SentinelWriter.BumpApplicationAsync(db, env, time.GetUtcNow(), token);
+                await db.SaveChangesAsync(token);
+                return await StatusAsync(env, token);
+            },
+            ct
+        );
 
     public async Task<PublishingStatus> GetGlobalAsync(CancellationToken ct = default) =>
         await GlobalStatusAsync(await FindGlobalAsync(ct), ct);
 
-    public async Task<PublishingStatus> SetGlobalAutoPublishAsync(
+    public Task<PublishingStatus> SetGlobalAutoPublishAsync(
         bool autoPublish,
         CancellationToken ct = default
-    )
-    {
-        var now = time.GetUtcNow();
-        var settings = await FindGlobalAsync(ct);
-        if (settings is null)
-        {
-            settings = new GlobalPublishing();
-            db.GlobalPublishing.Add(settings);
-        }
-        settings.AutoPublish = autoPublish;
-        settings.UpdatedAt = now;
-        if (autoPublish && settings.PendingChangesSince is not null)
-            await SentinelWriter.BumpGlobalAsync(db, now, ct);
-        await db.SaveChangesAsync(ct);
-        return await GlobalStatusAsync(settings, ct);
-    }
+    ) =>
+        db.InWriteTransactionAsync(
+            async token =>
+            {
+                var now = time.GetUtcNow();
+                var settings = await FindGlobalAsync(token);
+                if (settings is null)
+                {
+                    settings = new GlobalPublishing();
+                    db.GlobalPublishing.Add(settings);
+                }
+                else
+                {
+                    await db.Entry(settings).ReloadAsync(token);
+                }
+                settings.AutoPublish = autoPublish;
+                settings.UpdatedAt = now;
+                if (autoPublish && settings.PendingChangesSince is not null)
+                    await SentinelWriter.BumpGlobalAsync(db, now, token);
+                await db.SaveChangesAsync(token);
+                return await GlobalStatusAsync(settings, token);
+            },
+            ct
+        );
 
-    public async Task<PublishingStatus> PublishGlobalAsync(CancellationToken ct = default)
-    {
-        await SentinelWriter.BumpGlobalAsync(db, time.GetUtcNow(), ct);
-        await db.SaveChangesAsync(ct);
-        return await GetGlobalAsync(ct);
-    }
+    public Task<PublishingStatus> PublishGlobalAsync(CancellationToken ct = default) =>
+        db.InWriteTransactionAsync(
+            async token =>
+            {
+                await SentinelWriter.BumpGlobalAsync(db, time.GetUtcNow(), token);
+                await db.SaveChangesAsync(token);
+                return await GetGlobalAsync(token);
+            },
+            ct
+        );
 
     private async Task<AppEnvironment> LoadAsync(
         AppEnvironment environment,

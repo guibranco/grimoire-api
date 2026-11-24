@@ -15,6 +15,9 @@ public class ConfigurationRefreshTests
     {
         public Dictionary<string, string> Values { get; } = new(StringComparer.Ordinal);
         public bool Fail { get; set; }
+        public bool FailList { get; set; }
+        public bool FailKeys { get; set; }
+        public Dictionary<string, string> ValueTypes { get; } = new(StringComparer.Ordinal);
         public int ListCalls { get; private set; }
         public int KeyCalls { get; private set; }
         public int NotModified { get; private set; }
@@ -30,36 +33,41 @@ public class ConfigurationRefreshTests
             var path = request.RequestUri!.AbsolutePath;
             if (path == "/consumer/configurations")
             {
+                if (FailList)
+                    throw new HttpRequestException("List unavailable.");
                 ListCalls++;
                 var items = Values
                     .Where(v => v.Key is not ("Sentinel" or "Global:Sentinel"))
-                    .Select(v => Item(v.Key, v.Value));
+                    .Select(v => Item(v.Key, v.Value, ValueTypes.GetValueOrDefault(v.Key)));
                 return Task.FromResult(Json(new { items }));
             }
 
+            if (FailKeys)
+                throw new HttpRequestException("Key unavailable.");
             KeyCalls++;
             var key = Uri.UnescapeDataString(path["/consumer/configurations/".Length..]);
             if (!Values.TryGetValue(key, out var value))
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            var fingerprint = $"{key}={value}:{ValueTypes.GetValueOrDefault(key)}";
             var etag =
-                $"\"{Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(key + "=" + value)))[..16]}\"";
+                $"\"{Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint)))[..16]}\"";
             if (request.Headers.IfNoneMatch.Any(t => t.Tag == etag))
             {
                 NotModified++;
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotModified));
             }
-            var response = Json(Item(key, value));
+            var response = Json(Item(key, value, ValueTypes.GetValueOrDefault(key)));
             response.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue(etag);
             return Task.FromResult(response);
         }
 
-        private static object Item(string key, string value) =>
+        private static object Item(string key, string value, string? valueType = null) =>
             new
             {
                 key,
                 value,
                 label = "local",
-                valueType = value.StartsWith('[') ? "array" : "string",
+                valueType = valueType ?? (value.StartsWith('[') ? "array" : "string"),
             };
 
         private static HttpResponseMessage Json(object body) =>
@@ -239,5 +247,56 @@ public class ConfigurationRefreshTests
         );
 
         Assert.Contains(builder.Sources, s => s is GrimoireConfigurationClient);
+    }
+
+    [Fact]
+    public async Task AFailedReload_IsRetried_OnTheNextCheck()
+    {
+        var server = new FakeServer { Values = { ["A"] = "1", ["Sentinel"] = "100" } };
+        var (provider, config) = Build(server, SlowRefresh());
+
+        server.Values["A"] = "2";
+        server.Values["Sentinel"] = "101";
+        server.FailList = true;
+        await Assert.ThrowsAsync<HttpRequestException>(() => provider.TryRefreshAsync());
+        Assert.Equal("1", config["A"]);
+
+        server.FailList = false;
+        Assert.True(await provider.TryRefreshAsync()); // the sentinel change wasn't committed
+        Assert.Equal("2", config["A"]);
+    }
+
+    [Fact]
+    public async Task WithoutABaseline_TheFirstSuccessfulCheckReloads()
+    {
+        var server = new FakeServer
+        {
+            Values = { ["A"] = "1", ["Sentinel"] = "100" },
+            FailKeys = true,
+        };
+        var (provider, config) = Build(server, SlowRefresh());
+        Assert.Equal("1", config["A"]); // values loaded even though the sentinels weren't
+
+        server.FailKeys = false;
+        server.Values["A"] = "2"; // published around startup
+        Assert.True(await provider.TryRefreshAsync());
+        Assert.Equal("2", config["A"]);
+
+        Assert.False(await provider.TryRefreshAsync()); // only once
+    }
+
+    [Fact]
+    public async Task AValueTypeChange_UpdatesARegisteredKey()
+    {
+        var server = new FakeServer { Values = { ["Ips"] = "[\"10.0.0.1\"]" } };
+        server.ValueTypes["Ips"] = "string";
+        var (provider, config) = Build(server, SlowRefresh().Register("Ips"));
+        Assert.Equal("[\"10.0.0.1\"]", config["Ips"]);
+
+        server.ValueTypes["Ips"] = "array";
+        Assert.True(await provider.TryRefreshAsync());
+
+        Assert.Null(config["Ips"]);
+        Assert.Equal("10.0.0.1", config["Ips:0"]);
     }
 }

@@ -11,8 +11,8 @@ namespace Grimoire.Api.Controllers.Management;
 /// <summary>
 /// Auto-publish and explicit publishing of an environment's configuration. Clients watch the
 /// <c>Sentinel</c> key and reload when it changes: with auto-publish on (the default) every
-/// change bumps it; with it off, changes are staged until published, so clients get a batch
-/// of edits in one go.
+/// change bumps it; with it off, only a publish does, so running clients reload once after a
+/// batch of edits. Saved values are served straight away either way.
 /// </summary>
 [ApiController]
 [Route("management/applications/{slug}/environments/{environmentSlug}")]

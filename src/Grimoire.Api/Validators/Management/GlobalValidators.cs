@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using FluentValidation;
 using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Entities;
+using Grimoire.Core.Publishing;
 using Grimoire.Core.Secrets;
 
 namespace Grimoire.Api.Validators.Management;
@@ -32,6 +33,15 @@ public class CreateGlobalConfigurationRequestValidator
             .WithMessage(GlobalEnvironmentSlug.Message)
             .When(x => x.EnvironmentSlug != null);
         RuleFor(x => x.Key).NotEmpty().MaximumLength(500);
+        RuleFor(x => x.Key)
+            .Must(
+                (x, k) =>
+                    ConfigurationSentinel.ReservedKeyError(k, x.EnvironmentSlug ?? "*") is null
+            )
+            .WithMessage(x =>
+                ConfigurationSentinel.ReservedKeyError(x.Key, x.EnvironmentSlug ?? "*")!
+            )
+            .When(x => !string.IsNullOrEmpty(x.Key));
         RuleFor(x => x.Value).NotNull();
         RuleFor(x => x.Description).MaximumLength(1000).When(x => x.Description != null);
         ConfigurationValueRules.AddRules(

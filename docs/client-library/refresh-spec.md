@@ -34,7 +34,10 @@ Applications that don't inherit globals never see `Global:Sentinel` and get `404
 Grimoire decides when to bump a sentinel; clients don't choose a mode:
 
 - **Auto-publish on** (default): every change bumps the sentinel in the same transaction, so clients pick it up on their next check.
-- **Auto-publish off:** changes are staged. The sentinel changes only when someone publishes them (the UI "Publish changes" button or `POST …/publish`). Clients then get the whole batch of edits at once.
+- **Auto-publish off:** the sentinel changes only when someone publishes (the UI "Publish changes" button or `POST …/publish`). Running clients then reload once, after the whole batch of edits, instead of after every edit.
+
+{: .warning }
+Auto-publish controls **when running clients reload**, not what Grimoire serves. Edits are saved and served immediately. A process that starts, or a reload triggered by the *other* sentinel (for example a global publish), reads every saved value, including edits in an environment that hasn't been published yet. Keep half-finished edits out of environments where that matters.
 
 There is one setting per application environment and one for globals. Turning auto-publish back on publishes any pending changes. See [Publishing](../api-reference/management-api/#publishing).
 
