@@ -831,6 +831,60 @@ Compares the [effective configuration](#effective-configuration) (globals merged
 
 ---
 
+## Publishing
+
+Clients reload when a **sentinel key** changes ([refresh spec](../client-library/refresh-spec/)). With **auto-publish** on (the default), every change to an environment's configuration or secret versions bumps its `Sentinel`. With it off, changes are staged until you publish them, so clients get a batch of edits at once.
+
+### Get publishing status
+
+```
+GET /management/applications/{slug}/environments/{environmentSlug}/publishing
+```
+
+**Response `200`:**
+
+```json
+{
+  "autoPublish": false,
+  "sentinelKey": "Sentinel",
+  "sentinelValue": "1795540053290",
+  "lastPublishedAt": "2026-11-24T17:00:53.29+00:00",
+  "pendingChangesSince": "2026-11-24T17:05:12.10+00:00",
+  "hasPendingChanges": true
+}
+```
+
+`sentinelValue` and `lastPublishedAt` are `null` before the first publish.
+
+### Turn auto-publish on or off
+
+```
+PUT /management/applications/{slug}/environments/{environmentSlug}/publishing
+{ "autoPublish": false }
+```
+
+Turning auto-publish **on** publishes any pending changes immediately. Returns the status.
+
+### Publish changes
+
+```
+POST /management/applications/{slug}/environments/{environmentSlug}/publish
+```
+
+Bumps the environment's `Sentinel` and clears the pending changes. Works whether or not auto-publish is on. Writing the `Sentinel` key yourself counts as a publish too. Returns the status.
+
+### Global publishing
+
+```
+GET  /management/global/publishing
+PUT  /management/global/publishing      { "autoPublish": true }
+POST /management/global/publish
+```
+
+The same for global configuration and secrets. There is a single global sentinel, `Global:Sentinel`, stored at the `*` layer. A publish therefore reaches every application that inherits globals, whichever environment-slug layer the change targeted.
+
+---
+
 ## Secrets (effective)
 
 ### Effective secrets

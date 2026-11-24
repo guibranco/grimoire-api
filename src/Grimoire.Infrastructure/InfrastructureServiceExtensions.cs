@@ -1,6 +1,7 @@
 using Grimoire.Core.Dashboard;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
+using Grimoire.Core.Publishing;
 using Grimoire.Core.Services;
 using Grimoire.Infrastructure.Audit;
 using Grimoire.Infrastructure.Backups;
@@ -25,11 +26,16 @@ public static class InfrastructureServiceExtensions
     {
         services.AddScoped<IConfigurationChangeContext, ConfigurationChangeContext>();
         services.AddScoped<ConfigurationHistoryInterceptor>();
+        services.AddScoped<SentinelPublishInterceptor>();
         services.AddDbContext<GrimoireDbContext>(
             (sp, options) =>
                 options
                     .UseSqlite(configuration.GetConnectionString("Default"))
-                    .AddInterceptors(sp.GetRequiredService<ConfigurationHistoryInterceptor>())
+                    // Sentinel first, so its bumps are recorded in configuration history too.
+                    .AddInterceptors(
+                        sp.GetRequiredService<SentinelPublishInterceptor>(),
+                        sp.GetRequiredService<ConfigurationHistoryInterceptor>()
+                    )
         );
         services.AddScoped<IConfigurationHistoryRepository, ConfigurationHistoryRepository>();
 
@@ -60,6 +66,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
         services.AddScoped<IAccessTokenRepository, AccessTokenRepository>();
         services.AddScoped<ITrustPolicyRepository, TrustPolicyRepository>();
+        services.AddScoped<IPublishingService, PublishingService>();
 
         return services;
     }

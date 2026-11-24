@@ -26,6 +26,7 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
     public DbSet<FeatureFlagAuditEntry> FeatureFlagAuditEntries => Set<FeatureFlagAuditEntry>();
     public DbSet<AccessToken> AccessTokens => Set<AccessToken>();
     public DbSet<TrustPolicy> TrustPolicies => Set<TrustPolicy>();
+    public DbSet<GlobalPublishing> GlobalPublishing => Set<GlobalPublishing>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -47,5 +48,6 @@ public class GrimoireDbContext(DbContextOptions<GrimoireDbContext> options) : Db
         modelBuilder.ApplyConfiguration(new FeatureFlagAuditEntryConfiguration());
         modelBuilder.ApplyConfiguration(new AccessTokenConfiguration());
         modelBuilder.ApplyConfiguration(new TrustPolicyConfiguration());
+        modelBuilder.ApplyConfiguration(new GlobalPublishingConfiguration());
     }
 }

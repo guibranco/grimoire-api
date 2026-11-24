@@ -61,6 +61,10 @@ public static class AuditActions
     public const string GlobalFeatureFlagEnvironmentUpdate =
         "global-feature-flag.environment-update";
     public const string GlobalFeatureFlagToggle = "global-feature-flag.toggle";
+    public const string PublishingUpdate = "publishing.update";
+    public const string Publish = "publishing.publish";
+    public const string GlobalPublishingUpdate = "global-publishing.update";
+    public const string GlobalPublish = "global-publishing.publish";
     public const string ImportApply = "import.apply";
     public const string ExportRead = "export.read";
     public const string BackupCreate = "backup.create";
@@ -127,6 +131,10 @@ public static class AuditActions
             FeatureFlagTarget
         ),
         [GlobalFeatureFlagToggle] = ("Toggled global feature flag", FeatureFlagTarget),
+        [PublishingUpdate] = ("Changed auto-publish", EnvironmentTarget),
+        [Publish] = ("Published configuration", EnvironmentTarget),
+        [GlobalPublishingUpdate] = ("Changed global auto-publish", EnvironmentTarget),
+        [GlobalPublish] = ("Published global configuration", EnvironmentTarget),
         [ImportApply] = ("Imported values", "import"),
         [ExportRead] = ("Exported values", "export"),
         [BackupCreate] = ("Created backup", "backup"),

@@ -1,5 +1,6 @@
 using Grimoire.Core.Dashboard;
 using Grimoire.Core.Interfaces;
+using Grimoire.Core.Publishing;
 using Grimoire.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -65,7 +66,7 @@ public class DashboardService(
 
         var configurations = await db
             .ConfigurationEntries.AsNoTracking()
-            .Where(c => !c.Application.IsDeleted)
+            .Where(c => !c.Application.IsDeleted && c.Key != ConfigurationSentinel.ApplicationKey)
             .Select(c => new ConfigurationRow(
                 c.ApplicationId,
                 c.EnvironmentId,
@@ -77,6 +78,7 @@ public class DashboardService(
 
         var globalConfigurations = await db
             .GlobalConfigurationEntries.AsNoTracking()
+            .Where(c => c.Key != ConfigurationSentinel.GlobalKey)
             .Select(c => new GlobalConfigurationRow(
                 c.EnvironmentSlug,
                 c.Key,

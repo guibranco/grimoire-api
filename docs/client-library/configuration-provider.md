@@ -44,7 +44,29 @@ That's it. All configuration entries for the `production` environment are loaded
 3. Receives a flat list of `{ key, value }` pairs
 4. Populates the internal `Data` dictionary (inherited from `ConfigurationProvider`)
 
-The configuration is loaded **once at startup**. It is not reloaded dynamically. If you need live config refresh, restart the application or implement a custom `IConfigurationProvider` that polls on a timer.
+By default the configuration is loaded **once at startup**. To pick up changes without a restart, turn on refresh (below).
+
+---
+
+## Reloading on changes
+
+```csharp
+builder.Configuration.AddGrimoire(o => o
+    .Connect(baseUrl, apiKey, "production")
+    .ConfigureRefresh(r => r.SetRefreshInterval(TimeSpan.FromSeconds(30))));
+
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
+// IOptionsMonitor<SmtpOptions> now sees new values after a publish.
+```
+
+With refresh on, the provider polls the **sentinel keys** `Sentinel` and `Global:Sentinel` on a background timer (30 s plus jitter by default), using `If-None-Match`, so an unchanged check costs a `304`. When either sentinel changes, the provider reloads every value, swaps it in atomically and calls `OnReload()`. That fires `IConfiguration` reload tokens and updates `IOptionsMonitor<T>` / `IOptionsSnapshot<T>`. `IOptions<T>` stays a startup snapshot, as usual in .NET.
+
+Grimoire bumps the sentinels on every change while **auto-publish** is on (the default), or only when you publish changes while it is off. See the [refresh spec](refresh-spec/).
+
+- **Failures:** a failed check keeps the current values and backs off exponentially, up to 5 minutes.
+- **Watching other keys:** `r.Register("Feature:Banner")` watches one key and updates only that key when it changes. `r.Register("MyKey", refreshAll: true)` reloads everything when it changes. Registering any key replaces the default sentinel pair, so register `Sentinel` and `Global:Sentinel` (with `refreshAll: true`) if you still want them.
+- **Check now:** cast the provider (`((IConfigurationRoot)config).Providers.OfType<GrimoireConfigurationClient>()`) and call `TryRefreshAsync()`.
+- **Secrets:** `GrimoireSecretClient` doesn't cache, so it always returns current values.
 
 ---
 

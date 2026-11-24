@@ -83,12 +83,18 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ApplicationId")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("AutoPublish")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("PendingChangesSince")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Slug")
@@ -560,6 +566,25 @@ namespace Grimoire.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("GlobalConfigurationEntries");
+                });
+
+            modelBuilder.Entity("Grimoire.Core.Entities.GlobalPublishing", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("AutoPublish")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("PendingChangesSince")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GlobalPublishing", (string)null);
                 });
 
             modelBuilder.Entity("Grimoire.Core.Entities.GlobalSecret", b =>

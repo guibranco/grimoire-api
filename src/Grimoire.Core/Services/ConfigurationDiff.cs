@@ -1,4 +1,5 @@
 using Grimoire.Core.Interfaces;
+using Grimoire.Core.Publishing;
 
 namespace Grimoire.Core.Services;
 
@@ -34,8 +35,11 @@ public static class ConfigurationDiff
         bool includeUnchanged = false
     )
     {
-        var left = from.ToDictionary(e => e.Key, StringComparer.Ordinal);
-        var right = to.ToDictionary(e => e.Key, StringComparer.Ordinal);
+        // Sentinels differ between environments by design: not a configuration difference.
+        var left = from.Where(e => !ConfigurationSentinel.IsSentinel(e.Key))
+            .ToDictionary(e => e.Key, StringComparer.Ordinal);
+        var right = to.Where(e => !ConfigurationSentinel.IsSentinel(e.Key))
+            .ToDictionary(e => e.Key, StringComparer.Ordinal);
 
         return left
             .Keys.Union(right.Keys, StringComparer.Ordinal)
