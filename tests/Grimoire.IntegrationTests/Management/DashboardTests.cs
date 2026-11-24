@@ -33,6 +33,61 @@ public class DashboardTests(GrimoireWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task Get_CountsApplicationAndGlobalFlags_AndThoseOnSomewhere()
+    {
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
+        var before = await FlagCountsAsync();
+
+        var off = TestHelpers.UniqueName("off");
+        var on = TestHelpers.UniqueName("on");
+        var global = TestHelpers.UniqueName("global");
+        await CreateFlagAsync($"/management/applications/{slug}/feature-flags", off);
+        await CreateFlagAsync($"/management/applications/{slug}/feature-flags", on);
+        await CreateFlagAsync("/management/global/feature-flags", global);
+        await ToggleOnAsync(
+            $"/management/applications/{slug}/feature-flags/{on}/environments/local"
+        );
+        await ToggleOnAsync($"/management/global/feature-flags/{global}/environments/*");
+
+        var after = await FlagCountsAsync();
+        Assert.Equal(before.Total + 3, after.Total);
+        Assert.Equal(before.Enabled + 2, after.Enabled);
+    }
+
+    [Fact]
+    public async Task Get_LeavesOutFlagsOfDeletedApplications()
+    {
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
+        var key = TestHelpers.UniqueName("gone");
+        await CreateFlagAsync($"/management/applications/{slug}/feature-flags", key);
+        await ToggleOnAsync(
+            $"/management/applications/{slug}/feature-flags/{key}/environments/local"
+        );
+        var before = await FlagCountsAsync();
+
+        (await Client.DeleteAsync($"/management/applications/{slug}")).EnsureSuccessStatusCode();
+
+        var after = await FlagCountsAsync();
+        Assert.Equal(before.Total - 1, after.Total);
+        Assert.Equal(before.Enabled - 1, after.Enabled);
+    }
+
+    private async Task<(int Total, int Enabled)> FlagCountsAsync()
+    {
+        var json = JsonNode.Parse(await Client.GetStringAsync("/management/dashboard"))!;
+        var flags = json["featureFlags"]!;
+        return (flags["total"]!.GetValue<int>(), flags["enabled"]!.GetValue<int>());
+    }
+
+    private async Task CreateFlagAsync(string url, string key) =>
+        (await Client.PostAsJsonAsync(url, new { key })).EnsureSuccessStatusCode();
+
+    private async Task ToggleOnAsync(string url) =>
+        (
+            await Client.PostAsJsonAsync($"{url}/toggle", new { enabled = true })
+        ).EnsureSuccessStatusCode();
+
+    [Fact]
     public async Task Get_ReturnsCounts_AndIsNotPubliclyCacheable()
     {
         var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
@@ -54,7 +109,7 @@ public class DashboardTests(GrimoireWebApplicationFactory factory)
         var json = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
         Assert.NotNull(json["generatedAt"]);
         Assert.True(json["totals"]!["applications"]!.GetValue<int>() >= 1);
-        Assert.Null(json["featureFlags"]);
+        Assert.NotNull(json["featureFlags"]);
         Assert.IsType<JsonArray>(json["recentActivity"]);
         Assert.NotNull(json["global"]);
 

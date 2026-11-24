@@ -1626,7 +1626,7 @@ One aggregate, read-only call for the UI home page. Returns **metadata only, nev
     }
   ],
   "global": { "secretCount": 3, "configurationCount": 7, "lastChangedAt": "2026-11-15T21:00:00Z" },
-  "featureFlags": null,
+  "featureFlags": { "total": 6, "enabled": 4 },
   "recentActivity": null,
   "attention": [
     { "kind": "secret-expiring", "severity": "warning", "application": "loop-requests", "environment": "production", "target": "DB_PASSWORD", "dueAt": "2026-11-28T00:00:00Z", "lastSeenAt": null }
@@ -1637,7 +1637,7 @@ One aggregate, read-only call for the UI home page. Returns **metadata only, nev
 - `secretCount` on an application counts its own secrets (globals are reported under `global`); on an environment it counts the application secrets with at least one version there.
 - `lastChangedAt` is the latest `UpdatedAt` / secret-version `CreatedAt` across the application, its environments, secrets and configuration.
 - `lastSeenAt` is the last successful consumer read (see [Consumer activity](#consumer-activity)); `null` when no consumer has read that environment yet.
-- `featureFlags` is `null` until feature flags ship.
+- `featureFlags` counts every [feature flag](#feature-flags), application and global; `enabled` is how many are on in at least one environment (for a global flag, `*` counts).
 - `recentActivity` lists the latest 20 changes from the [audit log](#audit-log) (consumer reads and rejected requests left out), each with `action` as a readable description (e.g. "Added secret version") and `code` as the action code. It is `null` when `Audit:Enabled` is `false`.
 
 **Attention items** are ordered by severity (`error`, `warning`, `info`). `application` is `null` for global secrets and configuration; `target` is a secret name or configuration key.

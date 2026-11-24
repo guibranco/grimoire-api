@@ -7,6 +7,12 @@ public interface IFeatureFlagRepository
     /// <summary>An application's flags (or, with <c>null</c>, the global flags) with their states, by key.</summary>
     Task<List<FeatureFlag>> ListAsync(Guid? applicationId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Every global flag and every flag of an application that isn't deleted, and how many of
+    /// them are on in at least one environment.
+    /// </summary>
+    Task<(int Total, int Enabled)> CountAsync(CancellationToken ct = default);
+
     /// <summary>One flag with its environment states (tracked).</summary>
     Task<FeatureFlag?> GetAsync(Guid? applicationId, string key, CancellationToken ct = default);
 

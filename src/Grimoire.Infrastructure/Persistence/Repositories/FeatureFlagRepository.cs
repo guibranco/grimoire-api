@@ -13,6 +13,15 @@ public class FeatureFlagRepository(GrimoireDbContext db) : IFeatureFlagRepositor
             .OrderBy(f => f.Key)
             .ToListAsync(ct);
 
+    public async Task<(int Total, int Enabled)> CountAsync(CancellationToken ct = default)
+    {
+        // Applications are soft-deleted; their flags stay but no longer count.
+        var live = db.FeatureFlags.Where(f => f.ApplicationId == null || !f.Application!.IsDeleted);
+        var total = await live.CountAsync(ct);
+        var enabled = await live.CountAsync(f => f.Environments.Any(e => e.Enabled), ct);
+        return (total, enabled);
+    }
+
     public Task<FeatureFlag?> GetAsync(
         Guid? applicationId,
         string key,

@@ -2,6 +2,7 @@ using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Audit;
 using Grimoire.Core.Dashboard;
 using Grimoire.Core.Interfaces;
+using Grimoire.Core.Interfaces.Repositories;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Grimoire.Api.Controllers.Management;
@@ -12,6 +13,7 @@ namespace Grimoire.Api.Controllers.Management;
 public class DashboardController(
     IDashboardService dashboard,
     IAuditQueryService audit,
+    IFeatureFlagRepository flags,
     Grimoire.Infrastructure.Audit.AuditOptions auditOptions
 ) : ControllerBase
 {
@@ -50,7 +52,15 @@ public class DashboardController(
 
         var recentActivity = auditOptions.Enabled ? await RecentActivityAsync(ct) : null;
 
-        return Ok(ToResponse(summary, recentActivity));
+        var (flagTotal, flagsEnabled) = await flags.CountAsync(ct);
+
+        return Ok(
+            ToResponse(
+                summary,
+                new DashboardFeatureFlagsResponse(flagTotal, flagsEnabled),
+                recentActivity
+            )
+        );
     }
 
     private const int RecentActivityCount = 20;
@@ -82,6 +92,7 @@ public class DashboardController(
 
     private static DashboardResponse ToResponse(
         DashboardSummary s,
+        DashboardFeatureFlagsResponse featureFlags,
         IReadOnlyList<DashboardActivityResponse>? recentActivity
     ) =>
         new(
@@ -116,7 +127,7 @@ public class DashboardController(
                 s.Global.ConfigurationCount,
                 s.Global.LastChangedAt
             ),
-            FeatureFlags: null,
+            featureFlags,
             RecentActivity: recentActivity,
             s.Attention.Select(i => new AttentionItemResponse(
                     i.Kind,
