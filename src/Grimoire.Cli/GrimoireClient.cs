@@ -7,7 +7,7 @@ using Grimoire.Cli.Export;
 namespace Grimoire.Cli;
 
 /// <summary>A failed Grimoire call, with the problem's detail when the API sent one.</summary>
-internal sealed class GrimoireApiException(HttpStatusCode status, string message)
+public sealed class GrimoireApiException(HttpStatusCode status, string message)
     : Exception(message)
 {
     public HttpStatusCode Status { get; } = status;
