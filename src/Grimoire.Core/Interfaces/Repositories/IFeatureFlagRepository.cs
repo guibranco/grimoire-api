@@ -8,7 +8,8 @@ public interface IFeatureFlagRepository
     Task<List<FeatureFlag>> ListAsync(Guid? applicationId, CancellationToken ct = default);
 
     /// <summary>
-    /// Every flag (application and global), and how many are on in at least one environment.
+    /// Every global flag and every flag of an application that isn't deleted, and how many of
+    /// them are on in at least one environment.
     /// </summary>
     Task<(int Total, int Enabled)> CountAsync(CancellationToken ct = default);
 

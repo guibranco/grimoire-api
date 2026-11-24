@@ -54,6 +54,24 @@ public class DashboardTests(GrimoireWebApplicationFactory factory)
         Assert.Equal(before.Enabled + 2, after.Enabled);
     }
 
+    [Fact]
+    public async Task Get_LeavesOutFlagsOfDeletedApplications()
+    {
+        var (slug, _) = await TestHelpers.CreateApplicationAsync(Client);
+        var key = TestHelpers.UniqueName("gone");
+        await CreateFlagAsync($"/management/applications/{slug}/feature-flags", key);
+        await ToggleOnAsync(
+            $"/management/applications/{slug}/feature-flags/{key}/environments/local"
+        );
+        var before = await FlagCountsAsync();
+
+        (await Client.DeleteAsync($"/management/applications/{slug}")).EnsureSuccessStatusCode();
+
+        var after = await FlagCountsAsync();
+        Assert.Equal(before.Total - 1, after.Total);
+        Assert.Equal(before.Enabled - 1, after.Enabled);
+    }
+
     private async Task<(int Total, int Enabled)> FlagCountsAsync()
     {
         var json = JsonNode.Parse(await Client.GetStringAsync("/management/dashboard"))!;
