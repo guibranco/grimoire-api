@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Grimoire.Api.Audit;
 using Grimoire.Api.ConsumerTracking;
 using Grimoire.Api.DTOs.Consumer;
@@ -6,6 +7,7 @@ using Grimoire.Core.Audit;
 using Grimoire.Core.Entities;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
+using Grimoire.Core.Publishing;
 using Grimoire.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,8 +22,18 @@ public class ConsumerConfigurationsController(
     IEffectiveConfigurationService effective
 ) : ControllerBase
 {
+    private static readonly JsonSerializerOptions EtagOptions = new(JsonSerializerDefaults.Web);
+
+    /// <summary>
+    /// Every configuration entry of the API key's application in <paramref name="environment"/>,
+    /// globals merged in. Sends an <c>ETag</c>; with a matching <c>If-None-Match</c> the answer is
+    /// <c>304</c> and no body, so polling for changes is cheap.
+    /// </summary>
     [Audited(AuditActions.ConfigurationRead)]
     [HttpGet]
+    [ProducesResponseType<ConfigurationListResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAll([FromQuery] string environment, CancellationToken ct)
     {
         var app = HttpContext.Items[ConsumerApiKeyMiddleware.AppContextKey] as Application;
@@ -35,6 +47,7 @@ public class ConsumerConfigurationsController(
 
         var entries = await effective.GetConfigurationAsync(app, env, ct);
         var items = entries
+            .Where(e => !ConfigurationSentinel.IsSentinel(e.Key))
             .Select(e => new ConfigurationItem(
                 e.Key,
                 e.Value,
@@ -42,11 +55,19 @@ public class ConsumerConfigurationsController(
                 ConfigurationValueNormalizer.ToName(e.ValueType)
             ))
             .ToList();
-        return Ok(new ConfigurationListResponse(items));
+        return WithEtag(new ConfigurationListResponse(items));
     }
 
+    /// <summary>
+    /// One configuration entry, falling back to an inherited global. Sends an <c>ETag</c>; with a
+    /// matching <c>If-None-Match</c> the answer is <c>304</c>. Clients poll the <c>Sentinel</c> and
+    /// <c>Global:Sentinel</c> keys this way to know when to reload.
+    /// </summary>
     [Audited(AuditActions.ConfigurationRead)]
     [HttpGet("{key}")]
+    [ProducesResponseType<ConfigurationItem>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByKey(
         string key,
         [FromQuery] string environment,
@@ -66,7 +87,7 @@ public class ConsumerConfigurationsController(
         if (entry is null)
             return Problem("Configuration key not found.", statusCode: 404);
 
-        return Ok(
+        return WithEtag(
             new ConfigurationItem(
                 entry.Key,
                 entry.Value,
@@ -74,5 +95,17 @@ public class ConsumerConfigurationsController(
                 ConfigurationValueNormalizer.ToName(entry.ValueType)
             )
         );
+    }
+
+    private IActionResult WithEtag<T>(T body)
+    {
+        var current = ConsumerEtag.IsCurrent(
+            this,
+            JsonSerializer.SerializeToUtf8Bytes(body, EtagOptions)
+        );
+        Response.Headers.CacheControl = "private, no-cache";
+        if (current)
+            return StatusCode(StatusCodes.Status304NotModified);
+        return Ok(body);
     }
 }

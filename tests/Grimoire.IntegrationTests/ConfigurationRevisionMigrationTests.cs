@@ -42,16 +42,14 @@ public sealed class ConfigurationRevisionMigrationTests : IDisposable
                     UpdatedAt = now,
                 }
             );
-            db.Environments.Add(
-                new AppEnvironment
-                {
-                    Id = envId,
-                    ApplicationId = appId,
-                    Name = "Production",
-                    Slug = "production",
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                }
+            await db.SaveChangesAsync();
+            await LegacyRows.InsertEnvironmentAsync(
+                db,
+                envId,
+                appId,
+                "Production",
+                "production",
+                now
             );
             db.ConfigurationEntries.Add(
                 new ConfigurationEntry

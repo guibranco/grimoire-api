@@ -67,16 +67,14 @@ public sealed class SecretReadMigrationTests : IDisposable
                     UpdatedAt = Start,
                 }
             );
-            db.Environments.Add(
-                new AppEnvironment
-                {
-                    Id = envId,
-                    ApplicationId = appId,
-                    Name = "Production",
-                    Slug = "production",
-                    CreatedAt = Start,
-                    UpdatedAt = Start,
-                }
+            await db.SaveChangesAsync();
+            await LegacyRows.InsertEnvironmentAsync(
+                db,
+                envId,
+                appId,
+                "Production",
+                "production",
+                Start
             );
             db.Secrets.Add(
                 new Secret

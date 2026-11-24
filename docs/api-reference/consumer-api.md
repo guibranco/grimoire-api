@@ -161,6 +161,10 @@ Returns all configuration entries for the current application in the given envir
 
 The `label` field contains the environment slug. This matches the **Azure App Configuration** response shape.
 
+The sentinel keys `Sentinel` and `Global:Sentinel` are left out of this list. Read them by key (below).
+
+**Conditional requests:** the response has an `ETag`. Send it back as `If-None-Match` to get `304 Not Modified` (no body) while nothing changed.
+
 `valueType` is `string`, `multiline`, `array` (a JSON array of strings) or `json` (a JSON object or array). `value` is always a string; for `array` and `json` it holds the JSON text, so parse it when `valueType` says so. Clients written before value types existed ignore the field and keep working.
 
 **Response `404`:** Environment not found.
@@ -187,6 +191,15 @@ Returns a single configuration entry, falling back to an inherited global entry 
 ```
 
 **Response `404`:** Key or environment not found.
+
+Also sends an `ETag` and supports `If-None-Match` → `304`. Clients poll the **sentinel keys** this way to know when to reload:
+
+| Key | Changes when |
+| :-- | :----------- |
+| `Sentinel` | This application's configuration or secrets in the environment are published (on every change while auto-publish is on) |
+| `Global:Sentinel` | Global configuration or secrets are published. `404` if the application doesn't inherit globals |
+
+See the [refresh spec](../client-library/refresh-spec/).
 
 ---
 

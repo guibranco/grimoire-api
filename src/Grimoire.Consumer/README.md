@@ -30,6 +30,14 @@ var dbHost = builder.Configuration["Database:Host"];
 
 Entries are loaded once at startup and work with `IOptions<T>` as usual.
 
+To reload when values change in Grimoire, turn on refresh. The provider polls the `Sentinel` and `Global:Sentinel` keys (a `304` when nothing changed) and reloads when Grimoire publishes changes. `IOptionsMonitor<T>` sees the new values:
+
+```csharp
+builder.Configuration.AddGrimoire(o => o
+    .Connect("https://grimoire.example.com", apiKey, "production")
+    .ConfigureRefresh(r => r.SetRefreshInterval(TimeSpan.FromSeconds(30))));
+```
+
 ## Fetch a secret
 
 ```csharp

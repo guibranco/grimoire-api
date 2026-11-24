@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using FluentValidation;
 using Grimoire.Api.DTOs.Management;
 using Grimoire.Core.Entities;
+using Grimoire.Core.Publishing;
 using Grimoire.Core.Services;
 
 namespace Grimoire.Api.Validators.Management;
@@ -68,6 +69,10 @@ public class CreateConfigurationRequestValidator : AbstractValidator<CreateConfi
     {
         RuleFor(x => x.EnvironmentSlug).NotEmpty();
         RuleFor(x => x.Key).NotEmpty().MaximumLength(500);
+        RuleFor(x => x.Key)
+            .Must(k => ConfigurationSentinel.ReservedKeyError(k, null) is null)
+            .WithMessage(x => ConfigurationSentinel.ReservedKeyError(x.Key, null)!)
+            .When(x => !string.IsNullOrEmpty(x.Key));
         RuleFor(x => x.Value).NotNull();
         ConfigurationValueRules.AddRules(
             this,

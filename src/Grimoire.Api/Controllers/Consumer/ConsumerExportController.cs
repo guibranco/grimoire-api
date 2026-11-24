@@ -10,6 +10,7 @@ using Grimoire.Core.Entities;
 using Grimoire.Core.Export;
 using Grimoire.Core.Interfaces;
 using Grimoire.Core.Interfaces.Repositories;
+using Grimoire.Core.Publishing;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Grimoire.Api.Controllers.Consumer;
@@ -99,7 +100,7 @@ public class ConsumerExportController(
         CancellationToken ct
     ) =>
         (await effective.GetConfigurationAsync(app, env, ct))
-            .Where(e => Matches(e.Key, prefix))
+            .Where(e => Matches(e.Key, prefix) && !ConfigurationSentinel.IsSentinel(e.Key))
             .ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal);
 
     private async Task<(
