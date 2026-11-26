@@ -13,12 +13,16 @@ public sealed class CliTests : IDisposable
         new(
             TextWriter.Null,
             TextWriter.Null,
+            new StringReader(_stdin),
+            InputRedirected: true,
             name => _environment.GetValueOrDefault(name),
             _settings,
-            (_, _) => throw new InvalidOperationException("No HTTP in unit tests."),
-            () => null,
+            _ => throw new InvalidOperationException("No HTTP in unit tests."),
+            _ => null,
             new ProcessRunner()
         );
+
+    private string _stdin = "";
 
     [Fact]
     public void Credentials_EnvironmentVariablesOverrideTheSavedFile()
@@ -37,7 +41,7 @@ public sealed class CliTests : IDisposable
     }
 
     [Fact]
-    public void Credentials_AreNullWithoutAUrlAndAToken()
+    public void Credentials_AreNullWithoutAUrl()
     {
         var store = new CredentialStore(Host());
         Assert.Null(store.Resolve());
@@ -59,6 +63,7 @@ public sealed class CliTests : IDisposable
     {
         System.Diagnostics.ProcessStartInfo startInfo;
         Environment.SetEnvironmentVariable(CliHost.TokenVariable, "inherited");
+        Environment.SetEnvironmentVariable(CliHost.AdminKeyVariable, "inherited");
         try
         {
             startInfo = ProcessRunner.Build(
@@ -69,6 +74,7 @@ public sealed class CliTests : IDisposable
         finally
         {
             Environment.SetEnvironmentVariable(CliHost.TokenVariable, null);
+            Environment.SetEnvironmentVariable(CliHost.AdminKeyVariable, null);
         }
 
         Assert.Equal("app", startInfo.FileName);
@@ -76,6 +82,7 @@ public sealed class CliTests : IDisposable
         Assert.False(startInfo.UseShellExecute);
         Assert.Equal("true", startInfo.Environment["FEATURE__DARKMODE"]);
         Assert.False(startInfo.Environment.ContainsKey(CliHost.TokenVariable));
+        Assert.False(startInfo.Environment.ContainsKey(CliHost.AdminKeyVariable));
     }
 
     [Fact]
@@ -103,6 +110,35 @@ public sealed class CliTests : IDisposable
 
         await Assert.ThrowsAnyAsync<Exception>(() =>
             new ProcessRunner().RunAsync(startInfo, CancellationToken.None)
+        );
+    }
+
+    [Fact]
+    public void Credentials_AdminKeyAndAppCanComeFromTheEnvironment()
+    {
+        _environment[CliHost.UrlVariable] = "https://ci.example.com";
+        _environment[CliHost.AdminKeyVariable] = "admin";
+        _environment[CliHost.AppVariable] = "billing";
+
+        var resolved = new CredentialStore(Host()).Resolve()!;
+
+        Assert.Null(resolved.Token);
+        Assert.Equal("admin", resolved.AdminKey);
+        Assert.Equal("billing", resolved.App);
+    }
+
+    [Theory]
+    [InlineData("value\n", "value")]
+    [InlineData("value\r\n", "value")]
+    [InlineData("two\nlines\n\n", "two\nlines\n")]
+    [InlineData("no newline", "no newline")]
+    public void ReadAllInput_DropsOneTrailingLineBreak(string piped, string expected)
+    {
+        _stdin = System.Text.RegularExpressions.Regex.Unescape(piped);
+
+        Assert.Equal(
+            System.Text.RegularExpressions.Regex.Unescape(expected),
+            Host().ReadAllInput()
         );
     }
 }

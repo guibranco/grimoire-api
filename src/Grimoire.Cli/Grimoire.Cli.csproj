@@ -15,7 +15,7 @@
     <ToolCommandName>grimoire</ToolCommandName>
     <PackageId>Grimoire.Cli</PackageId>
     <Title>Grimoire CLI</Title>
-    <Description>Command-line client for Grimoire, the self-hosted Vault &amp; Configuration Manager: read secrets, export configuration to .env or JSON, and run a process with its secrets injected as environment variables.</Description>
+    <Description>Command-line client for Grimoire, the self-hosted Vault &amp; Configuration Manager: read and write secrets and configuration, import and export .env and JSON files, compare environments, and run a process with its secrets injected as environment variables.</Description>
     <Authors>Guilherme Branco Stracini</Authors>
     <Company>Guilherme Branco Stracini ME</Company>
     <Copyright>© $([System.DateTime]::Now.Year) Guilherme Branco Stracini. All rights reserved.</Copyright>
