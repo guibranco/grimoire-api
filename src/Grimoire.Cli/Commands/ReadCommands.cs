@@ -237,11 +237,11 @@ internal static class ReadCommands
             a.Secrets,
             b.Secrets
         );
-        host.Out.WriteLine($"--- {fromEnv}");
-        host.Out.WriteLine($"+++ {toEnv}");
+        await host.Out.WriteLineAsync($"--- {fromEnv}");
+        await host.Out.WriteLineAsync($"+++ {toEnv}");
         foreach (var item in items)
-            host.Out.WriteLine(EnvironmentDiff.Format(item));
-        host.Out.WriteLine(Summary(items.Count));
+            await host.Out.WriteLineAsync(EnvironmentDiff.Format(item));
+        await host.Out.WriteLineAsync(Summary(items.Count));
         return items.Count > 0 && exitCode ? 1 : 0;
     }
 

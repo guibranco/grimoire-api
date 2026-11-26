@@ -226,16 +226,16 @@ internal static class WriteCommands
             return 0;
         if (plan.Summary.Create + plan.Summary.Update == 0)
         {
-            host.Out.WriteLine("Nothing to import.");
+            await host.Out.WriteLineAsync("Nothing to import.");
             return 0;
         }
         if (!confirmed && !Confirm(host, $"Apply to {env}?"))
         {
-            host.Out.WriteLine("Nothing changed.");
+            await host.Out.WriteLineAsync("Nothing changed.");
             return 0;
         }
         var applied = await client.ImportAsync(env, options, dryRun: false, ct);
-        host.Out.WriteLine(
+        await host.Out.WriteLineAsync(
             $"Imported into {env}: {applied.Summary.Create} created, {applied.Summary.Update} updated."
         );
         return 0;
