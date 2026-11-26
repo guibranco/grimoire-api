@@ -1,10 +1,10 @@
 using System.CommandLine;
 using System.Net;
-using Grimoire.Cli.Export;
+using Grimoire.Cli.Commands;
 
 namespace Grimoire.Cli;
 
-/// <summary>The <c>grimoire</c> command tree.</summary>
+/// <summary>The <c>grimoire</c> command tree and the plumbing its commands share.</summary>
 internal static class CliApp
 {
     public const string EnvironmentVariable = "GRIMOIRE_ENVIRONMENT";
@@ -25,226 +25,31 @@ internal static class CliApp
     internal static RootCommand Build(CliHost host)
     {
         var root = new RootCommand(
-            "Command-line client for Grimoire: read secrets, export configuration and run "
-                + "processes with their secrets injected."
+            "Command-line client for Grimoire: read and write secrets and configuration, "
+                + "export them, compare environments and run processes with their secrets injected."
         );
-        root.Subcommands.Add(Login(host));
-        root.Subcommands.Add(Logout(host));
-        root.Subcommands.Add(Get(host));
-        root.Subcommands.Add(Config(host));
-        root.Subcommands.Add(Export(host));
-        root.Subcommands.Add(Run(host));
+        foreach (var command in AccountCommands.Create(host))
+            root.Subcommands.Add(command);
+        foreach (var command in ReadCommands.Create(host))
+            root.Subcommands.Add(command);
+        foreach (var command in WriteCommands.Create(host))
+            root.Subcommands.Add(command);
         return root;
     }
 
-    private static Command Login(CliHost host)
-    {
-        var url = new Option<string>("--url")
-        {
-            Description = "Grimoire API base URL, e.g. https://grimoire.example.com",
-            Required = true,
-        };
-        var app = new Option<string?>("--app")
-        {
-            Description = "A label for the application the token belongs to.",
-        };
-        var command = new Command(
-            "login",
-            "Save the API URL and a token. The token is read from standard input when piped, "
-                + "otherwise prompted for without echoing."
-        )
-        {
-            url,
-            app,
-        };
-        command.SetAction(
-            async (parse, ct) =>
-            {
-                var baseUrl = parse.GetValue(url)!;
-                if (!TryParseBaseUrl(baseUrl, out var baseUri))
-                    return Fail(host, "--url must be an absolute http(s) URL.");
-                var token = host.ReadToken();
-                if (string.IsNullOrWhiteSpace(token))
-                    return Fail(host, "No token given.");
-
-                try
-                {
-                    using var http = host.CreateHttpClient(baseUri, token);
-                    if (!await new GrimoireClient(http).AcceptsTokenAsync(ct))
-                        return Fail(host, "Grimoire rejected the token.");
-                }
-                catch (HttpRequestException ex)
-                {
-                    return Fail(host, $"Could not reach {baseUri}: {ex.Message}");
-                }
-
-                var store = new CredentialStore(host);
-                store.Save(new Credentials(baseUri.ToString(), token, parse.GetValue(app)));
-                host.Out.WriteLine(
-                    $"Logged in to {baseUri}. Credentials saved to {store.FilePath}."
-                );
-                return 0;
-            }
-        );
-        return command;
-    }
-
-    private static Command Logout(CliHost host)
-    {
-        var command = new Command("logout", "Delete the saved credentials.");
-        command.SetAction(_ =>
-        {
-            var store = new CredentialStore(host);
-            host.Out.WriteLine(
-                store.Delete() ? $"Deleted {store.FilePath}." : "No saved credentials."
-            );
-            return 0;
-        });
-        return command;
-    }
-
-    private static Command Get(CliHost host)
-    {
-        var name = new Argument<string>("name") { Description = "Secret name." };
-        var environment = EnvironmentOption();
-        var command = new Command("get", "Print a secret's current value.") { name, environment };
-        command.SetAction(
-            (parse, ct) => WithClientAsync(host, parse.GetValue(environment), async (client, env) =>
-                {
-                    host.Out.WriteLine(await client.GetSecretAsync(parse.GetValue(name)!, env, ct));
-                    return 0;
-                })
-        );
-        return command;
-    }
-
-    private static Command Config(CliHost host)
-    {
-        var environment = EnvironmentOption();
-        var list = new Command(
-            "list",
-            "List the effective configuration as KEY=value lines (values unquoted)."
-        )
-        {
-            environment,
-        };
-        list.SetAction(
-            (parse, ct) => WithClientAsync(host, parse.GetValue(environment), async (client, env) =>
-                {
-                    var items = await client.ListConfigurationAsync(env, ct);
-                    foreach (var item in items.OrderBy(i => i.Key, StringComparer.Ordinal))
-                        host.Out.WriteLine($"{item.Key}={item.Value}");
-                    return 0;
-                })
-        );
-        return new Command("config", "Read configuration.") { list };
-    }
-
-    private static Command Export(CliHost host)
-    {
-        var environment = EnvironmentOption();
-        var format = new Option<string>("--format", "-f")
-        {
-            Description = "env (default), json or dotnet.",
-            DefaultValueFactory = _ => "env",
-        };
-        format.AcceptOnlyFromAmong([.. ExportFormatter.Formats]);
-        var (include, prefix) = FilterOptions();
-        var output = new Option<FileInfo?>("--output", "-o")
-        {
-            Description = "Write to this file (readable only by you) instead of standard output.",
-        };
-        var command = new Command(
-            "export",
-            "Export every value the application can read in an environment."
-        )
-        {
-            environment,
-            format,
-            include,
-            prefix,
-            output,
-        };
-        command.SetAction(
-            (parse, ct) => WithClientAsync(host, parse.GetValue(environment), async (client, env) =>
-                {
-                    var query = new ExportQuery(
-                        env,
-                        parse.GetValue(include),
-                        parse.GetValue(prefix)
-                    );
-                    var body = await client.ExportAsync(query, parse.GetValue(format)!, ct);
-                    var file = parse.GetValue(output);
-                    if (file is null)
-                    {
-                        host.Out.Write(body);
-                        return 0;
-                    }
-                    await WriteOwnerOnlyAsync(file.FullName, body, ct);
-                    host.Error.WriteLine($"Wrote {file.FullName}.");
-                    return 0;
-                })
-        );
-        return command;
-    }
-
-    private static Command Run(CliHost host)
-    {
-        var environment = EnvironmentOption();
-        var (include, prefix) = FilterOptions();
-        var commandLine = new Argument<string[]>("command")
-        {
-            Description = "The program and its arguments, after --.",
-            Arity = ArgumentArity.OneOrMore,
-        };
-        var command = new Command(
-            "run",
-            "Run a program with the environment's secrets and configuration as environment "
-                + "variables (Feature:DarkMode → FEATURE__DARKMODE). Nothing is written to disk."
-        )
-        {
-            environment,
-            include,
-            prefix,
-            commandLine,
-        };
-        command.SetAction(
-            (parse, ct) => WithClientAsync(host, parse.GetValue(environment), async (client, env) =>
-                {
-                    var query = new ExportQuery(
-                        env,
-                        parse.GetValue(include),
-                        parse.GetValue(prefix)
-                    );
-                    var (values, skipped) = await client.ExportValuesAsync(query, ct);
-                    foreach (var name in skipped)
-                        host.Error.WriteLine($"grimoire: skipped '{name}': no active version.");
-                    var startInfo = ProcessRunner.Build(
-                        parse.GetValue(commandLine)!,
-                        ExportFormatter.ToEnvironment(values)
-                    );
-                    try
-                    {
-                        return await host.Processes.RunAsync(startInfo, ct);
-                    }
-                    catch (System.ComponentModel.Win32Exception ex)
-                    {
-                        // Shells use 127 for "command not found".
-                        Fail(host, $"Could not start '{startInfo.FileName}': {ex.Message}");
-                        return 127;
-                    }
-                })
-        );
-        return command;
-    }
-
-    private static Option<string?> EnvironmentOption() =>
+    internal static Option<string?> EnvironmentOption() =>
         new("--environment", "-e")
         {
             Description = $"Environment slug. Defaults to ${EnvironmentVariable}.",
         };
 
-    private static (Option<string?> Include, Option<string?> Prefix) FilterOptions() =>
+    internal static Option<string?> AppOption() =>
+        new("--app")
+        {
+            Description = $"Application slug. Defaults to the saved one or ${CliHost.AppVariable}.",
+        };
+
+    internal static (Option<string?> Include, Option<string?> Prefix) FilterOptions() =>
         (
             new Option<string?>("--include")
             {
@@ -256,11 +61,50 @@ internal static class CliApp
             }
         );
 
+    internal static Option<string> StructuredOption()
+    {
+        var option = new Option<string>("--structured")
+        {
+            Description =
+                "How array and json values are written: raw (default, the JSON text), "
+                + "flatten (one entry per item, AllowedIps:0 → ALLOWEDIPS__0) or both.",
+            DefaultValueFactory = _ => "raw",
+        };
+        option.AcceptOnlyFromAmong(StructuredValues.Modes);
+        return option;
+    }
+
     /// <summary>
-    /// Resolves the environment and credentials, then runs <paramref name="action"/>, turning
-    /// API and network failures into a message on standard error and exit code 1.
+    /// Whether an <c>--include</c> list selects secrets and configurations (both when empty).
+    /// False for anything else, which the API would reject too.
     /// </summary>
-    private static async Task<int> WithClientAsync(
+    internal static bool TryParseInclude(string? include, out bool secrets, out bool configurations)
+    {
+        secrets = configurations = string.IsNullOrWhiteSpace(include);
+        if (secrets)
+            return true;
+        foreach (
+            var part in include!.Split(
+                ',',
+                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
+            )
+        )
+        {
+            if (part.Equals("secrets", StringComparison.OrdinalIgnoreCase))
+                secrets = true;
+            else if (part.Equals("configurations", StringComparison.OrdinalIgnoreCase))
+                configurations = true;
+            else
+                return false;
+        }
+        return secrets || configurations;
+    }
+
+    /// <summary>
+    /// Runs a read command: resolves the environment and the read token, then turns API and
+    /// network failures into a message on standard error and exit code 1.
+    /// </summary>
+    internal static Task<int> WithConsumerAsync(
         CliHost host,
         string? environment,
         Func<GrimoireClient, string, Task<int>> action
@@ -268,26 +112,82 @@ internal static class CliApp
     {
         environment ??= host.GetEnvironmentVariable(EnvironmentVariable);
         if (string.IsNullOrWhiteSpace(environment))
-            return Fail(host, $"Pass --environment or set {EnvironmentVariable}.");
+            return Task.FromResult(Fail(host, $"Pass --environment or set {EnvironmentVariable}."));
+        return WithConsumerAsync(host, client => action(client, environment));
+    }
+
+    internal static Task<int> WithConsumerAsync(
+        CliHost host,
+        Func<GrimoireClient, Task<int>> action
+    )
+    {
+        var credentials = new CredentialStore(host).Resolve();
+        if (credentials?.Token is not { Length: > 0 } token)
+            return Task.FromResult(
+                Fail(
+                    host,
+                    $"Not logged in. Run 'grimoire login' or set {CliHost.UrlVariable} and {CliHost.TokenVariable}."
+                )
+            );
+        return GuardedAsync(host, credentials.Url, "grimoire login", http =>
+            action(new GrimoireClient(http, token))
+        );
+    }
+
+    /// <summary>
+    /// Runs a write command: resolves the environment, the application and the admin key, then
+    /// turns API and network failures into a message on standard error and exit code 1.
+    /// </summary>
+    internal static Task<int> WithManagementAsync(
+        CliHost host,
+        string? environment,
+        string? app,
+        Func<ManagementClient, string, Task<int>> action
+    )
+    {
+        environment ??= host.GetEnvironmentVariable(EnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(environment))
+            return Task.FromResult(Fail(host, $"Pass --environment or set {EnvironmentVariable}."));
 
         var credentials = new CredentialStore(host).Resolve();
-        if (credentials is null)
-            return Fail(
-                host,
-                $"Not logged in. Run 'grimoire login' or set {CliHost.UrlVariable} and {CliHost.TokenVariable}."
+        if (credentials?.AdminKey is not { Length: > 0 } adminKey)
+            return Task.FromResult(
+                Fail(
+                    host,
+                    $"No admin key. Run 'grimoire login --admin' or set {CliHost.UrlVariable} and {CliHost.AdminKeyVariable}."
+                )
             );
-        if (!TryParseBaseUrl(credentials.Url, out var baseUri))
-            return Fail(host, $"'{credentials.Url}' is not an absolute http(s) URL.");
+        app ??= credentials.App;
+        if (string.IsNullOrWhiteSpace(app))
+            return Task.FromResult(
+                Fail(
+                    host,
+                    $"Pass --app, save one with 'grimoire login --app' or set {CliHost.AppVariable}."
+                )
+            );
+        return GuardedAsync(host, credentials.Url, "grimoire login --admin", http =>
+            action(new ManagementClient(http, adminKey, app), environment)
+        );
+    }
 
+    /// <summary>Creates the HTTP client for <paramref name="url"/> and maps failures to exit code 1.</summary>
+    internal static async Task<int> GuardedAsync(
+        CliHost host,
+        string url,
+        string loginHint,
+        Func<HttpClient, Task<int>> action
+    )
+    {
+        if (!TryParseBaseUrl(url, out var baseUri))
+            return Fail(host, $"'{url}' is not an absolute http(s) URL.");
         try
         {
-            using var http = host.CreateHttpClient(baseUri, credentials.Token);
-            return await action(new GrimoireClient(http), environment);
+            using var http = host.CreateHttpClient(baseUri);
+            return await action(http);
         }
         catch (GrimoireApiException ex)
         {
-            var hint =
-                ex.Status == HttpStatusCode.Unauthorized ? " Run 'grimoire login' again." : "";
+            var hint = ex.Status == HttpStatusCode.Unauthorized ? $" Run '{loginHint}' again." : "";
             return Fail(host, ex.Message + hint);
         }
         catch (HttpRequestException ex)
@@ -296,7 +196,7 @@ internal static class CliApp
         }
     }
 
-    private static bool TryParseBaseUrl(string value, out Uri uri)
+    internal static bool TryParseBaseUrl(string value, out Uri uri)
     {
         var withSlash = value.EndsWith('/') ? value : value + "/";
         if (
@@ -308,15 +208,12 @@ internal static class CliApp
         return false;
     }
 
-    private static int Fail(CliHost host, string message)
+    internal static int Fail(CliHost host, string message)
     {
         host.Error.WriteLine($"grimoire: {message}");
         return 1;
     }
 
-    private static async Task WriteOwnerOnlyAsync(string path, string content, CancellationToken ct)
-    {
-        await using var writer = new StreamWriter(OwnerOnlyFile.Create(path));
-        await writer.WriteAsync(content.AsMemory(), ct);
-    }
+    internal static Action<string> Warn(CliHost host) =>
+        message => host.Error.WriteLine($"grimoire: {message}");
 }

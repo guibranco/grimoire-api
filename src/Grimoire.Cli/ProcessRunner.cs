@@ -36,7 +36,7 @@ internal sealed class ProcessRunner : IProcessRunner
 
     /// <summary>
     /// The start info for <paramref name="command"/> with <paramref name="variables"/> added to
-    /// the inherited environment. The CLI's own credentials are not passed on.
+    /// the inherited environment. The CLI's own token and admin key are not passed on.
     /// </summary>
     public static ProcessStartInfo Build(
         IReadOnlyList<string> command,
@@ -47,6 +47,7 @@ internal sealed class ProcessRunner : IProcessRunner
         foreach (var arg in command.Skip(1))
             startInfo.ArgumentList.Add(arg);
         startInfo.Environment.Remove(CliHost.TokenVariable);
+        startInfo.Environment.Remove(CliHost.AdminKeyVariable);
         foreach (var (name, value) in variables)
             startInfo.Environment[name] = value;
         return startInfo;

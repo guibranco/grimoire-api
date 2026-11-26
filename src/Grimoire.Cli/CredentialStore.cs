@@ -2,15 +2,22 @@ using System.Text.Json;
 
 namespace Grimoire.Cli;
 
-/// <summary>Where to reach Grimoire and the token to send.</summary>
+/// <summary>Where to reach Grimoire and what to send.</summary>
 /// <param name="Url">API base URL.</param>
-/// <param name="Token">An application API key or access token (sent as <c>X-Api-Key</c>).</param>
-/// <param name="App">Optional label for the application the token belongs to.</param>
-internal sealed record Credentials(string Url, string Token, string? App = null);
+/// <param name="Token">An application API key or access token (sent as <c>X-Api-Key</c>), for reads.</param>
+/// <param name="App">The application slug, for writes; optional for reads.</param>
+/// <param name="AdminKey">The management admin key, for writes (<c>set</c>, <c>import</c>).</param>
+internal sealed record Credentials(
+    string Url,
+    string? Token,
+    string? App = null,
+    string? AdminKey = null
+);
 
 /// <summary>
 /// Saved credentials in <c>~/.grimoire/credentials.json</c> (readable only by the owner on
-/// Unix). <c>GRIMOIRE_URL</c> and <c>GRIMOIRE_TOKEN</c> override what is saved, for CI.
+/// Unix). <c>GRIMOIRE_URL</c>, <c>GRIMOIRE_TOKEN</c>, <c>GRIMOIRE_APP</c> and
+/// <c>GRIMOIRE_ADMIN_KEY</c> override what is saved, for CI.
 /// </summary>
 internal sealed class CredentialStore(CliHost host)
 {
@@ -30,7 +37,7 @@ internal sealed class CredentialStore(CliHost host)
                 UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
             );
 
-        // Create the file owner-only before the token is written to it.
+        // Create the file owner-only before anything secret is written to it.
         using (var stream = OwnerOnlyFile.Create(FilePath))
             JsonSerializer.Serialize(stream, credentials, Json);
     }
@@ -43,18 +50,8 @@ internal sealed class CredentialStore(CliHost host)
         return true;
     }
 
-    /// <summary>The credentials to use, or <c>null</c> when there are none.</summary>
-    public Credentials? Resolve()
-    {
-        var saved = Load();
-        var url = host.GetEnvironmentVariable(CliHost.UrlVariable) ?? saved?.Url;
-        var token = host.GetEnvironmentVariable(CliHost.TokenVariable) ?? saved?.Token;
-        if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(token))
-            return null;
-        return new Credentials(url, token, saved?.App);
-    }
-
-    private Credentials? Load()
+    /// <summary>The saved credentials only, without environment overrides.</summary>
+    public Credentials? Load()
     {
         if (!File.Exists(FilePath))
             return null;
@@ -68,4 +65,22 @@ internal sealed class CredentialStore(CliHost host)
             return null;
         }
     }
+
+    /// <summary>The credentials to use, or <c>null</c> when no URL is known.</summary>
+    public Credentials? Resolve()
+    {
+        var saved = Load();
+        var url = Override(CliHost.UrlVariable) ?? saved?.Url;
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+        return new Credentials(
+            url,
+            Override(CliHost.TokenVariable) ?? saved?.Token,
+            Override(CliHost.AppVariable) ?? saved?.App,
+            Override(CliHost.AdminKeyVariable) ?? saved?.AdminKey
+        );
+    }
+
+    private string? Override(string name) =>
+        host.GetEnvironmentVariable(name) is { Length: > 0 } value ? value : null;
 }

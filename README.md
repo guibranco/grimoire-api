@@ -222,6 +222,11 @@ grimoire login --url https://grimoire.example.com     # prompts for the token
 grimoire get smtp-host -e production
 grimoire export -e local --format env > .env
 grimoire run -e local -- npm start                    # secrets as env vars, nothing on disk
+grimoire diff staging production                      # what differs (never secret values)
+
+grimoire login --url https://grimoire.example.com --app my-app --admin   # for writes
+grimoire set Feature:DarkMode true -e staging
+grimoire import .env -e local                         # shows the plan, then asks
 ```
 
 See the [CLI documentation](https://guibranco.github.io/grimoire-api/cli/).
@@ -357,8 +362,11 @@ src/Grimoire.Consumer/
   GrimoireConfigurationExtensions.cs  AddGrimoire() builder extension
 
 src/Grimoire.Cli/
-  CliApp.cs           Commands: login, logout, get, config list, export, run
-  GrimoireClient.cs   Consumer API calls
+  CliApp.cs           Command tree and shared plumbing
+  Commands/           login/logout, get/config list/export/run/diff, set/import
+  GrimoireClient.cs   Consumer API calls (reads)
+  ManagementClient.cs Management API calls (writes, with the admin key)
+  StructuredValues.cs array/json value handling (raw, flatten, both)
   ProcessRunner.cs    Starts `run` children with the injected environment
 ```
 
