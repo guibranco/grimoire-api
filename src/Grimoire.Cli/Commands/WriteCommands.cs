@@ -221,7 +221,7 @@ internal static class WriteCommands
     )
     {
         var plan = await client.ImportAsync(env, options, dryRun: true, ct);
-        PrintPlan(host, plan);
+        await PrintPlanAsync(host, plan);
         if (!apply)
             return 0;
         if (plan.Summary.Create + plan.Summary.Update == 0)
@@ -272,14 +272,14 @@ internal static class WriteCommands
                 ),
             ];
 
-    private static void PrintPlan(CliHost host, ImportPlan plan)
+    private static async Task PrintPlanAsync(CliHost host, ImportPlan plan)
     {
         foreach (var item in plan.Items.Where(i => i.Action != "unchanged"))
-            host.Out.WriteLine($"  {item.Action, -9} {item.Kind, -13} {item.Key}");
+            await host.Out.WriteLineAsync($"  {item.Action, -9} {item.Kind, -13} {item.Key}");
         foreach (var skipped in plan.Skipped)
-            host.Out.WriteLine($"  {"ignored", -9} {"", -13} {skipped}");
+            await host.Out.WriteLineAsync($"  {"ignored", -9} {"", -13} {skipped}");
         var s = plan.Summary;
-        host.Out.WriteLine(
+        await host.Out.WriteLineAsync(
             $"{s.Create} to create, {s.Update} to update, {s.Unchanged} unchanged, {s.Skipped} skipped."
         );
     }
