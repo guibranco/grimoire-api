@@ -159,6 +159,60 @@ public class AuditTests(GrimoireWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task SentinelReads_AreRecorded_OnlyWhenTheyFail()
+    {
+        var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(Client);
+        await TestHelpers.CreateConfigurationAsync(Client, slug, "local", "PLAIN_KEY", "1");
+        // Make sure Global:Sentinel exists, whatever other tests did to global configuration.
+        (await Client.PostAsync("/management/global/publish", null)).EnsureSuccessStatusCode();
+        var consumer = factory.CreateConsumerClient(apiKey);
+
+        // Successful polls: 200, then 304 with the ETag — neither is audited.
+        foreach (var key in new[] { "Sentinel", "Global:Sentinel" })
+        {
+            var first = await consumer.GetAsync(
+                $"/consumer/configurations/{key}?environment=local"
+            );
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+            using var again = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"/consumer/configurations/{key}?environment=local"
+            );
+            again.Headers.IfNoneMatch.Add(first.Headers.ETag!);
+            Assert.Equal(HttpStatusCode.NotModified, (await consumer.SendAsync(again)).StatusCode);
+        }
+
+        // A failed sentinel read and an ordinary read are still audited.
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (
+                await consumer.GetAsync("/consumer/configurations/Sentinel?environment=missing")
+            ).StatusCode
+        );
+        (
+            await consumer.GetAsync("/consumer/configurations/PLAIN_KEY?environment=local")
+        ).EnsureSuccessStatusCode();
+
+        var items = await WaitForAsync(
+            $"application={slug}&action={AuditActions.ConfigurationRead}",
+            l =>
+                Find(l, AuditActions.ConfigurationRead, "PLAIN_KEY") is not null
+                && Find(l, AuditActions.ConfigurationRead, "Sentinel") is not null
+        );
+
+        var sentinelEvents = items
+            .Where(i => i["target"]?.GetValue<string>() is "Sentinel" or "Global:Sentinel")
+            .ToList();
+        var failed = Assert.Single(sentinelEvents);
+        Assert.Equal("Sentinel", failed["target"]!.GetValue<string>());
+        Assert.Equal("notfound", failed["outcome"]!.GetValue<string>());
+        Assert.Equal(
+            "success",
+            Find(items, AuditActions.ConfigurationRead, "PLAIN_KEY")!["outcome"]!.GetValue<string>()
+        );
+    }
+
+    [Fact]
     public async Task Filters_ActionPrefix_ExcludeReads_Outcome_AndPaging()
     {
         var (slug, apiKey) = await TestHelpers.CreateApplicationAsync(Client);

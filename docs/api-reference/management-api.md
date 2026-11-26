@@ -1764,7 +1764,7 @@ Finds applications (name, slug, description), secrets (name, description) and co
 
 ## Audit log
 
-Grimoire records who read or changed what. Every management change (applications, environments, secrets, configuration, Global entries, backups), every Consumer API read, and every request rejected by an API key check produces one event. Events record names, keys and slugs only, **never secret or configuration values**.
+Grimoire records who read or changed what. Every management change (applications, environments, secrets, configuration, Global entries, backups), every Consumer API read (except successful polls of the `Sentinel` and `Global:Sentinel` keys, where only failures are recorded), and every request rejected by an API key check produces one event. Events record names, keys and slugs only, **never secret or configuration values**.
 
 Events are queued in memory and written in the background, so requests never wait on the audit write. Each event is also written to the server log as a structured entry (and so reaches LogStream when configured). Events older than `Audit:RetentionDays` (180 by default) are deleted daily.
 

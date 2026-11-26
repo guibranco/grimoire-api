@@ -61,7 +61,8 @@ public class ConsumerConfigurationsController(
     /// <summary>
     /// One configuration entry, falling back to an inherited global. Sends an <c>ETag</c>; with a
     /// matching <c>If-None-Match</c> the answer is <c>304</c>. Clients poll the <c>Sentinel</c> and
-    /// <c>Global:Sentinel</c> keys this way to know when to reload.
+    /// <c>Global:Sentinel</c> keys this way to know when to reload; successful sentinel reads are
+    /// not audited, only failures.
     /// </summary>
     [Audited(AuditActions.ConfigurationRead)]
     [HttpGet("{key}")]
@@ -86,6 +87,11 @@ public class ConsumerConfigurationsController(
         var entry = await effective.GetConfigurationValueAsync(app, env, key, ct);
         if (entry is null)
             return Problem("Configuration key not found.", statusCode: 404);
+
+        // Clients poll the sentinels constantly; a successful poll (200 or 304) would flood the
+        // audit log, so only failed sentinel reads are recorded.
+        if (ConfigurationSentinel.IsSentinel(entry.Key))
+            AuditContext.Skip(HttpContext);
 
         return WithEtag(
             new ConfigurationItem(
