@@ -22,6 +22,9 @@ internal sealed record DiffItem(
 /// </summary>
 internal static class EnvironmentDiff
 {
+    private const string Config = "config";
+    private const string Secret = "secret";
+
     public static List<DiffItem> Compare(
         IReadOnlyDictionary<string, string> fromConfigurations,
         IReadOnlyDictionary<string, string> toConfigurations,
@@ -35,18 +38,18 @@ internal static class EnvironmentDiff
             var inFrom = fromConfigurations.TryGetValue(key, out var from);
             var inTo = toConfigurations.TryGetValue(key, out var to);
             if (!inFrom)
-                items.Add(new DiffItem("config", key, DiffChange.Added, To: to));
+                items.Add(new DiffItem(Config, key, DiffChange.Added, To: to));
             else if (!inTo)
-                items.Add(new DiffItem("config", key, DiffChange.Removed, From: from));
+                items.Add(new DiffItem(Config, key, DiffChange.Removed, From: from));
             else if (!string.Equals(from, to, StringComparison.Ordinal))
-                items.Add(new DiffItem("config", key, DiffChange.Changed, from, to));
+                items.Add(new DiffItem(Config, key, DiffChange.Changed, from, to));
         }
         foreach (var name in Keys(fromSecrets, toSecrets))
         {
             if (!fromSecrets.Contains(name))
-                items.Add(new DiffItem("secret", name, DiffChange.Added));
+                items.Add(new DiffItem(Secret, name, DiffChange.Added));
             else if (!toSecrets.Contains(name))
-                items.Add(new DiffItem("secret", name, DiffChange.Removed));
+                items.Add(new DiffItem(Secret, name, DiffChange.Removed));
         }
         return items;
     }
@@ -55,8 +58,8 @@ internal static class EnvironmentDiff
     public static string Format(DiffItem item) =>
         item.Change switch
         {
-            DiffChange.Added when item.Kind == "secret" => $"+ secret {item.Key}",
-            DiffChange.Removed when item.Kind == "secret" => $"- secret {item.Key}",
+            DiffChange.Added when item.Kind == Secret => $"+ secret {item.Key}",
+            DiffChange.Removed when item.Kind == Secret => $"- secret {item.Key}",
             DiffChange.Added => $"+ config {item.Key}={Show(item.To)}",
             DiffChange.Removed => $"- config {item.Key}={Show(item.From)}",
             _ => $"~ config {item.Key}: {Show(item.From)} → {Show(item.To)}",

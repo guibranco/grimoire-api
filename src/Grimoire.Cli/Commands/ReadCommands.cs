@@ -205,34 +205,51 @@ internal static class ReadCommands
                     return Task.FromResult(
                         Fail(host, "Unknown --include. Use secrets, configurations or both.")
                     );
-                var fromEnv = parse.GetValue(from)!;
-                var toEnv = parse.GetValue(to)!;
-                var filter = parse.GetValue(prefix);
-                return WithConsumerAsync(host, async client =>
-                {
-                    var side = new DiffSide(client, configurations, secrets, filter);
-                    var a = await side.LoadAsync(fromEnv, ct);
-                    var b = await side.LoadAsync(toEnv, ct);
-                    var items = EnvironmentDiff.Compare(
-                        a.Configurations,
-                        b.Configurations,
-                        a.Secrets,
-                        b.Secrets
-                    );
-                    host.Out.WriteLine($"--- {fromEnv}");
-                    host.Out.WriteLine($"+++ {toEnv}");
-                    foreach (var item in items)
-                        host.Out.WriteLine(EnvironmentDiff.Format(item));
-                    host.Out.WriteLine(
-                        items.Count == 0
-                            ? "No differences."
-                            : $"{items.Count} difference{(items.Count == 1 ? "" : "s")}."
-                    );
-                    return items.Count > 0 && parse.GetValue(exitCode) ? 1 : 0;
-                });
+                return WithConsumerAsync(host, client =>
+                    DiffAsync(
+                        host,
+                        new DiffSide(client, configurations, secrets, parse.GetValue(prefix)),
+                        parse.GetValue(from)!,
+                        parse.GetValue(to)!,
+                        parse.GetValue(exitCode),
+                        ct
+                    )
+                );
             }
         );
         return command;
+    }
+
+    private static async Task<int> DiffAsync(
+        CliHost host,
+        DiffSide side,
+        string fromEnv,
+        string toEnv,
+        bool exitCode,
+        CancellationToken ct
+    )
+    {
+        var a = await side.ReadAsync(fromEnv, ct);
+        var b = await side.ReadAsync(toEnv, ct);
+        var items = EnvironmentDiff.Compare(
+            a.Configurations,
+            b.Configurations,
+            a.Secrets,
+            b.Secrets
+        );
+        host.Out.WriteLine($"--- {fromEnv}");
+        host.Out.WriteLine($"+++ {toEnv}");
+        foreach (var item in items)
+            host.Out.WriteLine(EnvironmentDiff.Format(item));
+        host.Out.WriteLine(Summary(items.Count));
+        return items.Count > 0 && exitCode ? 1 : 0;
+    }
+
+    private static string Summary(int count)
+    {
+        if (count == 0)
+            return "No differences.";
+        return count == 1 ? "1 difference." : $"{count} differences.";
     }
 
     /// <summary>One environment's side of a diff.</summary>
@@ -246,7 +263,7 @@ internal static class ReadCommands
         public async Task<(
             IReadOnlyDictionary<string, string> Configurations,
             IReadOnlySet<string> Secrets
-        )> LoadAsync(string environment, CancellationToken ct)
+        )> ReadAsync(string environment, CancellationToken ct)
         {
             IReadOnlyDictionary<string, string> values = NoTypes;
             if (configurations)
