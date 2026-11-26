@@ -167,25 +167,14 @@ internal static class WriteCommands
             {
                 var path = parse.GetValue(file)!;
                 var importFormat = parse.GetValue(format) ?? DetectFormat(path);
-                if (importFormat is null)
-                    return Task.FromResult(
-                        Fail(host, "Can't tell the file's format from its name. Pass --format.")
-                    );
-                if (path != "-" && !File.Exists(path))
-                    return Task.FromResult(Fail(host, $"File not found: {path}"));
-                var fromStdin = path == "-";
                 var apply = !parse.GetValue(dryRun);
-                if (apply && !parse.GetValue(yes) && (fromStdin || host.InputRedirected))
-                    return Task.FromResult(
-                        Fail(
-                            host,
-                            "Standard input isn't a terminal to confirm on. Pass --yes or --dry-run."
-                        )
-                    );
+                var confirmed = parse.GetValue(yes);
+                if (CheckImport(host, path, importFormat, apply, confirmed) is { } problem)
+                    return Task.FromResult(Fail(host, problem));
 
                 var options = new ImportOptions(
-                    importFormat,
-                    fromStdin ? host.ReadAllInput() : File.ReadAllText(path),
+                    importFormat!,
+                    path == "-" ? host.ReadAllInput() : File.ReadAllText(path),
                     SplitList(parse.GetValue(secretKeys)),
                     parse.GetValue(overwrite),
                     SplitList(parse.GetValue(exclude))
@@ -194,32 +183,62 @@ internal static class WriteCommands
                     host,
                     parse.GetValue(environment),
                     parse.GetValue(app),
-                    async (client, env) =>
-                    {
-                        var plan = await client.ImportAsync(env, options, dryRun: true, ct);
-                        PrintPlan(host, plan);
-                        if (!apply)
-                            return 0;
-                        if (plan.Summary.Create + plan.Summary.Update == 0)
-                        {
-                            host.Out.WriteLine("Nothing to import.");
-                            return 0;
-                        }
-                        if (!parse.GetValue(yes) && !Confirm(host, $"Apply to {env}?"))
-                        {
-                            host.Out.WriteLine("Nothing changed.");
-                            return 0;
-                        }
-                        var applied = await client.ImportAsync(env, options, dryRun: false, ct);
-                        host.Out.WriteLine(
-                            $"Imported into {env}: {applied.Summary.Create} created, {applied.Summary.Update} updated."
-                        );
-                        return 0;
-                    }
+                    (client, env) => ImportAsync(host, client, env, options, apply, confirmed, ct)
                 );
             }
         );
         return command;
+    }
+
+    /// <summary>Why the import can't start, or <c>null</c> when it can.</summary>
+    private static string? CheckImport(
+        CliHost host,
+        string path,
+        string? format,
+        bool apply,
+        bool confirmed
+    )
+    {
+        if (format is null)
+            return "Can't tell the file's format from its name. Pass --format.";
+        var fromStdin = path == "-";
+        if (!fromStdin && !File.Exists(path))
+            return $"File not found: {path}";
+        if (apply && !confirmed && (fromStdin || host.InputRedirected))
+            return "Standard input isn't a terminal to confirm on. Pass --yes or --dry-run.";
+        return null;
+    }
+
+    /// <summary>Shows the dry-run plan, then applies it when asked to and confirmed.</summary>
+    private static async Task<int> ImportAsync(
+        CliHost host,
+        ManagementClient client,
+        string env,
+        ImportOptions options,
+        bool apply,
+        bool confirmed,
+        CancellationToken ct
+    )
+    {
+        var plan = await client.ImportAsync(env, options, dryRun: true, ct);
+        PrintPlan(host, plan);
+        if (!apply)
+            return 0;
+        if (plan.Summary.Create + plan.Summary.Update == 0)
+        {
+            host.Out.WriteLine("Nothing to import.");
+            return 0;
+        }
+        if (!confirmed && !Confirm(host, $"Apply to {env}?"))
+        {
+            host.Out.WriteLine("Nothing changed.");
+            return 0;
+        }
+        var applied = await client.ImportAsync(env, options, dryRun: false, ct);
+        host.Out.WriteLine(
+            $"Imported into {env}: {applied.Summary.Create} created, {applied.Summary.Update} updated."
+        );
+        return 0;
     }
 
     /// <summary>The import format a file name implies, or <c>null</c>.</summary>
