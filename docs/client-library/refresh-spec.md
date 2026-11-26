@@ -59,7 +59,7 @@ Optional: a key watched *without* refresh all updates only that key (Azure's `re
 
 An unchanged check is one request per watched key, each answered with `304` and no body. With the default two sentinels and a 30-second interval, that's about 4 requests per minute per process.
 
-Each poll counts as a consumer read for activity tracking and the audit log, the same as feature-flag polling.
+Each poll counts as a consumer read for activity tracking, the same as feature-flag polling. The audit log records only failed sentinel reads (e.g. `404`, rejected key); successful polls (`200` or `304`) of `Sentinel` and `Global:Sentinel` are not audited, so polling doesn't flood it.
 
 ## Clients
 
